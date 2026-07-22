@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  api:
+    name: API - lint, typecheck, test, build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eventapp_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/eventapp_ci?schema=public
+      NODE_ENV: test
+      JWT_SECRET: ci-test-secret
+      JWT_EXPIRES_IN: 1h
+      COOKIE_NAME: event_rsvp_token
+      CORS_ORIGINS: http://localhost:5173
+      PUBLIC_APP_URL: http://localhost:5173
+      RSVP_RATE_LIMIT_MAX: 1000
+      RSVP_RATE_LIMIT_WINDOW_MS: 900000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Prisma Client
+        working-directory: apps/api
+        run: npx prisma generate
+
+      - name: Apply migrations
+        working-directory: apps/api
+        run: npx prisma migrate deploy
+
+      - name: Typecheck
+        working-directory: apps/api
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: apps/api
+        run: npm run lint
+
+      - name: Unit tests
+        working-directory: apps/api
+        run: npm test
+
+      - name: Integration tests
+        working-directory: apps/api
+        run: npx vitest run --config vitest.integration.config.ts
+
+      - name: Build
+        working-directory: apps/api
+        run: npm run build
+
+  web:
+    name: Web - lint, typecheck, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        working-directory: apps/web
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: apps/web
+        run: npm run lint
+
+      - name: Build
+        working-directory: apps/web
+        run: npm run build
+        env:
+          VITE_API_URL: https://placeholder-api.example.com/api

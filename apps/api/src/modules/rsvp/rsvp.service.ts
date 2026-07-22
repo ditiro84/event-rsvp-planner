@@ -1,0 +1,140 @@
+import { prisma } from "../../lib/prisma";
+import { BadRequestError, NotFoundError } from "../../lib/errors";
+import { getOwnedEvent } from "../events/events.service";
+import { SubmitRsvpInput } from "./rsvp.schema";
+
+// Only the minimum information needed to render the public RSVP page.
+export async function getPublicEventByToken(token: string) {
+  const event = await prisma.event.findUnique({ where: { rsvpToken: token } });
+  if (!event) {
+    throw new NotFoundError("This RSVP link is invalid");
+  }
+
+  const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
+
+  return {
+    id: event.id,
+    name: event.name,
+    type: event.type,
+    date: event.date,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    venueName: event.venueName,
+    venueAddress: event.venueAddress,
+    imageUrl: event.imageUrl,
+    customMessage: event.customMessage,
+    rsvpOpen: event.rsvpOpen && !deadlinePassed,
+    rsvpDeadline: event.rsvpDeadline,
+    allowPlusOnes: event.allowPlusOnes,
+    allowPlusOneNames: event.allowPlusOneNames,
+    allowMealSelection: event.allowMealSelection,
+    allowDietary: event.allowDietary,
+    allowAccessibilityInfo: event.allowAccessibilityInfo,
+    allowSpecialRequests: event.allowSpecialRequests,
+  };
+}
+
+export async function submitRsvp(token: string, input: SubmitRsvpInput) {
+  const event = await prisma.event.findUnique({ where: { rsvpToken: token } });
+  if (!event) {
+    throw new NotFoundError("This RSVP link is invalid");
+  }
+
+  const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
+  if (!event.rsvpOpen || deadlinePassed) {
+    throw new BadRequestError("RSVPs are closed for this event");
+  }
+
+  const email = input.email?.trim().toLowerCase() || null;
+
+  // Try to match an existing invited guest by email, then by exact name,
+  // so planner-added guests get updated rather than duplicated.
+  let guest = email
+    ? await prisma.guest.findFirst({ where: { eventId: event.id, email } })
+    : null;
+
+  if (!guest) {
+    guest = await prisma.guest.findFirst({
+      where: {
+        eventId: event.id,
+        firstName: { equals: input.firstName, mode: "insensitive" },
+        lastName: { equals: input.lastName, mode: "insensitive" },
+      },
+    });
+  }
+
+  const guestData = {
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: email ?? undefined,
+    phone: input.phone || undefined,
+    rsvpStatus: input.attending,
+    rsvpRespondedAt: new Date(),
+    additionalGuestsCount: input.attending === "CONFIRMED" ? input.additionalGuestsCount : 0,
+    mealPreference: input.mealPreference || undefined,
+    dietaryRequirements: input.dietaryRequirements || undefined,
+    accessibilityRequirements: input.accessibilityRequirements || undefined,
+    specialNotes: input.message || undefined,
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const savedGuest = await prisma.$transaction(async (tx: any) => {
+    const g = guest
+      ? await tx.guest.update({ where: { id: guest.id }, data: guestData })
+      : await tx.guest.create({ data: { eventId: event.id, ...guestData } });
+
+    // Replace the accompanying-guest list with what was submitted.
+    await tx.guestParty.deleteMany({ where: { guestId: g.id } });
+    if (input.attending === "CONFIRMED" && input.additionalGuestNames.length > 0) {
+      await tx.guestParty.createMany({
+        data: input.additionalGuestNames.map((fullName) => ({ guestId: g.id, fullName })),
+      });
+    }
+
+    // Confirmed party members lost their seat if the guest un-confirms.
+    if (g.rsvpStatus !== "CONFIRMED") {
+      await tx.seatingAssignment.deleteMany({ where: { guestId: g.id } });
+    }
+
+    return g;
+  });
+
+  return savedGuest;
+}
+
+export async function getRsvpDashboard(userId: string, eventId: string) {
+  const event = await getOwnedEvent(userId, eventId);
+
+  const [confirmed, declined, pending, maybe] = await Promise.all([
+    prisma.guest.count({ where: { eventId, rsvpStatus: "CONFIRMED" } }),
+    prisma.guest.count({ where: { eventId, rsvpStatus: "DECLINED" } }),
+    prisma.guest.count({ where: { eventId, rsvpStatus: "PENDING" } }),
+    prisma.guest.count({ where: { eventId, rsvpStatus: "MAYBE" } }),
+  ]);
+
+  const nonResponders = await prisma.guest.findMany({
+    where: { eventId, rsvpStatus: "PENDING" },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+  });
+
+  const partyCountAgg = await prisma.guest.aggregate({
+    where: { eventId, rsvpStatus: "CONFIRMED" },
+    _sum: { additionalGuestsCount: true },
+  });
+
+  return {
+    rsvpOpen: event.rsvpOpen,
+    rsvpDeadline: event.rsvpDeadline,
+    rsvpLink: `${event.rsvpToken}`,
+    stats: {
+      totalInvited: confirmed + declined + pending + maybe,
+      confirmed,
+      declined,
+      pending,
+      maybe,
+      totalExpectedAttendees: confirmed + (partyCountAgg._sum.additionalGuestsCount ?? 0),
+    },
+    nonResponders,
+  };
+}

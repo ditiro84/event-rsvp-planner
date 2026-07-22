@@ -1,0 +1,346 @@
+// Event RSVP & Visual Seating Planner - Database Schema
+// PostgreSQL + Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// USERS / AUTH
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  events Event[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// EVENTS
+// ---------------------------------------------------------------------------
+
+enum EventType {
+  WEDDING
+  BIRTHDAY
+  CORPORATE
+  CONFERENCE
+  GRADUATION
+  PARTY
+  GALA
+  RELIGIOUS
+  CHARITY
+  OTHER
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        EventType @default(OTHER)
+  description String?
+  date        DateTime
+  startTime   String?
+  endTime     String?
+  venueName   String?
+  venueAddress String?
+  capacity    Int?
+  imageUrl    String?
+
+  // Public RSVP configuration
+  rsvpToken       String    @unique @default(cuid())
+  rsvpOpen        Boolean   @default(true)
+  rsvpDeadline    DateTime?
+  customMessage   String?
+
+  // RSVP form feature toggles
+  allowPlusOnes         Boolean @default(true)
+  allowPlusOneNames      Boolean @default(true)
+  allowMealSelection     Boolean @default(true)
+  allowDietary           Boolean @default(true)
+  allowAccessibilityInfo Boolean @default(true)
+  allowSpecialRequests   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guests        Guest[]
+  rsvpQuestions RSVPQuestion[]
+  invitations   EventInvitation[]
+  venueLayout   VenueLayout?
+  tables        Table[]
+  checkIns      CheckIn[]
+
+  @@index([userId])
+  @@map("events")
+}
+
+// ---------------------------------------------------------------------------
+// GUESTS / RSVP
+// ---------------------------------------------------------------------------
+
+enum RsvpStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  MAYBE
+}
+
+model Guest {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  groupName String?
+
+  rsvpStatus            RsvpStatus @default(PENDING)
+  rsvpRespondedAt        DateTime?
+  additionalGuestsCount  Int        @default(0)
+  mealPreference         String?
+  dietaryRequirements    String?
+  accessibilityRequirements String?
+  specialNotes           String?
+  isVip                  Boolean    @default(false)
+
+  checkedIn   Boolean   @default(false)
+  checkedInAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  party            GuestParty[]
+  rsvpAnswers      RSVPAnswer[]
+  invitation       EventInvitation?
+  seatAssignment   SeatingAssignment?
+  checkIn          CheckIn?
+
+  @@index([eventId])
+  @@index([eventId, rsvpStatus])
+  @@index([eventId, email])
+  @@map("guests")
+}
+
+// Accompanying guests brought by a primary guest ("+1"s, family members, etc.)
+model GuestParty {
+  id      String @id @default(cuid())
+  guestId String
+  guest   Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  fullName            String
+  mealPreference      String?
+  dietaryRequirements String?
+
+  createdAt DateTime @default(now())
+
+  @@index([guestId])
+  @@map("guest_party_members")
+}
+
+// Optional per-guest personalised invitation link (future: email/SMS sending).
+// The MVP primarily uses the event-level rsvpToken; this scaffolds 1:1 invites.
+model EventInvitation {
+  id        String    @id @default(cuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guestId   String?   @unique
+  guest     Guest?    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  token     String    @default(cuid()) @unique
+  channel   String?   // email | sms | whatsapp | manual
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([eventId])
+  @@map("event_invitations")
+}
+
+// Configurable custom RSVP questions (future extension beyond the built-in fields)
+model RSVPQuestion {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  label     String
+  type      String   @default("text") // text | select | boolean
+  options   String?  // JSON-encoded array of options for "select"
+  required  Boolean  @default(false)
+  order     Int      @default(0)
+
+  answers RSVPAnswer[]
+
+  @@index([eventId])
+  @@map("rsvp_questions")
+}
+
+model RSVPAnswer {
+  id         String       @id @default(cuid())
+  guestId    String
+  guest      Guest        @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  questionId String
+  question   RSVPQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  answerText String?
+  createdAt  DateTime @default(now())
+
+  @@unique([guestId, questionId])
+  @@map("rsvp_answers")
+}
+
+// ---------------------------------------------------------------------------
+// VENUE / SEATING
+// ---------------------------------------------------------------------------
+
+enum LayoutObjectType {
+  STAGE
+  DANCE_FLOOR
+  BAR
+  BUFFET
+  ENTRANCE
+  EXIT
+  TOILETS
+  DJ_BOOTH
+  VIP_AREA
+  CUSTOM
+}
+
+model VenueLayout {
+  id      String @id @default(cuid())
+  eventId String @unique
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name          String  @default("Main Layout")
+  canvasWidth   Int     @default(1600)
+  canvasHeight  Int     @default(1000)
+  gridSize      Int     @default(20)
+  backgroundColor String @default("#f8fafc")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  objects LayoutObject[]
+
+  @@map("venue_layouts")
+}
+
+model LayoutObject {
+  id            String           @id @default(cuid())
+  venueLayoutId String
+  venueLayout   VenueLayout      @relation(fields: [venueLayoutId], references: [id], onDelete: Cascade)
+
+  type     LayoutObjectType @default(CUSTOM)
+  label    String?
+  x        Float            @default(0)
+  y        Float            @default(0)
+  width    Float            @default(100)
+  height   Float            @default(100)
+  rotation Float            @default(0)
+  color    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([venueLayoutId])
+  @@map("layout_objects")
+}
+
+enum TableShape {
+  ROUND
+  SQUARE
+  RECTANGLE
+  OVAL
+  BANQUET
+  HEAD
+  CUSTOM
+}
+
+model Table {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name     String
+  shape    TableShape @default(ROUND)
+  capacity Int        @default(8)
+  x        Float      @default(0)
+  y        Float      @default(0)
+  width    Float      @default(120)
+  height   Float      @default(120)
+  rotation Float       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seats              Seat[]
+  seatingAssignments SeatingAssignment[]
+
+  @@index([eventId])
+  @@map("tables")
+}
+
+model Seat {
+  id      String @id @default(cuid())
+  tableId String
+  table   Table  @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  seatNumber Int
+  x          Float @default(0)
+  y          Float @default(0)
+
+  assignment SeatingAssignment?
+
+  @@unique([tableId, seatNumber])
+  @@index([tableId])
+  @@map("seats")
+}
+
+model SeatingAssignment {
+  id      String @id @default(cuid())
+  guestId String @unique
+  guest   Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  tableId String
+  table   Table  @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  seatId  String? @unique
+  seat    Seat?  @relation(fields: [seatId], references: [id], onDelete: SetNull)
+
+  assignedAt DateTime @default(now())
+
+  @@index([tableId])
+  @@map("seating_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// CHECK-IN
+// ---------------------------------------------------------------------------
+
+model CheckIn {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guestId String @unique
+  guest   Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  checkedInAt DateTime @default(now())
+  checkedInBy String?
+
+  @@index([eventId])
+  @@map("check_ins")
+}
+
+// Relation from Table -> SeatingAssignment (reverse, needed for onDelete cascade clarity)

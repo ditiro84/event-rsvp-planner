@@ -26,4 +26,4 @@ COPY prisma ./prisma
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD node -e "require('http').get('http://localhost:4000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "echo '[start] running migrations...' && npx prisma migrate deploy && echo '[start] migrations done, starting server...' && exec node dist/index.js"]

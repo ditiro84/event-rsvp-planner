@@ -135,3 +135,91 @@ export interface PublicEvent {
   allowAccessibilityInfo: boolean;
   allowSpecialRequests: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Seating planner
+// ---------------------------------------------------------------------------
+
+export type LayoutObjectType =
+  | "STAGE"
+  | "DANCE_FLOOR"
+  | "BAR"
+  | "BUFFET"
+  | "ENTRANCE"
+  | "EXIT"
+  | "TOILETS"
+  | "DJ_BOOTH"
+  | "VIP_AREA"
+  | "CUSTOM";
+
+export type TableShape = "ROUND" | "SQUARE" | "RECTANGLE" | "OVAL" | "BANQUET" | "HEAD" | "CUSTOM";
+
+export interface LayoutObjectRecord {
+  id: string;
+  venueLayoutId: string;
+  type: LayoutObjectType;
+  label: string | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  color: string | null;
+}
+
+export interface VenueLayoutRecord {
+  id: string;
+  eventId: string;
+  name: string;
+  canvasWidth: number;
+  canvasHeight: number;
+  gridSize: number;
+  backgroundColor: string;
+  objects: LayoutObjectRecord[];
+}
+
+export interface SeatGuestSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  rsvpStatus: RsvpStatus;
+  isVip: boolean;
+}
+
+export interface SeatRecord {
+  id: string;
+  tableId: string;
+  seatNumber: number;
+  x: number;
+  y: number;
+  assignment: { id: string; guestId: string; guest: SeatGuestSummary } | null;
+}
+
+export interface TableRecord {
+  id: string;
+  eventId: string;
+  name: string;
+  shape: TableShape;
+  capacity: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  seats: SeatRecord[];
+}
+
+export interface UnassignedGuest {
+  id: string;
+  firstName: string;
+  lastName: string;
+  additionalGuestsCount: number;
+  isVip: boolean;
+  mealPreference: string | null;
+}
+
+export interface SeatingMap {
+  layout: VenueLayoutRecord;
+  tables: TableRecord[];
+  unassignedGuests: UnassignedGuest[];
+}

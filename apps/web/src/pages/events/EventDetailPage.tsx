@@ -11,15 +11,17 @@ import { getApiErrorMessage } from "@/lib/api";
 import { OverviewTab } from "./OverviewTab";
 import { GuestsTab } from "./GuestsTab";
 import { RsvpTab } from "./RsvpTab";
+import { SeatingTab } from "./seating/SeatingTab";
 import { EventFormModal } from "./EventFormModal";
 
-const TABS = ["overview", "guests", "rsvp"] as const;
+const TABS = ["overview", "guests", "rsvp", "seating"] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_LABELS: Record<Tab, string> = {
   overview: "Overview",
   guests: "Guests",
   rsvp: "RSVP",
+  seating: "Seating",
 };
 
 export default function EventDetailPage() {
@@ -94,6 +96,7 @@ export default function EventDetailPage() {
       {tab === "overview" && <OverviewTab eventId={event.id} />}
       {tab === "guests" && <GuestsTab eventId={event.id} />}
       {tab === "rsvp" && <RsvpTab event={event} />}
+      {tab === "seating" && <SeatingTab eventId={event.id} />}
 
       <EventFormModal open={showEdit} onClose={() => setShowEdit(false)} event={event} />
     </div>

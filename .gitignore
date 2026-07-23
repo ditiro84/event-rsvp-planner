@@ -16,3 +16,4 @@ apps/web/dist/
 apps/api/dist/
 playwright-report/
 test-results/
+.claude/

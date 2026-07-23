@@ -4,6 +4,7 @@ import { validateBody, validateParams } from "../../middleware/validate";
 import { createEventSchema, eventIdParamsSchema, updateEventSchema } from "./events.schema";
 import * as controller from "./events.controller";
 import guestsRouter from "../guests/guests.routes";
+import seatingRouter from "../seating/seating.routes";
 import * as rsvpController from "../rsvp/rsvp.controller";
 
 const router = Router();
@@ -20,5 +21,8 @@ router.get("/:eventId/rsvp", validateParams(eventIdParamsSchema), rsvpController
 
 // Nested guest routes: /api/events/:eventId/guests
 router.use("/:eventId/guests", validateParams(eventIdParamsSchema), guestsRouter);
+
+// Nested seating routes: /api/events/:eventId/seating
+router.use("/:eventId/seating", validateParams(eventIdParamsSchema), seatingRouter);
 
 export default router;

@@ -5,6 +5,7 @@ import { env } from "../../config/env";
 import { BadRequestError } from "../../lib/errors";
 import { getOwnedGuest } from "./guests.service";
 import { eventHasInvitationCard, getInvitationCardBytesForEvent } from "../events/invitationCard.service";
+import { formatFromHeader } from "../../utils/email";
 
 // Finds or creates the guest's personalized invitation (a stable token that
 // never changes once created, so a QR code or link sent out remains valid
@@ -58,6 +59,7 @@ function getResendClient() {
   return { client: new Resend(env.resendApiKey), from: env.resendFromEmail };
 }
 
+
 function inviteEmailHtml(
   eventName: string,
   guestFirstName: string,
@@ -96,7 +98,10 @@ export async function sendInviteEmail(userId: string, guestId: string) {
     throw new BadRequestError("This guest doesn't have an email address on file.");
   }
 
-  const event = await prisma.event.findUnique({ where: { id: guest.eventId } });
+  const event = await prisma.event.findUnique({
+    where: { id: guest.eventId },
+    include: { user: { select: { name: true, email: true } } },
+  });
   if (!event) {
     throw new BadRequestError("Event not found.");
   }
@@ -133,8 +138,9 @@ export async function sendInviteEmail(userId: string, guestId: string) {
   }
 
   const { error } = await client.emails.send({
-    from,
+    from: formatFromHeader(event.name, from),
     to: guest.email,
+    replyTo: event.user.email,
     subject: `You're invited to ${event.name}`,
     // The QR is embedded directly as a data URI (works in the large majority
     // of email clients) and also attached as a PNG so it's easy to save.

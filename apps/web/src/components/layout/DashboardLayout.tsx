@@ -147,7 +147,7 @@ export function DashboardLayout() {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:hidden">
           {inEvent ? (
             <div className="flex min-w-0 items-center gap-2">

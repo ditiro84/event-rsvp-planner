@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarHeart, CheckCircle2, FileText, MapPin, PartyPopper } from "lucide-react";
+import { CalendarHeart, CheckCircle2, FileText, MapPin, PartyPopper, XCircle } from "lucide-react";
 import { useInvitePrefill, usePublicEvent, useSubmitRsvp, useSubmitRsvpViaInvite } from "@/hooks/useRsvp";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +26,33 @@ const schema = z
     message: z.string().optional(),
   });
 type FormValues = z.infer<typeof schema>;
+
+const CONFIRMATION_COPY: Record<string, { title: (name: string) => string; body: string }> = {
+  CONFIRMED: {
+    title: (name) => `Thank you, ${name}!`,
+    body: "Your RSVP has been received. We look forward to celebrating with you.",
+  },
+  DECLINED: {
+    title: (name) => `Thanks for letting us know, ${name}`,
+    body: "We're sorry you can't make it this time, but we appreciate the reply.",
+  },
+  MAYBE: {
+    title: (name) => `Thanks, ${name}`,
+    body: "We've noted you as a maybe — let us know as soon as you're sure.",
+  },
+};
+
+function StatusScreen({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 text-center">
+      <div className="max-w-sm rounded-xl2 border border-slate-200 bg-white p-8 shadow-card">
+        {icon}
+        <h1 className="mt-4 font-display text-xl font-semibold text-slate-900">{title}</h1>
+        <p className="mt-2 text-sm text-slate-500">{description}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function PublicRsvpPage() {
   const { token, invitationToken } = useParams<{ token?: string; invitationToken?: string }>();
@@ -108,54 +135,50 @@ export default function PublicRsvpPage() {
 
   if (isError || !event) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">This RSVP link isn't valid</h1>
-          <p className="mt-2 text-sm text-slate-500">Please double-check the link or contact the event organizer.</p>
-        </div>
-      </div>
+      <StatusScreen
+        icon={<XCircle className="mx-auto h-10 w-10 text-slate-300" />}
+        title="This RSVP link isn't valid"
+        description="Please double-check the link or contact the event organizer."
+      />
     );
   }
 
   if (submitted) {
+    const copy = CONFIRMATION_COPY[submitted.rsvpStatus] ?? CONFIRMATION_COPY.CONFIRMED;
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center">
-        <div className="max-w-sm">
-          <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
-          <h1 className="mt-4 text-xl font-semibold text-slate-900">Thanks, {submitted.firstName}!</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Your RSVP has been recorded as <strong>{submitted.rsvpStatus.toLowerCase()}</strong>. The event host will be
-            able to see your response.
-          </p>
-        </div>
-      </div>
+      <StatusScreen
+        icon={<CheckCircle2 className="mx-auto h-12 w-12 text-success-500" />}
+        title={copy.title(submitted.firstName)}
+        description={copy.body}
+      />
     );
   }
 
   if (!event.rsvpOpen) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">RSVPs are closed</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            RSVPs for {event.name} are no longer being accepted. Please contact the event organizer for help.
-          </p>
-        </div>
-      </div>
+      <StatusScreen
+        icon={<XCircle className="mx-auto h-10 w-10 text-slate-300" />}
+        title="RSVPs are closed"
+        description={`RSVPs for ${event.name} are no longer being accepted. Please contact the event organizer for help.`}
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
-      {event.imageUrl && (
+    <div className="min-h-screen bg-canvas pb-16">
+      {event.imageUrl ? (
         <div className="h-48 w-full overflow-hidden sm:h-64">
           <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
         </div>
+      ) : (
+        <div className="h-28 w-full bg-gradient-to-br from-brand-600 via-brand-600 to-brand-700 sm:h-36" />
       )}
       <div className="mx-auto max-w-lg px-4 pt-8">
         <div className="text-center">
-          <PartyPopper className="mx-auto h-8 w-8 text-brand-600" />
-          <h1 className="mt-3 text-2xl font-semibold text-slate-900">{event.name}</h1>
+          <div className="mx-auto -mt-16 flex h-16 w-16 items-center justify-center rounded-full border-4 border-canvas bg-white shadow-card">
+            <PartyPopper className="h-7 w-7 text-brand-600" />
+          </div>
+          <h1 className="mt-4 font-display text-2xl font-semibold text-slate-900">{event.name}</h1>
           <div className="mt-2 flex flex-col items-center gap-1 text-sm text-slate-500">
             <span className="flex items-center gap-1.5">
               <CalendarHeart className="h-4 w-4" />
@@ -189,7 +212,7 @@ export default function PublicRsvpPage() {
           )}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4 rounded-xl2 border border-slate-200 bg-white p-5 shadow-card">
           <div className="grid grid-cols-2 gap-4">
             <Field label="First name" htmlFor="firstName" error={errors.firstName?.message}>
               <Input id="firstName" {...register("firstName")} error={!!errors.firstName} />

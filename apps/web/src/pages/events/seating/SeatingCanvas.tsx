@@ -4,7 +4,7 @@ import type Konva from "konva";
 import type { LayoutObjectRecord, SeatRecord, TableRecord, VenueLayoutRecord } from "@/types";
 import { computeSeatPositions, LAYOUT_OBJECT_COLORS, LAYOUT_OBJECT_LABELS } from "./seatGeometry";
 
-const BRAND = "#4f46e5";
+const BRAND = "#6f4fc4"; // brand-600 -- kept in sync with tailwind.config.js's brand palette
 const SEAT_EMPTY = "#ffffff";
 const SEAT_STROKE = "#94a3b8";
 const SEAT_VIP = "#eab308";
@@ -169,9 +169,12 @@ function TableNode({
         <Ellipse
           radiusX={table.width / 2}
           radiusY={table.height / 2}
-          fill="#f1f5f9"
+          fill="#f8fafc"
           stroke={selected ? BRAND : "#cbd5e1"}
           strokeWidth={selected ? 3 : 1.5}
+          shadowColor={BRAND}
+          shadowBlur={selected ? 14 : 0}
+          shadowOpacity={0.25}
         />
       ) : (
         <Rect
@@ -179,10 +182,13 @@ function TableNode({
           y={-table.height / 2}
           width={table.width}
           height={table.height}
-          fill="#f1f5f9"
+          fill="#f8fafc"
           stroke={selected ? BRAND : "#cbd5e1"}
           strokeWidth={selected ? 3 : 1.5}
           cornerRadius={6}
+          shadowColor={BRAND}
+          shadowBlur={selected ? 14 : 0}
+          shadowOpacity={0.25}
         />
       )}
       <Text

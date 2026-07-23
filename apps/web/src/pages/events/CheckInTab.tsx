@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Search, Star, Undo2, UserCheck } from "lucide-react";
+import { Armchair, Search, Star, Undo2, UserCheck } from "lucide-react";
 import { useEventDashboard } from "@/hooks/useEvents";
 import { useCheckInGuest, useCheckOutGuest, useGuests } from "@/hooks/useGuests";
 import { StatCard } from "@/components/ui/Card";
+import { RsvpStatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
@@ -53,7 +54,7 @@ export function CheckInTab({ eventId }: { eventId: string }) {
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
           placeholder="Search confirmed guests..."
-          className="pl-9"
+          className="h-11 pl-9 text-base"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -63,45 +64,58 @@ export function CheckInTab({ eventId }: { eventId: string }) {
 
       {!isLoading && guests?.length === 0 && (
         <EmptyState
-          icon={<UserCheck className="h-10 w-10" />}
+          icon={<UserCheck className="h-8 w-8" />}
           title="No confirmed guests match"
           description={search ? "Try a different search." : "No one has confirmed their RSVP yet."}
         />
       )}
 
       {!isLoading && guests && guests.length > 0 && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {guests.map((guest) => (
             <div
               key={guest.id}
-              className={`flex items-center justify-between gap-3 rounded-xl border p-4 shadow-sm ${
-                guest.checkedIn ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white"
+              className={`rounded-xl2 border p-4 shadow-card ${
+                guest.checkedIn ? "border-success-200 bg-success-50/60" : "border-slate-200 bg-white"
               }`}
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate font-medium text-slate-900">
-                    {guest.firstName} {guest.lastName}
-                  </span>
-                  {guest.isVip && <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />}
-                </div>
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-base font-semibold text-slate-900">
+                  {guest.firstName} {guest.lastName}
+                </span>
+                {guest.isVip && <Star className="h-4 w-4 shrink-0 fill-warning-500 text-warning-500" />}
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <RsvpStatusBadge status={guest.rsvpStatus} />
                 {guest.party && guest.party.length > 0 && (
-                  <p className="truncate text-xs text-slate-500">
-                    + {guest.party.map((p) => p.fullName).join(", ")}
-                  </p>
+                  <span className="text-xs text-slate-500">+ {guest.party.map((p) => p.fullName).join(", ")}</span>
                 )}
               </div>
+
+              <div className="mt-2 flex items-center gap-1.5 text-sm text-slate-600">
+                <Armchair className="h-4 w-4 shrink-0 text-slate-400" />
+                {guest.seatAssignment ? (
+                  <span>
+                    {guest.seatAssignment.table.name}
+                    {guest.seatAssignment.seat ? ` · Seat ${guest.seatAssignment.seat.seatNumber}` : ""}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">No table assigned</span>
+                )}
+              </div>
+
               <Button
-                size="sm"
+                size="lg"
                 variant={guest.checkedIn ? "secondary" : "primary"}
                 onClick={() => handleToggle(guest)}
                 isLoading={checkIn.isPending || checkOut.isPending}
-                className="shrink-0"
+                className="mt-3.5 w-full"
               >
                 {guest.checkedIn ? (
                   <>
                     <Undo2 className="h-4 w-4" />
-                    Undo
+                    Undo check-in
                   </>
                 ) : (
                   <>

@@ -8,9 +8,11 @@ import {
   useInvitationCardPreview,
   useUploadInvitationCard,
 } from "@/hooks/useInvitationCard";
-import { StatCard } from "@/components/ui/Card";
+import { Card, StatCard } from "@/components/ui/Card";
+import { ProgressStat } from "@/components/ui/ProgressBar";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate, formatFileSize } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
@@ -31,11 +33,13 @@ export function RsvpTab({ event }: { event: EventRecord }) {
 
   return (
     <div className="space-y-6">
-      <InvitationCardSection eventId={event.id} />
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <p className="text-sm font-medium text-slate-700">Public RSVP link</p>
+      <Card className="p-5 sm:p-6">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-slate-700">Public RSVP link</p>
+              <Badge variant={data.rsvpOpen ? "success" : "neutral"}>{data.rsvpOpen ? "Open" : "Closed"}</Badge>
+            </div>
             <p className="mt-1 break-all text-sm text-brand-700">{rsvpUrl}</p>
             {event.rsvpDeadline && <p className="mt-1 text-xs text-slate-500">Deadline: {formatDate(event.rsvpDeadline)}</p>}
           </div>
@@ -58,7 +62,13 @@ export function RsvpTab({ event }: { event: EventRecord }) {
             </Button>
           </div>
         </div>
-      </div>
+
+        <div className="mt-5 border-t border-slate-100 pt-5">
+          <ProgressStat label="RSVP progress" value={data.stats.confirmed} max={data.stats.totalInvited || 0} suffix="confirmed" />
+        </div>
+      </Card>
+
+      <InvitationCardSection eventId={event.id} />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Total invited" value={data.stats.totalInvited} />
@@ -75,7 +85,7 @@ export function RsvpTab({ event }: { event: EventRecord }) {
         {data.nonResponders.length === 0 ? (
           <EmptyState title="Everyone has responded" description="No pending RSVPs right now." />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <Card className="overflow-hidden">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50">
                 <tr>
@@ -96,13 +106,12 @@ export function RsvpTab({ event }: { event: EventRecord }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
       </div>
     </div>
   );
 }
-
 
 function InvitationCardSection({ eventId }: { eventId: string }) {
   const { data: card, isLoading } = useInvitationCardMeta(eventId);
@@ -134,7 +143,7 @@ function InvitationCardSection({ eventId }: { eventId: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
+    <Card className="p-5">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-slate-700">Invitation card</p>
@@ -192,6 +201,6 @@ function InvitationCardSection({ eventId }: { eventId: string }) {
           }
         />
       )}
-    </div>
+    </Card>
   );
 }

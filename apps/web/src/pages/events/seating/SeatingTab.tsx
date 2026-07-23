@@ -143,7 +143,7 @@ export function SeatingTab({ eventId }: { eventId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl2 border border-slate-200/80 bg-white p-3 shadow-soft">
         <Button size="sm" onClick={() => setShowAddTable(true)}>
           <Plus className="h-4 w-4" />
           Add table
@@ -166,13 +166,17 @@ export function SeatingTab({ eventId }: { eventId: string }) {
           Export PDF
         </Button>
         <p className="w-full text-xs text-slate-500 sm:w-auto sm:ml-auto">
-          Drag tables/decor to reposition &middot; drag guests from the right onto a table &middot; click a seat to unassign
+          Drag tables/decor to reposition &middot; drag guests from the left onto a table &middot; click a seat to unassign
         </p>
       </div>
 
       <div className="flex items-start gap-4">
+        <div className="w-64 shrink-0 overflow-hidden rounded-xl2 border border-slate-200/80 bg-white shadow-card" style={{ maxHeight: "70vh" }}>
+          <GuestSidebar guests={data.unassignedGuests} />
+        </div>
+
         <div
-          className="flex-1 overflow-auto rounded-xl border border-slate-200 bg-slate-50"
+          className="flex-1 overflow-auto rounded-xl2 border border-slate-200/80 bg-slate-50 shadow-card"
           style={{ maxHeight: "70vh" }}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
@@ -203,10 +207,6 @@ export function SeatingTab({ eventId }: { eventId: string }) {
         {selectedObject && (
           <ObjectSelectionPanel object={selectedObject} eventId={eventId} onClose={() => setSelectedObjectId(null)} />
         )}
-
-        <div className="w-64 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white" style={{ maxHeight: "70vh" }}>
-          <GuestSidebar guests={data.unassignedGuests} />
-        </div>
       </div>
 
       <AddTableModal open={showAddTable} onClose={() => setShowAddTable(false)} eventId={eventId} />

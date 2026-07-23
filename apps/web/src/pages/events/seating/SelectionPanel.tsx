@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { getApiErrorMessage } from "@/lib/api";
 import {
   useDeleteLayoutObject,
@@ -59,15 +60,20 @@ export function TableSelectionPanel({
   }
 
   const occupied = table.seats.filter((s) => s.assignment || s.partyAssignment).length;
+  const available = Math.max(table.capacity - occupied, 0);
 
   return (
-    <div className="w-full max-w-xs shrink-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-900">Table settings</h3>
+    <div className="w-full max-w-xs shrink-0 rounded-xl2 border border-slate-200/80 bg-white p-4 shadow-card">
+      <div className="mb-1 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-900">{table.name}</h3>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
           <X className="h-4 w-4" />
         </button>
       </div>
+      <p className="mb-3 text-xs text-slate-500">
+        {occupied} / {table.capacity} seats occupied &middot; {available} available
+      </p>
+      <ProgressBar value={occupied} max={table.capacity || 1} accent={occupied >= table.capacity ? "warning" : "brand"} className="mb-4" />
       <div className="space-y-3">
         <Field label="Name">
           <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -92,6 +98,21 @@ export function TableSelectionPanel({
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
+
+        {occupied > 0 && (
+          <div className="border-t border-slate-100 pt-3">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Seated here</p>
+            <ul className="space-y-1 text-sm text-slate-700">
+              {table.seats
+                .filter((s) => s.assignment || s.partyAssignment)
+                .map((s) => (
+                  <li key={s.id} className="truncate">
+                    {s.assignment ? `${s.assignment.guest.firstName} ${s.assignment.guest.lastName}` : s.partyAssignment!.partyMember.fullName}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -140,7 +161,7 @@ export function ObjectSelectionPanel({
   }
 
   return (
-    <div className="w-full max-w-xs shrink-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="w-full max-w-xs shrink-0 rounded-xl2 border border-slate-200/80 bg-white p-4 shadow-card">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900">Object settings</h3>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">

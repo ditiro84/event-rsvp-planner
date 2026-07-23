@@ -160,11 +160,23 @@ export async function updateTable(userId: string, eventId: string, tableId: stri
         .sort((a: any, b: any) => b.seatNumber - a.seatNumber)
         .slice(0, currentCount - input.capacity);
 
-      unassignedGuestNames = seatsToRemove
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .filter((s: any) => s.assignment)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const occupiedSeatsToRemove = seatsToRemove.filter((s: any) => s.assignment);
+      unassignedGuestNames = occupiedSeatsToRemove
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((s: any) => `${s.assignment!.guest.firstName} ${s.assignment!.guest.lastName}`);
+
+      if (occupiedSeatsToRemove.length > 0) {
+        // Deleting the Seat alone is not enough: Seat -> SeatingAssignment is
+        // onDelete: SetNull (from the assignment's side), so the assignment
+        // row would survive with seatId cleared but tableId still set --
+        // i.e. the guest would stay "seated" at this table with no seat.
+        // Delete the assignment outright so the guest actually frees up.
+        await prisma.seatingAssignment.deleteMany({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          where: { guestId: { in: occupiedSeatsToRemove.map((s: any) => s.assignment!.guestId) } },
+        });
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await prisma.seat.deleteMany({ where: { id: { in: seatsToRemove.map((s: any) => s.id) } } });

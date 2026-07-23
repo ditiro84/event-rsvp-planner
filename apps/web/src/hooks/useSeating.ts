@@ -112,3 +112,13 @@ export function useUnassignGuest(eventId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: mapKey(eventId) }),
   });
 }
+
+export function useUnassignPartyMember(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (partyMemberId: string) => {
+      await api.delete(`/events/${eventId}/seating/assignments/party/${partyMemberId}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: mapKey(eventId) }),
+  });
+}

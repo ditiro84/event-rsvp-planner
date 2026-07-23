@@ -81,3 +81,8 @@ export async function unassignGuest(req: Request, res: Response) {
   await service.unassignGuest(req.userId!, req.params.eventId, req.params.guestId);
   return noContent(res);
 }
+
+export async function unassignPartyMember(req: Request, res: Response) {
+  await service.unassignPartyMember(req.userId!, req.params.eventId, req.params.partyMemberId);
+  return noContent(res);
+}

@@ -28,8 +28,10 @@ export function GuestSidebar({ guests }: { guests: UnassignedGuest[] }) {
               </span>
               {guest.isVip && <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />}
             </div>
-            {guest.additionalGuestsCount > 0 && (
-              <p className="text-xs text-slate-500">+{guest.additionalGuestsCount} in party</p>
+            {guest.party.length > 0 && (
+              <p className="text-xs text-slate-500">
+                + {guest.party.map((p) => p.fullName).join(", ")}
+              </p>
             )}
           </div>
         ))}

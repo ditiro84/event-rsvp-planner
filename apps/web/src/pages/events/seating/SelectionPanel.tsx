@@ -58,10 +58,7 @@ export function TableSelectionPanel({
     }
   }
 
-  const occupied = table.seats.reduce(
-    (sum, s) => (s.assignment ? sum + 1 + s.assignment.guest.additionalGuestsCount : sum),
-    0
-  );
+  const occupied = table.seats.filter((s) => s.assignment || s.partyAssignment).length;
 
   return (
     <div className="w-full max-w-xs shrink-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

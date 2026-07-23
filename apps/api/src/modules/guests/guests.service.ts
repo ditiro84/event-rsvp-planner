@@ -7,7 +7,11 @@ import { CreateGuestInput, ListGuestsQuery, UpdateGuestInput } from "./guests.sc
 export async function getOwnedGuest(userId: string, guestId: string) {
   const guest = await prisma.guest.findUnique({
     where: { id: guestId },
-    include: { event: true, seatAssignment: { include: { table: true, seat: true } } },
+    include: {
+      event: true,
+      seatAssignment: { include: { table: true, seat: true } },
+      party: { include: { seatAssignment: { include: { table: true, seat: true } } } },
+    },
   });
   if (!guest || guest.event.userId !== userId) {
     throw new NotFoundError("Guest not found");
@@ -66,6 +70,7 @@ export async function listGuests(userId: string, eventId: string, query: ListGue
 
 export async function createGuest(userId: string, eventId: string, input: CreateGuestInput) {
   await getOwnedEvent(userId, eventId);
+  const names = input.additionalGuestNames;
   return prisma.guest.create({
     data: {
       eventId,
@@ -75,26 +80,50 @@ export async function createGuest(userId: string, eventId: string, input: Create
       phone: input.phone || null,
       groupName: input.groupName || null,
       rsvpStatus: input.rsvpStatus ?? "PENDING",
-      additionalGuestsCount: input.additionalGuestsCount ?? 0,
+      additionalGuestsCount: names ? names.length : input.additionalGuestsCount ?? 0,
       mealPreference: input.mealPreference || null,
       dietaryRequirements: input.dietaryRequirements || null,
       accessibilityRequirements: input.accessibilityRequirements || null,
       specialNotes: input.specialNotes || null,
       isVip: input.isVip ?? false,
+      ...(names && names.length > 0
+        ? { party: { create: names.map((fullName) => ({ fullName })) } }
+        : {}),
     },
+    include: { party: true },
   });
 }
 
 export async function updateGuest(userId: string, guestId: string, input: UpdateGuestInput) {
   const existing = await getOwnedGuest(userId, guestId);
-  const data: Record<string, unknown> = { ...input };
+  const { additionalGuestNames, ...rest } = input;
+  const data: Record<string, unknown> = { ...rest };
   if ("email" in data && data.email === "") data.email = null;
+  if (additionalGuestNames) data.additionalGuestsCount = additionalGuestNames.length;
 
-  const updated = await prisma.guest.update({ where: { id: guestId }, data });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updated = await prisma.$transaction(async (tx: any) => {
+    const g = await tx.guest.update({ where: { id: guestId }, data });
 
-  // If a guest is moved away from CONFIRMED, free their seat automatically.
+    // Replace the named party-member list with what was submitted (same
+    // replace-all pattern the public RSVP form uses), so seating stays in
+    // sync with whatever names the host last saved.
+    if (additionalGuestNames) {
+      await tx.guestParty.deleteMany({ where: { guestId } });
+      if (additionalGuestNames.length > 0) {
+        await tx.guestParty.createMany({
+          data: additionalGuestNames.map((fullName: string) => ({ guestId, fullName })),
+        });
+      }
+    }
+
+    return g;
+  });
+
+  // If a guest is moved away from CONFIRMED, free their whole party's seats.
   if (shouldReleaseSeatOnStatusChange(existing.rsvpStatus, updated.rsvpStatus)) {
     await prisma.seatingAssignment.deleteMany({ where: { guestId } });
+    await prisma.partySeatingAssignment.deleteMany({ where: { partyMember: { guestId } } });
   }
 
   return updated;

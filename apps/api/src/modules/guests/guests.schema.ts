@@ -10,6 +10,12 @@ export const createGuestSchema = z.object({
   groupName: z.string().trim().max(100).optional().nullable(),
   rsvpStatus: rsvpStatusEnum.optional(),
   additionalGuestsCount: z.coerce.number().int().min(0).max(50).optional(),
+  // Named "+1"s / accompanying guests. When provided (even as an empty
+  // array) this is the source of truth: additionalGuestsCount is derived
+  // from its length and each name gets its own GuestParty row, which in
+  // turn gets its own seat on the seating planner. If omitted, the plain
+  // additionalGuestsCount number is used instead (e.g. CSV bulk import).
+  additionalGuestNames: z.array(z.string().trim().min(1).max(120)).max(50).optional(),
   mealPreference: z.string().trim().max(200).optional().nullable(),
   dietaryRequirements: z.string().trim().max(500).optional().nullable(),
   accessibilityRequirements: z.string().trim().max(500).optional().nullable(),

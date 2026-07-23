@@ -4,6 +4,7 @@ import * as controller from "./seating.controller";
 import {
   assignGuestSchema,
   assignmentGuestIdParamsSchema,
+  assignmentPartyMemberIdParamsSchema,
   createLayoutObjectSchema,
   createTableSchema,
   objectIdParamsSchema,
@@ -40,6 +41,11 @@ router.put(
 router.delete("/tables/:tableId", validateParams(tableIdParamsSchema), controller.deleteTable);
 
 router.post("/assignments", validateBody(assignGuestSchema), controller.assignGuest);
+router.delete(
+  "/assignments/party/:partyMemberId",
+  validateParams(assignmentPartyMemberIdParamsSchema),
+  controller.unassignPartyMember
+);
 router.delete(
   "/assignments/:guestId",
   validateParams(assignmentGuestIdParamsSchema),

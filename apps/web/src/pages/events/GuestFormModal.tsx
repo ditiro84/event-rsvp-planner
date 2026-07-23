@@ -1,7 +1,8 @@
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { Plus, X } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/Input";
@@ -16,7 +17,7 @@ const schema = z.object({
   phone: z.string().optional(),
   groupName: z.string().optional(),
   rsvpStatus: z.enum(["PENDING", "CONFIRMED", "DECLINED", "MAYBE"]),
-  additionalGuestsCount: z.string().optional(),
+  additionalGuests: z.array(z.object({ fullName: z.string().min(1, "Enter a name or remove this row") })),
   mealPreference: z.string().optional(),
   dietaryRequirements: z.string().optional(),
   accessibilityRequirements: z.string().optional(),
@@ -42,6 +43,7 @@ export function GuestFormModal({
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -54,20 +56,25 @@ export function GuestFormModal({
           phone: guest.phone ?? "",
           groupName: guest.groupName ?? "",
           rsvpStatus: guest.rsvpStatus,
-          additionalGuestsCount: String(guest.additionalGuestsCount ?? 0),
+          additionalGuests: (guest.party ?? []).map((p) => ({ fullName: p.fullName })),
           mealPreference: guest.mealPreference ?? "",
           dietaryRequirements: guest.dietaryRequirements ?? "",
           accessibilityRequirements: guest.accessibilityRequirements ?? "",
           specialNotes: guest.specialNotes ?? "",
           isVip: guest.isVip,
         }
-      : { firstName: "", lastName: "", rsvpStatus: "PENDING", isVip: false },
+      : { firstName: "", lastName: "", rsvpStatus: "PENDING", isVip: false, additionalGuests: [] },
   });
 
+  const { fields, append, remove } = useFieldArray({ control, name: "additionalGuests" });
+
   async function onSubmit(values: FormValues) {
+    const { additionalGuests, ...rest } = values;
     const payload = {
-      ...values,
-      additionalGuestsCount: values.additionalGuestsCount ? Number(values.additionalGuestsCount) : 0,
+      ...rest,
+      // Every named "+1" gets its own seat on the seating planner, so send
+      // the full list -- additionalGuestsCount is derived from it server-side.
+      additionalGuestNames: additionalGuests.map((g) => g.fullName.trim()).filter(Boolean),
     };
     try {
       if (isEdit) {
@@ -109,9 +116,47 @@ export function GuestFormModal({
             <option value="MAYBE">Maybe</option>
           </Select>
         </Field>
-        <Field label="Additional guests" htmlFor="additionalGuestsCount" hint="Number of +1s / plus-ones">
-          <Input id="additionalGuestsCount" type="number" min={0} {...register("additionalGuestsCount")} />
-        </Field>
+
+        <div className="sm:col-span-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-700">Additional guests (+1s)</label>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => append({ fullName: "" })}
+            >
+              <Plus className="h-4 w-4" />
+              Add name
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Name each person this guest is bringing so they can be seated individually on the seating
+            planner, right beside {guest ? "this guest" : "the primary guest"}.
+          </p>
+          {fields.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <Input
+                    placeholder={`Guest ${index + 1} full name`}
+                    {...register(`additionalGuests.${index}.fullName` as const)}
+                    error={!!errors.additionalGuests?.[index]?.fullName}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => remove(index)}
+                    aria-label="Remove guest"
+                    className="shrink-0 rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <Field label="Meal preference" htmlFor="mealPreference">
           <Input id="mealPreference" {...register("mealPreference")} placeholder="e.g. Vegetarian" />
         </Field>

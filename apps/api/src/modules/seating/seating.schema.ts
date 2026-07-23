@@ -84,3 +84,8 @@ export const assignmentGuestIdParamsSchema = z.object({
   eventId: z.string().min(1),
   guestId: z.string().min(1),
 });
+
+export const assignmentPartyMemberIdParamsSchema = z.object({
+  eventId: z.string().min(1),
+  partyMemberId: z.string().min(1),
+});

@@ -187,6 +187,12 @@ export interface SeatGuestSummary {
   additionalGuestsCount: number;
 }
 
+export interface SeatPartyAssignmentSummary {
+  id: string;
+  partyMemberId: string;
+  partyMember: { id: string; fullName: string; guestId: string };
+}
+
 export interface SeatRecord {
   id: string;
   tableId: string;
@@ -194,6 +200,7 @@ export interface SeatRecord {
   x: number;
   y: number;
   assignment: { id: string; guestId: string; guest: SeatGuestSummary } | null;
+  partyAssignment: SeatPartyAssignmentSummary | null;
 }
 
 export interface TableRecord {
@@ -217,6 +224,7 @@ export interface UnassignedGuest {
   additionalGuestsCount: number;
   isVip: boolean;
   mealPreference: string | null;
+  party: { id: string; fullName: string }[];
 }
 
 export interface SeatingMap {

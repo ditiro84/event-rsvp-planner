@@ -11,9 +11,11 @@ import {
   useCreateLayoutObject,
   useSeatingMap,
   useUnassignGuest,
+  useUnassignPartyMember,
   useUpdateLayoutObject,
   useUpdateTable,
 } from "@/hooks/useSeating";
+import type { SeatRecord } from "@/types";
 import { SeatingCanvas } from "./SeatingCanvas";
 import { GuestSidebar } from "./GuestSidebar";
 import { AddTableModal } from "./AddTableModal";
@@ -33,6 +35,7 @@ export function SeatingTab({ eventId }: { eventId: string }) {
   const createObject = useCreateLayoutObject(eventId);
   const assignGuest = useAssignGuest(eventId);
   const unassignGuest = useUnassignGuest(eventId);
+  const unassignPartyMember = useUnassignPartyMember(eventId);
 
   const selectedTable = useMemo(
     () => data?.tables.find((t) => t.id === selectedTableId) ?? null,
@@ -61,15 +64,19 @@ export function SeatingTab({ eventId }: { eventId: string }) {
     }
   }
 
-  async function handleSeatClick(_tableId: string, seatId: string, occupied: boolean) {
-    if (!occupied) return;
-    const table = data!.tables.find((t) => t.seats.some((s) => s.id === seatId));
-    const seat = table?.seats.find((s) => s.id === seatId);
-    const guestId = seat?.assignment?.guestId;
-    if (!guestId) return;
+  async function handleSeatClick(_tableId: string, seat: SeatRecord) {
     try {
-      await unassignGuest.mutateAsync(guestId);
-      toast.success("Guest unseated");
+      if (seat.assignment) {
+        // Unseats the primary guest and every named party member ("+1")
+        // that came with them -- they were seated together as a unit.
+        await unassignGuest.mutateAsync(seat.assignment.guestId);
+        toast.success("Guest unseated");
+      } else if (seat.partyAssignment) {
+        // Unseats just this one named plus-one, leaving the primary guest
+        // and any other party members exactly where they are.
+        await unassignPartyMember.mutateAsync(seat.partyAssignment.partyMemberId);
+        toast.success(`${seat.partyAssignment.partyMember.fullName} unseated`);
+      }
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }

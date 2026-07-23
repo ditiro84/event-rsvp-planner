@@ -138,6 +138,8 @@ model Guest {
 }
 
 // Accompanying guests brought by a primary guest ("+1"s, family members, etc.)
+// Each party member is a named individual and, like the primary guest, can
+// hold their own seat assignment on the venue map (see PartySeatingAssignment).
 model GuestParty {
   id      String @id @default(cuid())
   guestId String
@@ -148,6 +150,8 @@ model GuestParty {
   dietaryRequirements String?
 
   createdAt DateTime @default(now())
+
+  seatAssignment PartySeatingAssignment?
 
   @@index([guestId])
   @@map("guest_party_members")
@@ -287,8 +291,9 @@ model Table {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  seats              Seat[]
-  seatingAssignments SeatingAssignment[]
+  seats                   Seat[]
+  seatingAssignments      SeatingAssignment[]
+  partySeatingAssignments PartySeatingAssignment[]
 
   @@index([eventId])
   @@map("tables")
@@ -303,7 +308,8 @@ model Seat {
   x          Float @default(0)
   y          Float @default(0)
 
-  assignment SeatingAssignment?
+  assignment      SeatingAssignment?
+  partyAssignment PartySeatingAssignment?
 
   @@unique([tableId, seatNumber])
   @@index([tableId])
@@ -323,6 +329,25 @@ model SeatingAssignment {
 
   @@index([tableId])
   @@map("seating_assignments")
+}
+
+// A named party member's ("+1"'s) own seat -- mirrors SeatingAssignment but
+// points at a GuestParty row instead of a Guest, so each accompanying guest
+// gets a real, independent seat on the venue map next to the guest who
+// invited them.
+model PartySeatingAssignment {
+  id            String     @id @default(cuid())
+  partyMemberId String     @unique
+  partyMember   GuestParty @relation(fields: [partyMemberId], references: [id], onDelete: Cascade)
+  tableId       String
+  table         Table      @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  seatId        String?    @unique
+  seat          Seat?      @relation(fields: [seatId], references: [id], onDelete: SetNull)
+
+  assignedAt DateTime @default(now())
+
+  @@index([tableId])
+  @@map("party_seating_assignments")
 }
 
 // ---------------------------------------------------------------------------

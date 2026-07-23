@@ -1,13 +1,22 @@
 import { forwardRef } from "react";
 import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import type Konva from "konva";
-import type { LayoutObjectRecord, TableRecord, VenueLayoutRecord } from "@/types";
+import type { LayoutObjectRecord, SeatRecord, TableRecord, VenueLayoutRecord } from "@/types";
 import { computeSeatPositions, LAYOUT_OBJECT_COLORS, LAYOUT_OBJECT_LABELS } from "./seatGeometry";
 
 const BRAND = "#4f46e5";
 const SEAT_EMPTY = "#ffffff";
 const SEAT_STROKE = "#94a3b8";
 const SEAT_VIP = "#eab308";
+const SEAT_PLUS_ONE = "#f97316";
+
+// "JD" from "John Doe", "J" from "Jane".
+function initialsOf(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
 
 interface Props {
   layout: VenueLayoutRecord;
@@ -18,7 +27,7 @@ interface Props {
   onSelectObject: (id: string | null) => void;
   onTableDragEnd: (id: string, x: number, y: number) => void;
   onObjectDragEnd: (id: string, x: number, y: number) => void;
-  onSeatClick: (tableId: string, seatId: string, occupied: boolean) => void;
+  onSeatClick: (tableId: string, seat: SeatRecord) => void;
 }
 
 export const SeatingCanvas = forwardRef<Konva.Stage, Props>(function SeatingCanvas(
@@ -139,10 +148,11 @@ function TableNode({
   selected: boolean;
   onSelect: () => void;
   onDragEnd: (x: number, y: number) => void;
-  onSeatClick: (tableId: string, seatId: string, occupied: boolean) => void;
+  onSeatClick: (tableId: string, seat: SeatRecord) => void;
 }) {
   const seatPositions = computeSeatPositions(table.shape, table.width, table.height, table.seats.length);
   const isRound = table.shape === "ROUND" || table.shape === "OVAL";
+  const occupiedCount = table.seats.filter((s) => s.assignment || s.partyAssignment).length;
 
   return (
     <Group
@@ -188,7 +198,7 @@ function TableNode({
         listening={false}
       />
       <Text
-        text={`${table.seats.reduce((sum, s) => (s.assignment ? sum + 1 + s.assignment.guest.additionalGuestsCount : sum), 0)}/${table.capacity}`}
+        text={`${occupiedCount}/${table.capacity}`}
         width={table.width}
         offsetX={table.width / 2}
         y={12}
@@ -200,9 +210,22 @@ function TableNode({
 
       {table.seats.map((seat, i) => {
         const pos = seatPositions[i] ?? { x: 0, y: 0 };
-        const occupied = !!seat.assignment;
-        const fill = occupied ? (seat.assignment!.guest.isVip ? SEAT_VIP : BRAND) : SEAT_EMPTY;
-        const plusOnes = occupied ? seat.assignment!.guest.additionalGuestsCount : 0;
+
+        // Each seat is exactly one of: the primary guest's own seat, a named
+        // party member's ("+1"'s) own seat, or free. Plus-ones get their own
+        // full seat dot right next to the guest who invited them, instead of
+        // a badge stacked on top of someone else's seat.
+        let fill = SEAT_EMPTY;
+        let initials: string | null = null;
+        if (seat.assignment) {
+          fill = seat.assignment.guest.isVip ? SEAT_VIP : BRAND;
+          initials = seat.assignment.guest.firstName.charAt(0) + seat.assignment.guest.lastName.charAt(0);
+        } else if (seat.partyAssignment) {
+          fill = SEAT_PLUS_ONE;
+          initials = initialsOf(seat.partyAssignment.partyMember.fullName);
+        }
+        const occupied = !!seat.assignment || !!seat.partyAssignment;
+
         return (
           <Group key={seat.id}>
             <Circle
@@ -216,16 +239,16 @@ function TableNode({
               id={seat.id}
               onClick={(e) => {
                 e.cancelBubble = true;
-                onSeatClick(table.id, seat.id, occupied);
+                onSeatClick(table.id, seat);
               }}
               onTap={(e) => {
                 e.cancelBubble = true;
-                onSeatClick(table.id, seat.id, occupied);
+                onSeatClick(table.id, seat);
               }}
             />
-            {occupied && (
+            {occupied && initials && (
               <Text
-                text={seat.assignment!.guest.firstName.charAt(0) + seat.assignment!.guest.lastName.charAt(0)}
+                text={initials}
                 x={pos.x}
                 y={pos.y}
                 offsetX={7}
@@ -235,21 +258,6 @@ function TableNode({
                 fill="#ffffff"
                 listening={false}
               />
-            )}
-            {plusOnes > 0 && (
-              <Group listening={false}>
-                <Circle x={pos.x + 9} y={pos.y - 9} radius={7} fill="#f97316" stroke="#ffffff" strokeWidth={1} />
-                <Text
-                  text={`+${plusOnes}`}
-                  x={pos.x + 9}
-                  y={pos.y - 9}
-                  offsetX={plusOnes >= 10 ? 8 : 5.5}
-                  offsetY={4.5}
-                  fontSize={9}
-                  fontStyle="700"
-                  fill="#ffffff"
-                />
-              </Group>
             )}
           </Group>
         );

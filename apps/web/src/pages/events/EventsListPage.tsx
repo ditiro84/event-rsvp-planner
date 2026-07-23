@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useEvents } from "@/hooks/useEvents";
 import { Button } from "@/components/ui/Button";
 import { Card, StatCard } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { EventStatusBadge } from "@/components/ui/Badge";
 import { ProgressStat } from "@/components/ui/ProgressBar";
@@ -35,7 +35,7 @@ interface AttentionItem {
 
 export default function EventsListPage() {
   const { user } = useAuth();
-  const { data: events, isLoading } = useEvents();
+  const { data: events, isLoading, isError, refetch } = useEvents();
   const [showCreate, setShowCreate] = useState(false);
   const [showPast, setShowPast] = useState(false);
 
@@ -107,7 +107,11 @@ export default function EventsListPage() {
 
       {isLoading && <Spinner />}
 
-      {!isLoading && events && events.length > 0 && (
+      {isError && (
+        <ErrorState title="We couldn't load your events" onRetry={() => refetch()} />
+      )}
+
+      {!isLoading && !isError && events && events.length > 0 && (
         <>
           <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard label="Upcoming events" value={upcoming.length} icon={<CalendarHeart className="h-4 w-4" />} />

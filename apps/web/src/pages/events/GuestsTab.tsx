@@ -6,7 +6,7 @@ import { useBulkSendInviteEmails } from "@/hooks/useInvites";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { RsvpStatusBadge, Badge } from "@/components/ui/Badge";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { getApiErrorMessage } from "@/lib/api";
@@ -18,7 +18,7 @@ import type { Guest } from "@/types";
 export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: string }) {
   const [filters, setFilters] = useState<GuestFilters>({});
   const [search, setSearch] = useState("");
-  const { data: guests, isLoading } = useGuests(eventId, { ...filters, search: search || undefined });
+  const { data: guests, isLoading, isError, refetch } = useGuests(eventId, { ...filters, search: search || undefined });
   const deleteGuest = useDeleteGuest(eventId);
   const exportCsv = useExportGuestsCsv(eventId);
   const exportPdf = useExportGuestsPdf(eventId);
@@ -141,7 +141,9 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
 
       {isLoading && <Spinner />}
 
-      {!isLoading && guests?.length === 0 && (
+      {isError && <ErrorState title="We couldn't load the guest list" onRetry={() => refetch()} />}
+
+      {!isLoading && !isError && guests?.length === 0 && (
         <EmptyState
           icon={<Users className="h-8 w-8" />}
           title="No guests yet"
@@ -157,7 +159,7 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
         />
       )}
 
-      {!isLoading && guests && guests.length > 0 && (
+      {!isLoading && !isError && guests && guests.length > 0 && (
         <>
           {/* Desktop / tablet: full table */}
           <div className="hidden overflow-x-auto rounded-xl2 border border-slate-200 bg-white sm:block">

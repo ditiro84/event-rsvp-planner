@@ -213,7 +213,7 @@ export default function PublicRsvpPage() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4 rounded-xl2 border border-slate-200 bg-white p-5 shadow-card">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="First name" htmlFor="firstName" error={errors.firstName?.message}>
               <Input id="firstName" {...register("firstName")} error={!!errors.firstName} />
             </Field>

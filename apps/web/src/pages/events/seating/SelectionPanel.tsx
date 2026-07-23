@@ -20,6 +20,8 @@ export function TableSelectionPanel({
   onClose,
   onRotate,
   onDuplicate,
+  onUnassignGuest,
+  onUnassignPartyMember,
   isRotating,
   isDuplicating,
 }: {
@@ -28,6 +30,11 @@ export function TableSelectionPanel({
   onClose: () => void;
   onRotate: (table: TableRecord, deltaDegrees: number) => void;
   onDuplicate: (table: TableRecord) => void;
+  // Keyboard/screen-reader-accessible alternative to "click a seat on the
+  // canvas to unassign" -- the canvas is an unlabeled <canvas> element with
+  // no way to reach individual seats without a mouse.
+  onUnassignGuest: (guestId: string, seatId: string, name: string) => void;
+  onUnassignPartyMember: (partyMemberId: string, name: string) => void;
   isRotating?: boolean;
   isDuplicating?: boolean;
 }) {
@@ -71,7 +78,7 @@ export function TableSelectionPanel({
   const available = Math.max(table.capacity - occupied, 0);
 
   return (
-    <div className="w-full max-w-xs shrink-0 rounded-xl2 border border-slate-200/80 bg-white p-4 shadow-card">
+    <div className="w-full max-w-none shrink-0 rounded-xl2 border border-slate-200/80 bg-white p-4 shadow-card sm:max-w-xs">
       <div className="mb-1 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900">{table.name}</h3>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
@@ -148,11 +155,28 @@ export function TableSelectionPanel({
             <ul className="space-y-1 text-sm text-slate-700">
               {table.seats
                 .filter((s) => s.assignment || s.partyAssignment)
-                .map((s) => (
-                  <li key={s.id} className="truncate">
-                    {s.assignment ? `${s.assignment.guest.firstName} ${s.assignment.guest.lastName}` : s.partyAssignment!.partyMember.fullName}
-                  </li>
-                ))}
+                .map((s) => {
+                  const name = s.assignment
+                    ? `${s.assignment.guest.firstName} ${s.assignment.guest.lastName}`
+                    : s.partyAssignment!.partyMember.fullName;
+                  return (
+                    <li key={s.id} className="flex items-center justify-between gap-2">
+                      <span className="truncate">{name}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          s.assignment
+                            ? onUnassignGuest(s.assignment.guestId, s.id, name)
+                            : onUnassignPartyMember(s.partyAssignment!.partyMemberId, name)
+                        }
+                        aria-label={`Unseat ${name}`}
+                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-danger-600"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
             </ul>
           </div>
         )}
@@ -212,7 +236,7 @@ export function ObjectSelectionPanel({
   }
 
   return (
-    <div className="w-full max-w-xs shrink-0 rounded-xl2 border border-slate-200/80 bg-white p-4 shadow-card">
+    <div className="w-full max-w-none shrink-0 rounded-xl2 border border-slate-200/80 bg-white p-4 shadow-card sm:max-w-xs">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900">Object settings</h3>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">

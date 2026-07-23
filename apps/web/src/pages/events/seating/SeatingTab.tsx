@@ -3,6 +3,7 @@ import type Konva from "konva";
 import { toast } from "sonner";
 import { FileText, Magnet, Plus, RotateCcw as ResetViewIcon, Undo2, Redo2, ZoomIn, ZoomOut } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
@@ -42,7 +43,7 @@ function snapToGridValue(value: number, gridSize: number) {
 const DEFAULT_VIEW: CanvasView = { scale: 1, x: 0, y: 0 };
 
 export function SeatingTab({ eventId }: { eventId: string }) {
-  const { data, isLoading } = useSeatingMap(eventId);
+  const { data, isLoading, isError, refetch } = useSeatingMap(eventId);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [showAddTable, setShowAddTable] = useState(false);
@@ -134,6 +135,7 @@ export function SeatingTab({ eventId }: { eventId: string }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleUndo, handleRedo]);
 
+  if (isError) return <ErrorState title="We couldn't load the seating plan" onRetry={() => refetch()} />;
   if (isLoading || !data) return <Spinner />;
 
   const gridSize = data.layout.gridSize;
@@ -253,31 +255,44 @@ export function SeatingTab({ eventId }: { eventId: string }) {
     }
   }
 
-  async function handleSeatClick(tableId: string, seat: SeatRecord) {
+  // Unseats the primary guest and every named party member ("+1") that
+  // came with them -- they were seated together as a unit. Shared by the
+  // canvas seat-click handler and the "Seated here" list's Remove button
+  // (SelectionPanel), which exists specifically so this action doesn't
+  // require clicking a spot on an unlabeled <canvas>.
+  async function unassignGuestFromSeat(tableId: string, guestId: string, seatId: string) {
     try {
-      if (seat.assignment) {
-        // Unseats the primary guest and every named party member ("+1")
-        // that came with them -- they were seated together as a unit.
-        const { guestId } = seat.assignment;
-        const seatId = seat.id;
-        await unassignGuest.mutateAsync(guestId);
-        toast.success("Guest unseated");
-        pushHistory({
-          undo: async () => {
-            await assignGuest.mutateAsync({ guestId, tableId, seatId });
-          },
-          redo: async () => {
-            await unassignGuest.mutateAsync(guestId);
-          },
-        });
-      } else if (seat.partyAssignment) {
-        // Unseats just this one named plus-one, leaving the primary guest
-        // and any other party members exactly where they are.
-        await unassignPartyMember.mutateAsync(seat.partyAssignment.partyMemberId);
-        toast.success(`${seat.partyAssignment.partyMember.fullName} unseated`);
-      }
+      await unassignGuest.mutateAsync(guestId);
+      toast.success("Guest unseated");
+      pushHistory({
+        undo: async () => {
+          await assignGuest.mutateAsync({ guestId, tableId, seatId });
+        },
+        redo: async () => {
+          await unassignGuest.mutateAsync(guestId);
+        },
+      });
     } catch (err) {
       toast.error(getApiErrorMessage(err));
+    }
+  }
+
+  // Unseats just this one named plus-one, leaving the primary guest and any
+  // other party members exactly where they are.
+  async function unassignPartyMemberFromSeat(partyMemberId: string, name: string) {
+    try {
+      await unassignPartyMember.mutateAsync(partyMemberId);
+      toast.success(`${name} unseated`);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  }
+
+  async function handleSeatClick(tableId: string, seat: SeatRecord) {
+    if (seat.assignment) {
+      await unassignGuestFromSeat(tableId, seat.assignment.guestId, seat.id);
+    } else if (seat.partyAssignment) {
+      await unassignPartyMemberFromSeat(seat.partyAssignment.partyMemberId, seat.partyAssignment.partyMember.fullName);
     }
   }
 
@@ -462,14 +477,17 @@ export function SeatingTab({ eventId }: { eventId: string }) {
         </p>
       </div>
 
-      <div className="flex items-start gap-4">
-        <div className="w-64 shrink-0 overflow-hidden rounded-xl2 border border-slate-200/80 bg-white shadow-card" style={{ maxHeight: "70vh" }}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        {/* On phones the three-column planner (guest list / canvas / selection
+            panel) doesn't fit side by side, so it stacks vertically instead --
+            each section keeps a capped height so the whole page stays
+            scrollable rather than any one section eating the viewport. */}
+        <div className="max-h-56 w-full shrink-0 overflow-hidden rounded-xl2 border border-slate-200/80 bg-white shadow-card sm:h-auto sm:max-h-[70vh] sm:w-64">
           <GuestSidebar guests={data.unassignedGuests} tables={data.tables} onAssign={(guestId, tableId) => assignGuestToTable(guestId, tableId)} />
         </div>
 
         <div
-          className="min-w-0 flex-1 overflow-hidden rounded-xl2 border border-slate-200/80 bg-slate-50 shadow-card"
-          style={{ maxHeight: "70vh" }}
+          className="h-[55vh] min-w-0 flex-1 overflow-hidden rounded-xl2 border border-slate-200/80 bg-slate-50 shadow-card sm:h-auto sm:max-h-[70vh]"
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
         >
@@ -502,6 +520,8 @@ export function SeatingTab({ eventId }: { eventId: string }) {
             onClose={() => setSelectedTableId(null)}
             onRotate={handleRotateTable}
             onDuplicate={handleDuplicateTable}
+            onUnassignGuest={(guestId, seatId) => unassignGuestFromSeat(selectedTable.id, guestId, seatId)}
+            onUnassignPartyMember={unassignPartyMemberFromSeat}
             isRotating={updateTable.isPending}
             isDuplicating={createTable.isPending}
           />

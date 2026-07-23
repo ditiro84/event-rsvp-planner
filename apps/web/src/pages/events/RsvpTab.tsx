@@ -13,13 +13,13 @@ import { ProgressStat } from "@/components/ui/ProgressBar";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { formatDate, formatFileSize } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
 import type { EventRecord } from "@/types";
 
 export function RsvpTab({ event }: { event: EventRecord }) {
-  const { data, isLoading } = usePlannerRsvpDashboard(event.id);
+  const { data, isLoading, isError, refetch } = usePlannerRsvpDashboard(event.id);
   const toggleRsvpOpen = useToggleRsvpOpen(event.id);
 
   const rsvpUrl = `${window.location.origin}/rsvp/${event.rsvpToken}`;
@@ -29,6 +29,7 @@ export function RsvpTab({ event }: { event: EventRecord }) {
     toast.success("RSVP link copied to clipboard");
   }
 
+  if (isError) return <ErrorState title="We couldn't load RSVP status" onRetry={() => refetch()} />;
   if (isLoading || !data) return <Spinner />;
 
   return (
@@ -114,7 +115,7 @@ export function RsvpTab({ event }: { event: EventRecord }) {
 }
 
 function InvitationCardSection({ eventId }: { eventId: string }) {
-  const { data: card, isLoading } = useInvitationCardMeta(eventId);
+  const { data: card, isLoading, isError, refetch } = useInvitationCardMeta(eventId);
   const upload = useUploadInvitationCard(eventId);
   const remove = useDeleteInvitationCard(eventId);
   const { previewUrl } = useInvitationCardPreview(eventId, !!card && card.mimeType.startsWith("image/"));
@@ -164,6 +165,8 @@ function InvitationCardSection({ eventId }: { eventId: string }) {
 
       {isLoading ? (
         <Spinner />
+      ) : isError ? (
+        <ErrorState title="Couldn't load the invitation card" onRetry={() => refetch()} />
       ) : card ? (
         <div className="flex items-center gap-4 rounded-lg border border-slate-200 p-3">
           {previewUrl ? (

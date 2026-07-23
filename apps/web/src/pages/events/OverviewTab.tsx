@@ -5,6 +5,7 @@ import { Card, StatCard } from "@/components/ui/Card";
 import { ProgressStat } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorState } from "@/components/ui/EmptyState";
 import { formatDate } from "@/lib/format";
 import type { EventRecord } from "@/types";
 
@@ -15,9 +16,10 @@ interface ReadinessAction {
 }
 
 export function EventOverviewTab({ event }: { event: EventRecord }) {
-  const { data, isLoading } = useEventDashboard(event.id);
+  const { data, isLoading, isError, refetch } = useEventDashboard(event.id);
   const navigate = useNavigate();
 
+  if (isError) return <ErrorState title="We couldn't load this event's stats" onRetry={() => refetch()} />;
   if (isLoading || !data) return <Spinner />;
 
   const { stats } = data;

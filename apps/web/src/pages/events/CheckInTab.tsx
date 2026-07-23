@@ -8,7 +8,7 @@ import { RsvpStatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { getApiErrorMessage } from "@/lib/api";
 import type { Guest } from "@/types";
 
@@ -18,7 +18,12 @@ import type { Guest } from "@/types";
 export function CheckInTab({ eventId }: { eventId: string }) {
   const [search, setSearch] = useState("");
   const { data: dashboard } = useEventDashboard(eventId);
-  const { data: guests, isLoading } = useGuests(eventId, {
+  const {
+    data: guests,
+    isLoading,
+    isError,
+    refetch,
+  } = useGuests(eventId, {
     status: "CONFIRMED",
     search: search || undefined,
   });
@@ -62,7 +67,9 @@ export function CheckInTab({ eventId }: { eventId: string }) {
 
       {isLoading && <Spinner />}
 
-      {!isLoading && guests?.length === 0 && (
+      {isError && <ErrorState title="We couldn't load confirmed guests" onRetry={() => refetch()} />}
+
+      {!isLoading && !isError && guests?.length === 0 && (
         <EmptyState
           icon={<UserCheck className="h-8 w-8" />}
           title="No confirmed guests match"
@@ -70,7 +77,7 @@ export function CheckInTab({ eventId }: { eventId: string }) {
         />
       )}
 
-      {!isLoading && guests && guests.length > 0 && (
+      {!isLoading && !isError && guests && guests.length > 0 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {guests.map((guest) => (
             <div

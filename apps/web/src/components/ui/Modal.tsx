@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -15,11 +15,41 @@ export function Modal({
   children: ReactNode;
   size?: "sm" | "md" | "lg";
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
+      // A lightweight focus trap: Tab/Shift+Tab wrap around within the
+      // dialog instead of escaping into the (visually hidden-behind-overlay)
+      // page content, which would otherwise strand keyboard and
+      // screen-reader users outside the modal they can see.
+      if (e.key === "Tab" && panelRef.current) {
+        const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
-    if (open) document.addEventListener("keydown", onKey);
+    if (open) {
+      document.addEventListener("keydown", onKey);
+      // Move focus into the dialog as soon as it opens -- otherwise focus
+      // stays on whatever page element triggered it, which is now hidden
+      // behind the overlay.
+      const firstFocusable = panelRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      firstFocusable?.focus();
+    }
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
@@ -35,7 +65,7 @@ export function Modal({
       aria-labelledby="modal-title"
     >
       <button aria-label="Close" className="fixed inset-0 cursor-default" onClick={onClose} tabIndex={-1} />
-      <div className={cn("relative w-full rounded-xl2 bg-white shadow-elevated", sizeClass)}>
+      <div ref={panelRef} className={cn("relative w-full rounded-xl2 bg-white shadow-elevated", sizeClass)}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 id="modal-title" className="text-base font-semibold text-slate-900">
             {title}

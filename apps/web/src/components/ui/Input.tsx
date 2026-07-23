@@ -18,7 +18,7 @@ export function Field({ label, error, hint, htmlFor, children }: FieldWrapperPro
         </label>
       )}
       {children}
-      {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
+      {hint && !error && <p className="text-xs text-slate-600">{hint}</p>}
       {error && (
         <p className="text-xs text-red-600" role="alert">
           {error}

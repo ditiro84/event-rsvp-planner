@@ -128,12 +128,12 @@ describe("Invitation card API", () => {
     const rsvpToken = eventRes.body.data.event.rsvpToken as string;
 
     const beforeUpload = await request(app).get(`/api/rsvp/${rsvpToken}`);
-    expect(beforeUpload.body.data.hasInvitationCard).toBe(false);
+    expect(beforeUpload.body.data.event.hasInvitationCard).toBe(false);
 
     await request(app).post(`/api/events/${eventId}/invitation-card`).set(auth).attach("file", PNG_BYTES, "card.png");
 
     const afterUpload = await request(app).get(`/api/rsvp/${rsvpToken}`);
-    expect(afterUpload.body.data.hasInvitationCard).toBe(true);
+    expect(afterUpload.body.data.event.hasInvitationCard).toBe(true);
 
     const fileRes = await request(app).get(`/api/rsvp/${rsvpToken}/invitation-card`).buffer(true);
     expect(fileRes.status).toBe(200);

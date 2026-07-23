@@ -276,7 +276,7 @@ describe("Guests API: invites", () => {
     // In CI/test, RESEND_API_KEY is intentionally unset -- this should fail
     // with a clear, actionable message rather than crashing.
     expect(res.status).toBe(400);
-    expect(res.body.error.message).toMatch(/not configured/i);
+    expect(res.body.error.message).toMatch(/isn't configured/i);
   });
 
   it("rejects fetching another planner's guest invite link", async () => {

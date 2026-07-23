@@ -468,7 +468,7 @@ export function SeatingTab({ eventId }: { eventId: string }) {
         </div>
 
         <div
-          className="flex-1 overflow-hidden rounded-xl2 border border-slate-200/80 bg-slate-50 shadow-card"
+          className="min-w-0 flex-1 overflow-hidden rounded-xl2 border border-slate-200/80 bg-slate-50 shadow-card"
           style={{ maxHeight: "70vh" }}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}

@@ -13,11 +13,77 @@ export async function getOwnedEvent(userId: string, eventId: string) {
   return event;
 }
 
+export interface EventGuestSummary {
+  totalGuests: number;
+  confirmed: number;
+  pending: number;
+  declined: number;
+  maybe: number;
+  assignedGuests: number;
+  totalTables: number;
+}
+
+// Lightweight per-event counts for the "My Events" dashboard -- enough to
+// show RSVP/seating progress on each card and roll up cross-event totals,
+// without each card triggering its own dashboard-style query (this stays
+// as three grouped queries total, regardless of how many events the user
+// has).
 export async function listEvents(userId: string) {
-  return prisma.event.findMany({
+  const events = await prisma.event.findMany({
     where: { userId },
     orderBy: { date: "asc" },
   });
+  if (events.length === 0) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const eventIds = events.map((e: any) => e.id);
+
+  const [guests, tableCounts] = await Promise.all([
+    prisma.guest.findMany({
+      where: { eventId: { in: eventIds } },
+      select: { eventId: true, rsvpStatus: true, seatAssignment: { select: { id: true } } },
+    }),
+    prisma.table.groupBy({
+      by: ["eventId"],
+      where: { eventId: { in: eventIds } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tableCountByEvent = new Map<string, number>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tableCounts.map((t: any) => [t.eventId as string, t._count._all as number])
+  );
+
+  const summaryByEvent = new Map<string, EventGuestSummary>();
+  for (const id of eventIds) {
+    summaryByEvent.set(id, {
+      totalGuests: 0,
+      confirmed: 0,
+      pending: 0,
+      declined: 0,
+      maybe: 0,
+      assignedGuests: 0,
+      totalTables: tableCountByEvent.get(id) ?? 0,
+    });
+  }
+  for (const guest of guests) {
+    const summary = summaryByEvent.get(guest.eventId);
+    if (!summary) continue;
+    summary.totalGuests += 1;
+    if (guest.rsvpStatus === "CONFIRMED") summary.confirmed += 1;
+    else if (guest.rsvpStatus === "PENDING") summary.pending += 1;
+    else if (guest.rsvpStatus === "DECLINED") summary.declined += 1;
+    else if (guest.rsvpStatus === "MAYBE") summary.maybe += 1;
+    if (guest.seatAssignment) summary.assignedGuests += 1;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return events.map((event: any) => ({
+    ...event,
+    guestSummary: summaryByEvent.get(event.id)!,
+  }));
 }
 
 export async function createEvent(userId: string, input: CreateEventInput) {

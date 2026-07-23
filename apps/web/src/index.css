@@ -2,10 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-canvas text-slate-900 antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* A calmer, thinner scrollbar so long guest lists and the seating canvas
+   don't feel like a stock browser chrome element. Falls back silently on
+   browsers that don't support the WebKit scrollbar pseudo-elements. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-slate-300;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400;
+}
+
+/* Consistent, visible keyboard focus ring across the app -- kept separate
+   from :hover/:active states so keyboard users always get a clear signal
+   without every mouse click flashing a ring. */
+:focus-visible {
+  outline: 2px solid theme("colors.brand.500");
+  outline-offset: 2px;
+  border-radius: 4px;
 }

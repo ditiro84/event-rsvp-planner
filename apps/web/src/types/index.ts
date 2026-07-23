@@ -46,6 +46,23 @@ export interface EventRecord {
   updatedAt: string;
 }
 
+export interface EventGuestSummary {
+  totalGuests: number;
+  confirmed: number;
+  pending: number;
+  declined: number;
+  maybe: number;
+  assignedGuests: number;
+  totalTables: number;
+}
+
+// The shape returned by GET /events (list) -- an EventRecord plus a
+// lightweight guestSummary used to render progress on My Events cards.
+// GET /events/:id (single) still returns a plain EventRecord.
+export interface EventListItem extends EventRecord {
+  guestSummary: EventGuestSummary;
+}
+
 export interface EventDashboardStats {
   totalGuests: number;
   confirmed: number;

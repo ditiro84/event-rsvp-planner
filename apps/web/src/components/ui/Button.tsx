@@ -9,10 +9,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600",
-  secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus-visible:outline-slate-400",
+  primary: "bg-brand-600 text-white shadow-soft hover:bg-brand-700 focus-visible:outline-brand-600",
+  secondary:
+    "bg-white text-slate-700 border border-slate-200 shadow-soft hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-slate-400",
   ghost: "bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:outline-slate-400",
-  danger: "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600",
+  danger: "bg-danger-600 text-white shadow-soft hover:bg-danger-700 focus-visible:outline-danger-600",
 };
 
 const sizes = {
@@ -27,7 +28,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || isLoading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none active:scale-[0.98]",
         variants[variant],
         sizes[size],
         className

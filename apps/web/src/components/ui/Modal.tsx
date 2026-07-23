@@ -28,9 +28,14 @@ export function Modal({
   const sizeClass = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl" }[size];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 px-4 py-8 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 px-4 py-8 backdrop-blur-[2px] sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
       <button aria-label="Close" className="fixed inset-0 cursor-default" onClick={onClose} tabIndex={-1} />
-      <div className={cn("relative w-full rounded-xl bg-white shadow-xl", sizeClass)}>
+      <div className={cn("relative w-full rounded-xl2 bg-white shadow-elevated", sizeClass)}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 id="modal-title" className="text-base font-semibold text-slate-900">
             {title}

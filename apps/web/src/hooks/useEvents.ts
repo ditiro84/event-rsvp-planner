@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { EventDashboardStats, EventRecord } from "@/types";
+import type { EventDashboardStats, EventListItem, EventRecord } from "@/types";
 
 export function useEvents() {
   return useQuery({
     queryKey: ["events"],
     queryFn: async () => {
       const res = await api.get("/events");
-      return res.data.data.events as EventRecord[];
+      return res.data.data.events as EventListItem[];
     },
   });
 }

@@ -85,6 +85,44 @@ export function useExportGuestsCsv(eventId: string) {
   });
 }
 
+export function useExportGuestsPdf(eventId: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.get(`/events/${eventId}/guests/export/pdf`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `guests-${eventId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    },
+  });
+}
+
+export function useCheckInGuest(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (guestId: string) => {
+      const res = await api.post(`/events/${eventId}/guests/${guestId}/checkin`, {});
+      return res.data.data.guest as Guest;
+    },
+    onSuccess: () => invalidateEvent(qc, eventId),
+  });
+}
+
+export function useCheckOutGuest(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (guestId: string) => {
+      const res = await api.delete(`/events/${eventId}/guests/${guestId}/checkin`);
+      return res.data.data.guest as Guest;
+    },
+    onSuccess: () => invalidateEvent(qc, eventId),
+  });
+}
+
 function invalidateEvent(qc: ReturnType<typeof useQueryClient>, eventId: string) {
   qc.invalidateQueries({ queryKey: ["events", eventId, "guests"] });
   qc.invalidateQueries({ queryKey: ["events", eventId, "dashboard"] });

@@ -128,4 +128,89 @@ describe("Guests API", () => {
     expect(res.headers["content-type"]).toContain("text/csv");
     expect(res.text).toContain("Sarah");
   });
+
+  it("exports guests to a PDF document", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ firstName: "Sarah", lastName: "Johnson", additionalGuestNames: ["Plus One"] });
+
+    const res = await request(app)
+      .get(`/api/events/${eventId}/guests/export/pdf`)
+      .set("Authorization", `Bearer ${token}`)
+      .buffer(true)
+      .parse((response, callback) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("application/pdf");
+    // PDF magic bytes.
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe("%PDF");
+  });
+});
+
+describe("Guests API: check-in", () => {
+  it("checks a guest in and back out", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson", rsvpStatus: "CONFIRMED" });
+    const guestId = created.body.data.guest.id;
+
+    const checkInRes = await request(app).post(`/api/events/${eventId}/guests/${guestId}/checkin`).set(auth);
+    expect(checkInRes.status).toBe(200);
+    expect(checkInRes.body.data.guest.checkedIn).toBe(true);
+    expect(checkInRes.body.data.guest.checkedInAt).toBeTruthy();
+
+    const listRes = await request(app).get(`/api/events/${eventId}/guests`).set(auth).query({ checkedIn: "true" });
+    expect(listRes.body.data.guests.map((g: any) => g.id)).toContain(guestId);
+
+    const checkOutRes = await request(app).delete(`/api/events/${eventId}/guests/${guestId}/checkin`).set(auth);
+    expect(checkOutRes.status).toBe(200);
+    expect(checkOutRes.body.data.guest.checkedIn).toBe(false);
+    expect(checkOutRes.body.data.guest.checkedInAt).toBeFalsy();
+  });
+
+  it("reflects checked-in count on the event dashboard", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson", rsvpStatus: "CONFIRMED" });
+    const guestId = created.body.data.guest.id;
+    await request(app).post(`/api/events/${eventId}/guests/${guestId}/checkin`).set(auth);
+
+    const dashRes = await request(app).get(`/api/events/${eventId}/dashboard`).set(auth);
+    expect(dashRes.body.data.stats.checkedIn).toBe(1);
+  });
+
+  it("rejects checking in a guest from another planner's event", async () => {
+    const { token } = await registerAndLogin(app);
+    const planner2 = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson", rsvpStatus: "CONFIRMED" });
+    const guestId = created.body.data.guest.id;
+
+    const res = await request(app)
+      .post(`/api/events/${eventId}/guests/${guestId}/checkin`)
+      .set("Authorization", `Bearer ${planner2.token}`);
+    expect(res.status).toBe(404);
+  });
 });

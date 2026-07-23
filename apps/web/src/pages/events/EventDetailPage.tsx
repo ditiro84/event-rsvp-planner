@@ -12,9 +12,10 @@ import { OverviewTab } from "./OverviewTab";
 import { GuestsTab } from "./GuestsTab";
 import { RsvpTab } from "./RsvpTab";
 import { SeatingTab } from "./seating/SeatingTab";
+import { CheckInTab } from "./CheckInTab";
 import { EventFormModal } from "./EventFormModal";
 
-const TABS = ["overview", "guests", "rsvp", "seating"] as const;
+const TABS = ["overview", "guests", "rsvp", "seating", "checkin"] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -22,6 +23,7 @@ const TAB_LABELS: Record<Tab, string> = {
   guests: "Guests",
   rsvp: "RSVP",
   seating: "Seating",
+  checkin: "Check-in",
 };
 
 export default function EventDetailPage() {
@@ -97,6 +99,7 @@ export default function EventDetailPage() {
       {tab === "guests" && <GuestsTab eventId={event.id} />}
       {tab === "rsvp" && <RsvpTab event={event} />}
       {tab === "seating" && <SeatingTab eventId={event.id} />}
+      {tab === "checkin" && <CheckInTab eventId={event.id} />}
 
       <EventFormModal open={showEdit} onClose={() => setShowEdit(false)} event={event} />
     </div>

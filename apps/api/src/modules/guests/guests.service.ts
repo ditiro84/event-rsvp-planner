@@ -134,6 +134,46 @@ export async function deleteGuest(userId: string, guestId: string) {
   await prisma.guest.delete({ where: { id: guestId } });
 }
 
+// Event-day check-in: flips the quick Guest.checkedIn flag (used everywhere
+// else in the app) and keeps an audit row in CheckIn (who checked them in,
+// and when) for events that want a paper trail.
+export async function checkInGuest(userId: string, guestId: string, checkedInBy?: string) {
+  const guest = await getOwnedGuest(userId, guestId);
+  const checkedInAt = new Date();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updated = await prisma.$transaction(async (tx: any) => {
+    const g = await tx.guest.update({
+      where: { id: guestId },
+      data: { checkedIn: true, checkedInAt },
+    });
+    await tx.checkIn.upsert({
+      where: { guestId },
+      create: { eventId: guest.eventId, guestId, checkedInAt, checkedInBy: checkedInBy ?? null },
+      update: { checkedInAt, checkedInBy: checkedInBy ?? null },
+    });
+    return g;
+  });
+
+  return updated;
+}
+
+export async function checkOutGuest(userId: string, guestId: string) {
+  await getOwnedGuest(userId, guestId);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updated = await prisma.$transaction(async (tx: any) => {
+    const g = await tx.guest.update({
+      where: { id: guestId },
+      data: { checkedIn: false, checkedInAt: null },
+    });
+    await tx.checkIn.deleteMany({ where: { guestId } });
+    return g;
+  });
+
+  return updated;
+}
+
 export async function bulkCreateGuests(
   userId: string,
   eventId: string,
@@ -168,7 +208,10 @@ export async function getGuestsForExport(userId: string, eventId: string) {
   await getOwnedEvent(userId, eventId);
   return prisma.guest.findMany({
     where: { eventId },
-    include: { seatAssignment: { include: { table: true, seat: true } } },
+    include: {
+      seatAssignment: { include: { table: true, seat: true } },
+      party: { select: { fullName: true } },
+    },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });
 }

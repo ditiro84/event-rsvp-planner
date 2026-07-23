@@ -18,6 +18,7 @@ import {
 const router = Router({ mergeParams: true });
 
 router.get("/map", controller.getSeatingMap);
+router.get("/map/export/pdf", controller.exportPdf);
 
 router.get("/layout", controller.getLayout);
 router.put("/layout", validateBody(updateLayoutSchema), controller.updateLayout);

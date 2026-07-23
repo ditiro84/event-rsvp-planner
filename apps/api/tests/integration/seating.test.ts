@@ -455,4 +455,31 @@ describe("Seating: guest assignments", () => {
     expect(res.body.data.unassignedGuests).toHaveLength(2);
     expect(res.body.data.tables).toEqual([]);
   });
+
+  it("exports the seating chart to a PDF document", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const table = await request(app).post(`/api/events/${eventId}/seating/tables`).set(auth).send({ name: "Table 1", capacity: 4 });
+    const guestId = await createConfirmedGuest(app, token, eventId, { additionalGuestNames: ["Plus One"] });
+    await request(app)
+      .post(`/api/events/${eventId}/seating/assignments`)
+      .set(auth)
+      .send({ guestId, tableId: table.body.data.table.id });
+
+    const res = await request(app)
+      .get(`/api/events/${eventId}/seating/map/export/pdf`)
+      .set(auth)
+      .buffer(true)
+      .parse((response, callback) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("application/pdf");
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe("%PDF");
+  });
 });

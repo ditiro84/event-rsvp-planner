@@ -113,6 +113,22 @@ export function useUnassignGuest(eventId: string) {
   });
 }
 
+export function useExportSeatingPdf(eventId: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.get(`/events/${eventId}/seating/map/export/pdf`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `seating-chart-${eventId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    },
+  });
+}
+
 export function useUnassignPartyMember(eventId: string) {
   const qc = useQueryClient();
   return useMutation({

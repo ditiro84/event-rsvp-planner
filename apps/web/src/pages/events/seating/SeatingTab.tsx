@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import type Konva from "konva";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
@@ -9,6 +9,7 @@ import { getApiErrorMessage } from "@/lib/api";
 import {
   useAssignGuest,
   useCreateLayoutObject,
+  useExportSeatingPdf,
   useSeatingMap,
   useUnassignGuest,
   useUnassignPartyMember,
@@ -36,6 +37,7 @@ export function SeatingTab({ eventId }: { eventId: string }) {
   const assignGuest = useAssignGuest(eventId);
   const unassignGuest = useUnassignGuest(eventId);
   const unassignPartyMember = useUnassignPartyMember(eventId);
+  const exportPdf = useExportSeatingPdf(eventId);
 
   const selectedTable = useMemo(
     () => data?.tables.find((t) => t.id === selectedTableId) ?? null,
@@ -159,7 +161,11 @@ export function SeatingTab({ eventId }: { eventId: string }) {
             Add decor
           </Button>
         </div>
-        <p className="ml-auto text-xs text-slate-500">
+        <Button size="sm" variant="secondary" onClick={() => exportPdf.mutate()} isLoading={exportPdf.isPending}>
+          <FileText className="h-4 w-4" />
+          Export PDF
+        </Button>
+        <p className="w-full text-xs text-slate-500 sm:w-auto sm:ml-auto">
           Drag tables/decor to reposition &middot; drag guests from the right onto a table &middot; click a seat to unassign
         </p>
       </div>

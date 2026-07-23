@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import { created, noContent, ok } from "../../lib/apiResponse";
 import { BadRequestError } from "../../lib/errors";
+import { getOwnedEvent } from "../events/events.service";
 import { createGuestSchema, listGuestsQuerySchema, updateGuestSchema } from "./guests.schema";
 import * as service from "./guests.service";
 import { guestsToCsv, parseGuestsCsv } from "./guests.csv";
+import { guestsToPdf } from "./guests.pdf";
 
 export async function list(req: Request, res: Response) {
   const query = listGuestsQuerySchema.parse(req.query);
@@ -33,6 +35,16 @@ export async function remove(req: Request, res: Response) {
   return noContent(res);
 }
 
+export async function checkIn(req: Request, res: Response) {
+  const guest = await service.checkInGuest(req.userId!, req.params.guestId, req.userId);
+  return ok(res, { guest });
+}
+
+export async function checkOut(req: Request, res: Response) {
+  const guest = await service.checkOutGuest(req.userId!, req.params.guestId);
+  return ok(res, { guest });
+}
+
 export async function importCsv(req: Request, res: Response) {
   if (!req.file) {
     throw new BadRequestError("No CSV file uploaded (field name: file)");
@@ -48,4 +60,16 @@ export async function exportCsv(req: Request, res: Response) {
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", `attachment; filename="guests-${req.params.eventId}.csv"`);
   return res.status(200).send(csv);
+}
+
+export async function exportPdf(req: Request, res: Response) {
+  const [event, guests] = await Promise.all([
+    getOwnedEvent(req.userId!, req.params.eventId),
+    service.getGuestsForExport(req.userId!, req.params.eventId),
+  ]);
+  const doc = guestsToPdf(event.name, guests);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="guests-${req.params.eventId}.pdf"`);
+  doc.pipe(res);
+  doc.end();
 }

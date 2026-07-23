@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, Pencil, Plus, Search, Trash2, Upload, Users } from "lucide-react";
-import { useDeleteGuest, useGuests, useExportGuestsCsv, type GuestFilters } from "@/hooks/useGuests";
+import { Download, FileText, Pencil, Plus, Search, Trash2, Upload, Users } from "lucide-react";
+import { useDeleteGuest, useGuests, useExportGuestsCsv, useExportGuestsPdf, type GuestFilters } from "@/hooks/useGuests";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { RsvpStatusBadge, Badge } from "@/components/ui/Badge";
@@ -18,6 +18,7 @@ export function GuestsTab({ eventId }: { eventId: string }) {
   const { data: guests, isLoading } = useGuests(eventId, { ...filters, search: search || undefined });
   const deleteGuest = useDeleteGuest(eventId);
   const exportCsv = useExportGuestsCsv(eventId);
+  const exportPdf = useExportGuestsPdf(eventId);
 
   const [showAddGuest, setShowAddGuest] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -53,6 +54,10 @@ export function GuestsTab({ eventId }: { eventId: string }) {
           <Button variant="secondary" size="sm" onClick={() => exportCsv.mutate()} isLoading={exportCsv.isPending}>
             <Download className="h-4 w-4" />
             Export CSV
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => exportPdf.mutate()} isLoading={exportPdf.isPending}>
+            <FileText className="h-4 w-4" />
+            Export PDF
           </Button>
           <Button size="sm" onClick={() => setShowAddGuest(true)}>
             <Plus className="h-4 w-4" />

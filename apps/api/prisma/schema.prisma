@@ -77,12 +77,13 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  guests        Guest[]
-  rsvpQuestions RSVPQuestion[]
-  invitations   EventInvitation[]
-  venueLayout   VenueLayout?
-  tables        Table[]
-  checkIns      CheckIn[]
+  guests          Guest[]
+  rsvpQuestions   RSVPQuestion[]
+  invitations     EventInvitation[]
+  venueLayout     VenueLayout?
+  tables          Table[]
+  checkIns        CheckIn[]
+  invitationCard  EventInvitationCard?
 
   @@index([userId])
   @@map("events")
@@ -155,6 +156,28 @@ model GuestParty {
 
   @@index([guestId])
   @@map("guest_party_members")
+}
+
+// A host-designed invitation card (PDF or image) attached to invite emails
+// and linked in WhatsApp invite messages. One per event, stored directly in
+// Postgres (bytea) rather than an external bucket -- these files are small
+// (capped in the upload handler) and this avoids needing a separate storage
+// service/credentials. Kept in its own table (not columns on Event) so
+// normal Event queries never pull these bytes along for the ride.
+model EventInvitationCard {
+  id       String @id @default(cuid())
+  eventId  String @unique
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  data     Bytes
+  mimeType String
+  fileName String
+  size     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("event_invitation_cards")
 }
 
 // Optional per-guest personalised invitation link (future: email/SMS sending).

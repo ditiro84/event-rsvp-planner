@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma";
 import { env } from "../../config/env";
 import { BadRequestError } from "../../lib/errors";
 import { getOwnedGuest } from "./guests.service";
+import { eventHasInvitationCard, getInvitationCardBytesForEvent } from "../events/invitationCard.service";
 
 // Finds or creates the guest's personalized invitation (a stable token that
 // never changes once created, so a QR code or link sent out remains valid
@@ -28,6 +29,7 @@ export async function getInviteLink(userId: string, guestId: string) {
   const { guest, invitation } = await getOrCreateInvitation(userId, guestId);
   const url = buildInviteUrl(invitation.token);
   const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 400 });
+  const hasInvitationCard = await eventHasInvitationCard(guest.eventId);
   return {
     url,
     qrDataUrl,
@@ -35,6 +37,7 @@ export async function getInviteLink(userId: string, guestId: string) {
     sentAt: invitation.sentAt,
     guestEmail: guest.email,
     guestPhone: guest.phone,
+    hasInvitationCard,
   };
 }
 
@@ -109,6 +112,26 @@ export async function sendInviteEmail(userId: string, guestId: string) {
     .filter(Boolean)
     .join(" · ");
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const attachments: any[] = [
+    {
+      filename: "invite-qr.png",
+      content: qrBase64,
+      contentType: "image/png",
+    },
+  ];
+
+  // If the host has uploaded a designed invitation card (PDF/PNG/JPEG),
+  // attach it too so the guest gets the real invite, not just a QR code.
+  const card = await getInvitationCardBytesForEvent(guest.eventId);
+  if (card) {
+    attachments.push({
+      filename: card.fileName,
+      content: card.data,
+      contentType: card.mimeType,
+    });
+  }
+
   const { error } = await client.emails.send({
     from,
     to: guest.email,
@@ -116,13 +139,7 @@ export async function sendInviteEmail(userId: string, guestId: string) {
     // The QR is embedded directly as a data URI (works in the large majority
     // of email clients) and also attached as a PNG so it's easy to save.
     html: inviteEmailHtml(event.name, guest.firstName, url, eventDetails || "We'd love for you to join us.", qrDataUrl),
-    attachments: [
-      {
-        filename: "invite-qr.png",
-        content: qrBase64,
-        contentType: "image/png",
-      },
-    ],
+    attachments,
   });
 
   if (error) {

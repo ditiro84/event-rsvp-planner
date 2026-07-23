@@ -3,13 +3,13 @@ import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarHeart, CheckCircle2, MapPin, PartyPopper } from "lucide-react";
+import { CalendarHeart, CheckCircle2, FileText, MapPin, PartyPopper } from "lucide-react";
 import { useInvitePrefill, usePublicEvent, useSubmitRsvp, useSubmitRsvpViaInvite } from "@/hooks/useRsvp";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { formatDate } from "@/lib/format";
-import { getApiErrorMessage } from "@/lib/api";
+import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
 
 const schema = z
   .object({
@@ -46,6 +46,13 @@ export default function PublicRsvpPage() {
   const submitByToken = useSubmitRsvp(token ?? "");
   const submitByInvite = useSubmitRsvpViaInvite(invitationToken ?? "");
   const submitRsvp = isInvite ? submitByInvite : submitByToken;
+
+  // Both the shared event link and the personalized invite link serve the
+  // card from a public, unauthenticated endpoint -- just pick whichever
+  // token got us to this page.
+  const invitationCardUrl = isInvite
+    ? `${apiBaseUrl}/rsvp/invite/${invitationToken}/invitation-card`
+    : `${apiBaseUrl}/rsvp/${token}/invitation-card`;
 
   const [submitted, setSubmitted] = useState<{ firstName: string; rsvpStatus: string } | null>(null);
 
@@ -168,6 +175,17 @@ export default function PublicRsvpPage() {
             <p className="mt-3 text-xs text-slate-400">
               This invite was sent to {guestPrefill.firstName} {guestPrefill.lastName} — feel free to update any details below.
             </p>
+          )}
+          {event.hasInvitationCard && (
+            <a
+              href={invitationCardUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-800"
+            >
+              <FileText className="h-4 w-4" />
+              View invitation card
+            </a>
           )}
         </div>
 

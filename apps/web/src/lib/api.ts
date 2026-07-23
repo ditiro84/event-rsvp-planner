@@ -4,6 +4,11 @@ import axios from "axios";
 // VITE_API_URL should point at the deployed API origin (see .env.example).
 const baseURL = import.meta.env.VITE_API_URL || "/api";
 
+// Exported so callers can build direct (non-axios) links to public API
+// resources -- e.g. an <a>/<img> pointing at a publicly-servable file --
+// without duplicating the VITE_API_URL fallback logic.
+export const apiBaseUrl = baseURL;
+
 export const api = axios.create({
   baseURL,
   withCredentials: true,

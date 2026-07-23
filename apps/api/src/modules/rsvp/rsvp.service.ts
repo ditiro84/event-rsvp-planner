@@ -12,8 +12,9 @@ function checkRsvpIsOpen(event: any) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function publicEventShape(event: any) {
+async function publicEventShape(event: any) {
   const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
+  const cardCount = await prisma.eventInvitationCard.count({ where: { eventId: event.id } });
   return {
     id: event.id,
     name: event.name,
@@ -33,6 +34,7 @@ function publicEventShape(event: any) {
     allowDietary: event.allowDietary,
     allowAccessibilityInfo: event.allowAccessibilityInfo,
     allowSpecialRequests: event.allowSpecialRequests,
+    hasInvitationCard: cardCount > 0,
   };
 }
 
@@ -132,7 +134,7 @@ export async function getInvitePrefill(invitationToken: string) {
   }
 
   return {
-    event: publicEventShape(invitation.event),
+    event: await publicEventShape(invitation.event),
     guestPrefill: {
       firstName: invitation.guest.firstName,
       lastName: invitation.guest.lastName,

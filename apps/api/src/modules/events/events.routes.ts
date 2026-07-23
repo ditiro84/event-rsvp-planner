@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { requireAuth } from "../../middleware/auth";
 import { validateBody, validateParams } from "../../middleware/validate";
 import { createEventSchema, eventIdParamsSchema, updateEventSchema } from "./events.schema";
@@ -6,6 +7,8 @@ import * as controller from "./events.controller";
 import guestsRouter from "../guests/guests.routes";
 import seatingRouter from "../seating/seating.routes";
 import * as rsvpController from "../rsvp/rsvp.controller";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -18,6 +21,16 @@ router.put("/:eventId", validateParams(eventIdParamsSchema), validateBody(update
 router.delete("/:eventId", validateParams(eventIdParamsSchema), controller.remove);
 router.get("/:eventId/dashboard", validateParams(eventIdParamsSchema), controller.dashboard);
 router.get("/:eventId/rsvp", validateParams(eventIdParamsSchema), rsvpController.dashboard);
+
+router.get("/:eventId/invitation-card", validateParams(eventIdParamsSchema), controller.getInvitationCardMeta);
+router.get("/:eventId/invitation-card/file", validateParams(eventIdParamsSchema), controller.downloadInvitationCard);
+router.post(
+  "/:eventId/invitation-card",
+  validateParams(eventIdParamsSchema),
+  upload.single("file"),
+  controller.uploadInvitationCard
+);
+router.delete("/:eventId/invitation-card", validateParams(eventIdParamsSchema), controller.deleteInvitationCard);
 
 // Nested guest routes: /api/events/:eventId/guests
 router.use("/:eventId/guests", validateParams(eventIdParamsSchema), guestsRouter);

@@ -134,6 +134,7 @@ export interface PublicEvent {
   allowDietary: boolean;
   allowAccessibilityInfo: boolean;
   allowSpecialRequests: boolean;
+  hasInvitationCard: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +245,7 @@ export interface InviteLink {
   sentAt: string | null;
   guestEmail: string | null;
   guestPhone: string | null;
+  hasInvitationCard: boolean;
 }
 
 export interface GuestPrefill {

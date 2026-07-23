@@ -40,6 +40,19 @@ router.post(
   controller.submitViaInvite
 );
 
+router.get(
+  "/invite/:invitationToken/invitation-card",
+  readRateLimit,
+  validateParams(invitationTokenParamsSchema),
+  controller.getInvitationCardByInviteToken
+);
+router.get(
+  "/:token/invitation-card",
+  readRateLimit,
+  validateParams(rsvpTokenParamsSchema),
+  controller.getInvitationCardByToken
+);
+
 router.get("/:token", readRateLimit, validateParams(rsvpTokenParamsSchema), controller.getPublicEvent);
 router.post(
   "/:token",

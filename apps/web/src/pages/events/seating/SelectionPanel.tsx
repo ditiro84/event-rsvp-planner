@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { Copy, RotateCcw, RotateCw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -18,10 +18,18 @@ export function TableSelectionPanel({
   table,
   eventId,
   onClose,
+  onRotate,
+  onDuplicate,
+  isRotating,
+  isDuplicating,
 }: {
   table: TableRecord;
   eventId: string;
   onClose: () => void;
+  onRotate: (table: TableRecord, deltaDegrees: number) => void;
+  onDuplicate: (table: TableRecord) => void;
+  isRotating?: boolean;
+  isDuplicating?: boolean;
 }) {
   const [name, setName] = useState(table.name);
   const [shape, setShape] = useState(table.shape);
@@ -99,6 +107,41 @@ export function TableSelectionPanel({
           </Button>
         </div>
 
+        <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Rotation</span>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onRotate(table, -15)}
+              disabled={isRotating}
+              aria-label="Rotate table left 15 degrees"
+              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+            <span className="w-10 text-center text-xs tabular-nums text-slate-600">{table.rotation}&deg;</span>
+            <button
+              type="button"
+              onClick={() => onRotate(table, 15)}
+              disabled={isRotating}
+              aria-label="Rotate table right 15 degrees"
+              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => onDuplicate(table)}
+          isLoading={isDuplicating}
+          className="w-full"
+        >
+          <Copy className="h-4 w-4" />
+          Duplicate table
+        </Button>
+
         {occupied > 0 && (
           <div className="border-t border-slate-100 pt-3">
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Seated here</p>
@@ -122,10 +165,18 @@ export function ObjectSelectionPanel({
   object,
   eventId,
   onClose,
+  onRotate,
+  onDuplicate,
+  isRotating,
+  isDuplicating,
 }: {
   object: LayoutObjectRecord;
   eventId: string;
   onClose: () => void;
+  onRotate: (object: LayoutObjectRecord, deltaDegrees: number) => void;
+  onDuplicate: (object: LayoutObjectRecord) => void;
+  isRotating?: boolean;
+  isDuplicating?: boolean;
 }) {
   const [label, setLabel] = useState(object.label ?? "");
   const [type, setType] = useState(object.type);
@@ -197,6 +248,41 @@ export function ObjectSelectionPanel({
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
+
+        <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Rotation</span>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onRotate(object, -15)}
+              disabled={isRotating}
+              aria-label="Rotate object left 15 degrees"
+              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+            <span className="w-10 text-center text-xs tabular-nums text-slate-600">{object.rotation}&deg;</span>
+            <button
+              type="button"
+              onClick={() => onRotate(object, 15)}
+              disabled={isRotating}
+              aria-label="Rotate object right 15 degrees"
+              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => onDuplicate(object)}
+          isLoading={isDuplicating}
+          className="w-full"
+        >
+          <Copy className="h-4 w-4" />
+          Duplicate
+        </Button>
       </div>
     </div>
   );

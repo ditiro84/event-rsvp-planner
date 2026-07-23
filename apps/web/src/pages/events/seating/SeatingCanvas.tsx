@@ -18,16 +18,31 @@ function initialsOf(fullName: string) {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
+export interface CanvasView {
+  scale: number;
+  x: number;
+  y: number;
+}
+
 interface Props {
   layout: VenueLayoutRecord;
   tables: TableRecord[];
   selectedTableId: string | null;
   selectedObjectId: string | null;
+  view: CanvasView;
+  onViewChange: (view: CanvasView) => void;
   onSelectTable: (id: string | null) => void;
   onSelectObject: (id: string | null) => void;
   onTableDragEnd: (id: string, x: number, y: number) => void;
   onObjectDragEnd: (id: string, x: number, y: number) => void;
   onSeatClick: (tableId: string, seat: SeatRecord) => void;
+}
+
+const MIN_SCALE = 0.4;
+const MAX_SCALE = 2.5;
+
+export function clampScale(scale: number) {
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
 
 export const SeatingCanvas = forwardRef<Konva.Stage, Props>(function SeatingCanvas(
@@ -36,6 +51,8 @@ export const SeatingCanvas = forwardRef<Konva.Stage, Props>(function SeatingCanv
     tables,
     selectedTableId,
     selectedObjectId,
+    view,
+    onViewChange,
     onSelectTable,
     onSelectObject,
     onTableDragEnd,
@@ -44,6 +61,41 @@ export const SeatingCanvas = forwardRef<Konva.Stage, Props>(function SeatingCanv
   },
   ref
 ) {
+  // Mouse-wheel zoom, centered on the cursor so the point under the pointer
+  // stays put -- the standard Konva zoom-to-pointer recipe.
+  function handleWheel(e: Konva.KonvaEventObject<WheelEvent>) {
+    e.evt.preventDefault();
+    const stage = e.target.getStage();
+    if (!stage) return;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const oldScale = view.scale;
+    const mousePointTo = {
+      x: (pointer.x - view.x) / oldScale,
+      y: (pointer.y - view.y) / oldScale,
+    };
+    const direction = e.evt.deltaY > 0 ? -1 : 1;
+    const scaleBy = 1.06;
+    const newScale = clampScale(direction > 0 ? oldScale * scaleBy : oldScale / scaleBy);
+
+    onViewChange({
+      scale: newScale,
+      x: pointer.x - mousePointTo.x * newScale,
+      y: pointer.y - mousePointTo.y * newScale,
+    });
+  }
+
+  // Clicking empty canvas (not a table/object) clears the current selection
+  // -- lets the selection panel be dismissed without hunting for the X
+  // button, and pairs naturally with the new pan-by-dragging-empty-space
+  // behavior.
+  function handleStageClick(e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) {
+    if (e.target === e.target.getStage()) {
+      onSelectTable(null);
+      onSelectObject(null);
+    }
+  }
   const gridLines: JSX.Element[] = [];
   const { canvasWidth, canvasHeight, gridSize } = layout;
   if (gridSize > 0) {
@@ -56,7 +108,25 @@ export const SeatingCanvas = forwardRef<Konva.Stage, Props>(function SeatingCanv
   }
 
   return (
-    <Stage ref={ref} width={canvasWidth} height={canvasHeight} className="rounded-lg">
+    <Stage
+      ref={ref}
+      width={canvasWidth}
+      height={canvasHeight}
+      scaleX={view.scale}
+      scaleY={view.scale}
+      x={view.x}
+      y={view.y}
+      draggable
+      onDragEnd={(e) => {
+        if (e.target === e.target.getStage()) {
+          onViewChange({ ...view, x: e.target.x(), y: e.target.y() });
+        }
+      }}
+      onWheel={handleWheel}
+      onClick={handleStageClick}
+      onTap={handleStageClick}
+      className="rounded-lg"
+    >
       <Layer>
         <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} fill={layout.backgroundColor} listening={false} />
         {gridLines}
@@ -106,11 +176,18 @@ function DecorObject({
     <Group
       x={object.x}
       y={object.y}
+      rotation={object.rotation}
       draggable
       name="decor-group"
       id={object.id}
-      onClick={onSelect}
-      onTap={onSelect}
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
       onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
     >
       <Rect
@@ -158,11 +235,18 @@ function TableNode({
     <Group
       x={table.x}
       y={table.y}
+      rotation={table.rotation}
       draggable
       name="table-group"
       id={table.id}
-      onClick={onSelect}
-      onTap={onSelect}
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
       onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
     >
       {isRound ? (

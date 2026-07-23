@@ -188,7 +188,7 @@ function TableNode({
         listening={false}
       />
       <Text
-        text={`${table.seats.filter((s) => s.assignment).length}/${table.capacity}`}
+        text={`${table.seats.reduce((sum, s) => (s.assignment ? sum + 1 + s.assignment.guest.additionalGuestsCount : sum), 0)}/${table.capacity}`}
         width={table.width}
         offsetX={table.width / 2}
         y={12}
@@ -202,6 +202,7 @@ function TableNode({
         const pos = seatPositions[i] ?? { x: 0, y: 0 };
         const occupied = !!seat.assignment;
         const fill = occupied ? (seat.assignment!.guest.isVip ? SEAT_VIP : BRAND) : SEAT_EMPTY;
+        const plusOnes = occupied ? seat.assignment!.guest.additionalGuestsCount : 0;
         return (
           <Group key={seat.id}>
             <Circle
@@ -234,6 +235,21 @@ function TableNode({
                 fill="#ffffff"
                 listening={false}
               />
+            )}
+            {plusOnes > 0 && (
+              <Group listening={false}>
+                <Circle x={pos.x + 9} y={pos.y - 9} radius={7} fill="#f97316" stroke="#ffffff" strokeWidth={1} />
+                <Text
+                  text={`+${plusOnes}`}
+                  x={pos.x + 9}
+                  y={pos.y - 9}
+                  offsetX={plusOnes >= 10 ? 8 : 5.5}
+                  offsetY={4.5}
+                  fontSize={9}
+                  fontStyle="700"
+                  fill="#ffffff"
+                />
+              </Group>
             )}
           </Group>
         );

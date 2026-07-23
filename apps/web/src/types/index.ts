@@ -184,6 +184,7 @@ export interface SeatGuestSummary {
   lastName: string;
   rsvpStatus: RsvpStatus;
   isVip: boolean;
+  additionalGuestsCount: number;
 }
 
 export interface SeatRecord {

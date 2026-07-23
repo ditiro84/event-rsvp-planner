@@ -125,7 +125,7 @@ export function SeatingTab({ eventId }: { eventId: string }) {
       {
         onSuccess: (result) => {
           if (result.warning) toast.warning(result.warning);
-          else toast.success("Guest seated");
+          else toast.success(result.partySize > 1 ? `Guest + party of ${result.partySize - 1} seated` : "Guest seated");
         },
         onError: (err) => toast.error(getApiErrorMessage(err)),
       }

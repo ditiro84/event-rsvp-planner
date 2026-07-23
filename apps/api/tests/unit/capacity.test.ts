@@ -77,6 +77,58 @@ describe("canAssignGuest", () => {
   });
 });
 
+describe("canAssignGuest with partySize (plus-ones)", () => {
+  it("blocks a party that would not fit even though a single seat is free", () => {
+    const decision = canAssignGuest({
+      guestRsvpStatus: "CONFIRMED",
+      alreadyAssignedElsewhere: false,
+      currentAssignedCount: 7,
+      tableCapacity: 8,
+      partySize: 2, // guest + 1 unnamed plus-one
+    });
+    expect(decision.allowed).toBe(false);
+    if (!decision.allowed) {
+      expect(decision.reason).toMatch(/party of 2/i);
+    }
+  });
+
+  it("allows a party that fits exactly", () => {
+    const decision = canAssignGuest({
+      guestRsvpStatus: "CONFIRMED",
+      alreadyAssignedElsewhere: false,
+      currentAssignedCount: 6,
+      tableCapacity: 8,
+      partySize: 2,
+    });
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("defaults partySize to 1 when omitted (solo guest)", () => {
+    const decision = canAssignGuest({
+      guestRsvpStatus: "CONFIRMED",
+      alreadyAssignedElsewhere: false,
+      currentAssignedCount: 7,
+      tableCapacity: 8,
+    });
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("allows an over-capacity party when explicitly overridden", () => {
+    const decision = canAssignGuest({
+      guestRsvpStatus: "CONFIRMED",
+      alreadyAssignedElsewhere: false,
+      currentAssignedCount: 7,
+      tableCapacity: 8,
+      partySize: 3,
+      overrideCapacity: true,
+    });
+    expect(decision.allowed).toBe(true);
+    if (decision.allowed) {
+      expect(decision.warning).toMatch(/over capacity/i);
+    }
+  });
+});
+
 describe("countUnassignedConfirmedGuests", () => {
   it("counts only confirmed guests without a seat", () => {
     const count = countUnassignedConfirmedGuests([

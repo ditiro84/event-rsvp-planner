@@ -21,6 +21,10 @@ export interface AssignGuestOptions {
   currentAssignedCount: number;
   tableCapacity: number;
   overrideCapacity?: boolean;
+  // How many physical seats this guest's invite actually needs -- the guest
+  // themselves plus any accompanying "+1"s (RSVP additionalGuestsCount).
+  // Defaults to 1 for a solo guest.
+  partySize?: number;
 }
 
 export type AssignGuestDecision =
@@ -33,9 +37,16 @@ export function canAssignGuest(opts: AssignGuestOptions): AssignGuestDecision {
     return { allowed: false, reason: "Guest is already assigned to another seat" };
   }
 
-  const wouldBeOverCapacity = opts.currentAssignedCount + 1 > opts.tableCapacity;
+  const partySize = opts.partySize ?? 1;
+  const wouldBeOverCapacity = opts.currentAssignedCount + partySize > opts.tableCapacity;
   if (wouldBeOverCapacity && !opts.overrideCapacity) {
-    return { allowed: false, reason: "Table is at full capacity" };
+    return {
+      allowed: false,
+      reason:
+        partySize > 1
+          ? `Table doesn't have room for this guest's party of ${partySize}`
+          : "Table is at full capacity",
+    };
   }
 
   if (opts.guestRsvpStatus === "DECLINED") {

@@ -97,7 +97,7 @@ export function useAssignGuest(eventId: string) {
   return useMutation({
     mutationFn: async (input: { guestId: string; tableId: string; seatId?: string; overrideCapacity?: boolean }) => {
       const res = await api.post(`/events/${eventId}/seating/assignments`, input);
-      return res.data.data as { assignment: unknown; warning?: string };
+      return res.data.data as { assignment: unknown; partySize: number; warning?: string };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: mapKey(eventId) }),
   });

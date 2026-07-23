@@ -87,13 +87,32 @@ const tableInclude = {
       assignment: {
         include: {
           guest: {
-            select: { id: true, firstName: true, lastName: true, rsvpStatus: true, isVip: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              rsvpStatus: true,
+              isVip: true,
+              additionalGuestsCount: true,
+            },
           },
         },
       },
     },
   },
 };
+
+// A guest's invite may include unnamed "+1"s (RSVP additionalGuestsCount).
+// They still only get one seat marker on the canvas, but occupy that many
+// physical chairs for capacity purposes.
+function partySizeOf(guest: { additionalGuestsCount: number }) {
+  return 1 + (guest.additionalGuestsCount ?? 0);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function totalOccupiedSeats(seats: any[]) {
+  return seats.reduce((sum, s) => (s.assignment ? sum + partySizeOf(s.assignment.guest) : sum), 0);
+}
 
 export async function listTables(userId: string, eventId: string) {
   await getOwnedEvent(userId, eventId);
@@ -243,7 +262,13 @@ export async function assignGuest(userId: string, eventId: string, input: Assign
 
   const table = await prisma.table.findUnique({
     where: { id: input.tableId },
-    include: { seats: { include: { assignment: true } } },
+    include: {
+      seats: {
+        include: {
+          assignment: { include: { guest: { select: { additionalGuestsCount: true } } } },
+        },
+      },
+    },
   });
   if (!table || table.eventId !== eventId) {
     throw new NotFoundError("Table not found");
@@ -261,8 +286,8 @@ export async function assignGuest(userId: string, eventId: string, input: Assign
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const currentAssignedCount = table.seats.filter((s: any) => s.assignment).length;
+  const currentAssignedCount = totalOccupiedSeats(table.seats);
+  const partySize = partySizeOf(guest);
 
   const decision = canAssignGuest({
     guestRsvpStatus: guest.rsvpStatus,
@@ -273,6 +298,7 @@ export async function assignGuest(userId: string, eventId: string, input: Assign
     currentAssignedCount,
     tableCapacity: table.capacity,
     overrideCapacity: input.overrideCapacity,
+    partySize,
   });
 
   if (!decision.allowed) {
@@ -304,7 +330,7 @@ export async function assignGuest(userId: string, eventId: string, input: Assign
     });
   });
 
-  return { assignment, warning: decision.allowed ? decision.warning : undefined };
+  return { assignment, partySize, warning: decision.allowed ? decision.warning : undefined };
 }
 
 export async function unassignGuest(userId: string, eventId: string, guestId: string) {

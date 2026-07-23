@@ -134,3 +134,89 @@ describe("Public RSVP flow", () => {
     expect(res.body.data.stats.pending).toBe(1);
   });
 });
+
+describe("Personalized invite RSVP flow", () => {
+  it("prefills guest details from a personalized invitation token", async () => {
+    const { token } = await registerAndLogin(app);
+    const event = await createEvent(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const guest = await request(app)
+      .post(`/api/events/${event.id}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson", email: "sarah@example.com" });
+    const guestId = guest.body.data.guest.id;
+
+    const linkRes = await request(app).get(`/api/events/${event.id}/guests/${guestId}/invite`).set(auth);
+    expect(linkRes.status).toBe(200);
+    expect(linkRes.body.data.url).toContain("/rsvp/invite/");
+    expect(linkRes.body.data.qrDataUrl).toMatch(/^data:image\/png;base64,/);
+    const invitationToken = linkRes.body.data.url.split("/rsvp/invite/")[1];
+
+    const prefillRes = await request(app).get(`/api/rsvp/invite/${invitationToken}`);
+    expect(prefillRes.status).toBe(200);
+    expect(prefillRes.body.data.event.name).toBe("Test Gala");
+    expect(prefillRes.body.data.guestPrefill).toEqual({
+      firstName: "Sarah",
+      lastName: "Johnson",
+      email: "sarah@example.com",
+      phone: null,
+    });
+  });
+
+  it("submits an RSVP via invitation token directly against the known guest, without name/email matching", async () => {
+    const { token } = await registerAndLogin(app);
+    const event = await createEvent(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const guest = await request(app)
+      .post(`/api/events/${event.id}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson" });
+    const guestId = guest.body.data.guest.id;
+
+    const linkRes = await request(app).get(`/api/events/${event.id}/guests/${guestId}/invite`).set(auth);
+    const invitationToken = linkRes.body.data.url.split("/rsvp/invite/")[1];
+
+    const submitRes = await request(app).post(`/api/rsvp/invite/${invitationToken}`).send({
+      firstName: "Sarah",
+      lastName: "Johnson-Smith",
+      attending: "CONFIRMED",
+      additionalGuestsCount: 1,
+      additionalGuestNames: ["Plus One"],
+    });
+    expect(submitRes.status).toBe(200);
+    expect(submitRes.body.data.guest.id).toBe(guestId);
+
+    const guestsRes = await request(app).get(`/api/events/${event.id}/guests`).set(auth);
+    expect(guestsRes.body.data.guests).toHaveLength(1);
+    expect(guestsRes.body.data.guests[0].lastName).toBe("Johnson-Smith");
+    expect(guestsRes.body.data.guests[0].rsvpStatus).toBe("CONFIRMED");
+  });
+
+  it("returns 404 for an invalid invitation token", async () => {
+    const res = await request(app).get("/api/rsvp/invite/not-a-real-token");
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects an invite-token submission once RSVPs are closed", async () => {
+    const { token } = await registerAndLogin(app);
+    const event = await createEvent(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const guest = await request(app)
+      .post(`/api/events/${event.id}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson" });
+    const guestId = guest.body.data.guest.id;
+    const linkRes = await request(app).get(`/api/events/${event.id}/guests/${guestId}/invite`).set(auth);
+    const invitationToken = linkRes.body.data.url.split("/rsvp/invite/")[1];
+
+    await request(app).put(`/api/events/${event.id}`).set(auth).send({ rsvpOpen: false });
+
+    const res = await request(app)
+      .post(`/api/rsvp/invite/${invitationToken}`)
+      .send({ firstName: "Sarah", lastName: "Johnson", attending: "CONFIRMED" });
+    expect(res.status).toBe(400);
+  });
+});

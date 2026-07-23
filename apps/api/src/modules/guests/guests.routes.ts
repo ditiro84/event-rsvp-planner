@@ -20,4 +20,9 @@ router.delete("/:guestId", validateParams(guestIdParamsSchema), controller.remov
 router.post("/:guestId/checkin", validateParams(guestIdParamsSchema), controller.checkIn);
 router.delete("/:guestId/checkin", validateParams(guestIdParamsSchema), controller.checkOut);
 
+router.get("/:guestId/invite", validateParams(guestIdParamsSchema), controller.getInviteLink);
+router.post("/:guestId/invite/mark-sent", validateParams(guestIdParamsSchema), controller.markInviteSent);
+router.post("/:guestId/invite/email", validateParams(guestIdParamsSchema), controller.sendInviteEmail);
+router.post("/invites/send-email", controller.bulkSendInviteEmails);
+
 export default router;

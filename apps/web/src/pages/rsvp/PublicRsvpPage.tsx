@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CalendarHeart, CheckCircle2, MapPin, PartyPopper } from "lucide-react";
-import { usePublicEvent, useSubmitRsvp } from "@/hooks/useRsvp";
+import { useInvitePrefill, usePublicEvent, useSubmitRsvp, useSubmitRsvpViaInvite } from "@/hooks/useRsvp";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
@@ -28,17 +28,46 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 export default function PublicRsvpPage() {
-  const { token } = useParams<{ token: string }>();
-  const { data: event, isLoading, isError } = usePublicEvent(token);
-  const submitRsvp = useSubmitRsvp(token ?? "");
+  const { token, invitationToken } = useParams<{ token?: string; invitationToken?: string }>();
+
+  // Two ways to land here: a shared event-wide link (?token) or a
+  // personalized invite link from a QR code / email / WhatsApp message
+  // (?invitationToken), which also comes back with this guest's own details
+  // to pre-fill the form.
+  const isInvite = !!invitationToken;
+  const publicEventQuery = usePublicEvent(isInvite ? undefined : token);
+  const inviteQuery = useInvitePrefill(isInvite ? invitationToken : undefined);
+
+  const event = isInvite ? inviteQuery.data?.event : publicEventQuery.data;
+  const guestPrefill = inviteQuery.data?.guestPrefill;
+  const isLoading = isInvite ? inviteQuery.isLoading : publicEventQuery.isLoading;
+  const isError = isInvite ? inviteQuery.isError : publicEventQuery.isError;
+
+  const submitByToken = useSubmitRsvp(token ?? "");
+  const submitByInvite = useSubmitRsvpViaInvite(invitationToken ?? "");
+  const submitRsvp = isInvite ? submitByInvite : submitByToken;
+
   const [submitted, setSubmitted] = useState<{ firstName: string; rsvpStatus: string } | null>(null);
 
   const {
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { attending: "CONFIRMED" } });
+
+  useEffect(() => {
+    if (guestPrefill) {
+      reset({
+        attending: "CONFIRMED",
+        firstName: guestPrefill.firstName,
+        lastName: guestPrefill.lastName,
+        email: guestPrefill.email ?? "",
+        phone: guestPrefill.phone ?? "",
+      });
+    }
+  }, [guestPrefill, reset]);
 
   const attending = watch("attending");
 
@@ -135,6 +164,11 @@ export default function PublicRsvpPage() {
             )}
           </div>
           {event.customMessage && <p className="mt-4 text-sm text-slate-600">{event.customMessage}</p>}
+          {guestPrefill && (
+            <p className="mt-3 text-xs text-slate-400">
+              This invite was sent to {guestPrefill.firstName} {guestPrefill.lastName} — feel free to update any details below.
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

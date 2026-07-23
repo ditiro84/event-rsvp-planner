@@ -31,4 +31,9 @@ export const env = {
   publicAppUrl: process.env.PUBLIC_APP_URL ?? "http://localhost:5173",
   rsvpRateLimitMax: Number(process.env.RSVP_RATE_LIMIT_MAX ?? 20),
   rsvpRateLimitWindowMs: Number(process.env.RSVP_RATE_LIMIT_WINDOW_MS ?? 15 * 60 * 1000),
+  // Optional: invite emails are disabled (with a clear error) until both of
+  // these are set. Get an API key at https://resend.com and verify a sending
+  // domain there before setting RESEND_FROM_EMAIL to an address on it.
+  resendApiKey: process.env.RESEND_API_KEY,
+  resendFromEmail: process.env.RESEND_FROM_EMAIL,
 };

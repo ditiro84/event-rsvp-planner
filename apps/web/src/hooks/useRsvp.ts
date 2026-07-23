@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { PublicEvent, RsvpDashboard } from "@/types";
+import type { GuestPrefill, PublicEvent, RsvpDashboard } from "@/types";
 
 export function usePlannerRsvpDashboard(eventId: string | undefined) {
   return useQuery({
@@ -30,6 +30,27 @@ export function useSubmitRsvp(token: string) {
   return useMutation({
     mutationFn: async (input: Record<string, unknown>) => {
       const res = await api.post(`/rsvp/${token}`, input);
+      return res.data.data as { message: string; guest: { firstName: string; lastName: string; rsvpStatus: string } };
+    },
+  });
+}
+
+export function useInvitePrefill(invitationToken: string | undefined) {
+  return useQuery({
+    queryKey: ["rsvp", "invite", invitationToken],
+    queryFn: async () => {
+      const res = await api.get(`/rsvp/invite/${invitationToken}`);
+      return res.data.data as { event: PublicEvent; guestPrefill: GuestPrefill };
+    },
+    enabled: !!invitationToken,
+    retry: false,
+  });
+}
+
+export function useSubmitRsvpViaInvite(invitationToken: string) {
+  return useMutation({
+    mutationFn: async (input: Record<string, unknown>) => {
+      const res = await api.post(`/rsvp/invite/${invitationToken}`, input);
       return res.data.data as { message: string; guest: { firstName: string; lastName: string; rsvpStatus: string } };
     },
   });

@@ -3,15 +3,17 @@ import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { getOwnedEvent } from "../events/events.service";
 import { SubmitRsvpInput } from "./rsvp.schema";
 
-// Only the minimum information needed to render the public RSVP page.
-export async function getPublicEventByToken(token: string) {
-  const event = await prisma.event.findUnique({ where: { rsvpToken: token } });
-  if (!event) {
-    throw new NotFoundError("This RSVP link is invalid");
-  }
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function checkRsvpIsOpen(event: any) {
   const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
+  if (!event.rsvpOpen || deadlinePassed) {
+    throw new BadRequestError("RSVPs are closed for this event");
+  }
+}
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function publicEventShape(event: any) {
+  const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
   return {
     id: event.id,
     name: event.name,
@@ -34,16 +36,49 @@ export async function getPublicEventByToken(token: string) {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function guestUpdateData(input: SubmitRsvpInput) {
+  const email = input.email?.trim().toLowerCase() || null;
+  return {
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: email ?? undefined,
+    phone: input.phone || undefined,
+    rsvpStatus: input.attending,
+    rsvpRespondedAt: new Date(),
+    additionalGuestsCount: input.attending === "CONFIRMED" ? input.additionalGuestsCount : 0,
+    mealPreference: input.mealPreference || undefined,
+    dietaryRequirements: input.dietaryRequirements || undefined,
+    accessibilityRequirements: input.accessibilityRequirements || undefined,
+    specialNotes: input.message || undefined,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function replacePartyMembers(tx: any, guestId: string, input: SubmitRsvpInput) {
+  await tx.guestParty.deleteMany({ where: { guestId } });
+  if (input.attending === "CONFIRMED" && input.additionalGuestNames.length > 0) {
+    await tx.guestParty.createMany({
+      data: input.additionalGuestNames.map((fullName) => ({ guestId, fullName })),
+    });
+  }
+}
+
+// Only the minimum information needed to render the public RSVP page.
+export async function getPublicEventByToken(token: string) {
+  const event = await prisma.event.findUnique({ where: { rsvpToken: token } });
+  if (!event) {
+    throw new NotFoundError("This RSVP link is invalid");
+  }
+  return publicEventShape(event);
+}
+
 export async function submitRsvp(token: string, input: SubmitRsvpInput) {
   const event = await prisma.event.findUnique({ where: { rsvpToken: token } });
   if (!event) {
     throw new NotFoundError("This RSVP link is invalid");
   }
-
-  const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
-  if (!event.rsvpOpen || deadlinePassed) {
-    throw new BadRequestError("RSVPs are closed for this event");
-  }
+  checkRsvpIsOpen(event);
 
   const email = input.email?.trim().toLowerCase() || null;
 
@@ -63,19 +98,7 @@ export async function submitRsvp(token: string, input: SubmitRsvpInput) {
     });
   }
 
-  const guestData = {
-    firstName: input.firstName,
-    lastName: input.lastName,
-    email: email ?? undefined,
-    phone: input.phone || undefined,
-    rsvpStatus: input.attending,
-    rsvpRespondedAt: new Date(),
-    additionalGuestsCount: input.attending === "CONFIRMED" ? input.additionalGuestsCount : 0,
-    mealPreference: input.mealPreference || undefined,
-    dietaryRequirements: input.dietaryRequirements || undefined,
-    accessibilityRequirements: input.accessibilityRequirements || undefined,
-    specialNotes: input.message || undefined,
-  };
+  const guestData = guestUpdateData(input);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const savedGuest = await prisma.$transaction(async (tx: any) => {
@@ -83,19 +106,62 @@ export async function submitRsvp(token: string, input: SubmitRsvpInput) {
       ? await tx.guest.update({ where: { id: guest.id }, data: guestData })
       : await tx.guest.create({ data: { eventId: event.id, ...guestData } });
 
-    // Replace the accompanying-guest list with what was submitted.
-    await tx.guestParty.deleteMany({ where: { guestId: g.id } });
-    if (input.attending === "CONFIRMED" && input.additionalGuestNames.length > 0) {
-      await tx.guestParty.createMany({
-        data: input.additionalGuestNames.map((fullName) => ({ guestId: g.id, fullName })),
-      });
-    }
+    await replacePartyMembers(tx, g.id, input);
 
     // Confirmed party members lost their seat if the guest un-confirms.
     if (g.rsvpStatus !== "CONFIRMED") {
       await tx.seatingAssignment.deleteMany({ where: { guestId: g.id } });
     }
 
+    return g;
+  });
+
+  return savedGuest;
+}
+
+// Personalized invite flow: resolves straight from a per-guest invitation
+// token (sent via QR code / email / WhatsApp), so there's no ambiguity
+// about which guest this is -- no name/email fuzzy matching needed.
+export async function getInvitePrefill(invitationToken: string) {
+  const invitation = await prisma.eventInvitation.findUnique({
+    where: { token: invitationToken },
+    include: { event: true, guest: true },
+  });
+  if (!invitation || !invitation.guest) {
+    throw new NotFoundError("This invite link is invalid");
+  }
+
+  return {
+    event: publicEventShape(invitation.event),
+    guestPrefill: {
+      firstName: invitation.guest.firstName,
+      lastName: invitation.guest.lastName,
+      email: invitation.guest.email,
+      phone: invitation.guest.phone,
+    },
+  };
+}
+
+export async function submitRsvpViaInvitation(invitationToken: string, input: SubmitRsvpInput) {
+  const invitation = await prisma.eventInvitation.findUnique({
+    where: { token: invitationToken },
+    include: { event: true, guest: true },
+  });
+  if (!invitation || !invitation.guest) {
+    throw new NotFoundError("This invite link is invalid");
+  }
+  checkRsvpIsOpen(invitation.event);
+
+  const guestId = invitation.guest.id;
+  const guestData = guestUpdateData(input);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const savedGuest = await prisma.$transaction(async (tx: any) => {
+    const g = await tx.guest.update({ where: { id: guestId }, data: guestData });
+    await replacePartyMembers(tx, g.id, input);
+    if (g.rsvpStatus !== "CONFIRMED") {
+      await tx.seatingAssignment.deleteMany({ where: { guestId: g.id } });
+    }
     return g;
   });
 

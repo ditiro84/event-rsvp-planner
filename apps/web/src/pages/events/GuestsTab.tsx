@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, FileText, Pencil, Plus, Search, Trash2, Upload, Users } from "lucide-react";
+import { Download, FileText, Pencil, Plus, Search, Send, Trash2, Upload, Users } from "lucide-react";
 import { useDeleteGuest, useGuests, useExportGuestsCsv, useExportGuestsPdf, type GuestFilters } from "@/hooks/useGuests";
+import { useBulkSendInviteEmails } from "@/hooks/useInvites";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { RsvpStatusBadge, Badge } from "@/components/ui/Badge";
@@ -10,25 +11,42 @@ import { Spinner } from "@/components/ui/Spinner";
 import { getApiErrorMessage } from "@/lib/api";
 import { GuestFormModal } from "./GuestFormModal";
 import { CsvImportModal } from "./CsvImportModal";
+import { InviteModal } from "./InviteModal";
 import type { Guest } from "@/types";
 
-export function GuestsTab({ eventId }: { eventId: string }) {
+export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: string }) {
   const [filters, setFilters] = useState<GuestFilters>({});
   const [search, setSearch] = useState("");
   const { data: guests, isLoading } = useGuests(eventId, { ...filters, search: search || undefined });
   const deleteGuest = useDeleteGuest(eventId);
   const exportCsv = useExportGuestsCsv(eventId);
   const exportPdf = useExportGuestsPdf(eventId);
+  const bulkSendInvites = useBulkSendInviteEmails(eventId);
 
   const [showAddGuest, setShowAddGuest] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editingGuest, setEditingGuest] = useState<Guest | undefined>();
+  const [invitingGuest, setInvitingGuest] = useState<Guest | undefined>();
 
   async function handleDelete(guest: Guest) {
     if (!confirm(`Remove ${guest.firstName} ${guest.lastName} from the guest list?`)) return;
     try {
       await deleteGuest.mutateAsync(guest.id);
       toast.success("Guest removed");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  }
+
+  async function handleBulkSendInvites() {
+    if (!confirm("Email an invite (with QR code) to every guest who has an email address on file?")) return;
+    try {
+      const result = await bulkSendInvites.mutateAsync(undefined);
+      if (result.failed > 0) {
+        toast.warning(`Sent ${result.sent}/${result.total} invites (${result.failed} failed — check RESEND_API_KEY is configured)`);
+      } else {
+        toast.success(`Sent ${result.sent} invite${result.sent === 1 ? "" : "s"}`);
+      }
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -58,6 +76,10 @@ export function GuestsTab({ eventId }: { eventId: string }) {
           <Button variant="secondary" size="sm" onClick={() => exportPdf.mutate()} isLoading={exportPdf.isPending}>
             <FileText className="h-4 w-4" />
             Export PDF
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleBulkSendInvites} isLoading={bulkSendInvites.isPending}>
+            <Send className="h-4 w-4" />
+            Email all invites
           </Button>
           <Button size="sm" onClick={() => setShowAddGuest(true)}>
             <Plus className="h-4 w-4" />
@@ -184,6 +206,13 @@ export function GuestsTab({ eventId }: { eventId: string }) {
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
                       <button
+                        aria-label={`Invite ${guest.firstName} ${guest.lastName}`}
+                        onClick={() => setInvitingGuest(guest)}
+                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                      >
+                        <Send className="h-4 w-4" />
+                      </button>
+                      <button
                         aria-label={`Edit ${guest.firstName} ${guest.lastName}`}
                         onClick={() => setEditingGuest(guest)}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
@@ -211,6 +240,15 @@ export function GuestsTab({ eventId }: { eventId: string }) {
         <GuestFormModal open={!!editingGuest} onClose={() => setEditingGuest(undefined)} eventId={eventId} guest={editingGuest} />
       )}
       <CsvImportModal open={showImport} onClose={() => setShowImport(false)} eventId={eventId} />
+      {invitingGuest && (
+        <InviteModal
+          open={!!invitingGuest}
+          onClose={() => setInvitingGuest(undefined)}
+          eventId={eventId}
+          eventName={eventName}
+          guest={invitingGuest}
+        />
+      )}
     </div>
   );
 }

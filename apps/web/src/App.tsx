@@ -13,6 +13,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/events" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/rsvp/invite/:invitationToken" element={<PublicRsvpPage />} />
       <Route path="/rsvp/:token" element={<PublicRsvpPage />} />
 
       <Route element={<ProtectedRoute />}>

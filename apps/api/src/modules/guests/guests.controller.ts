@@ -3,7 +3,9 @@ import { created, noContent, ok } from "../../lib/apiResponse";
 import { BadRequestError } from "../../lib/errors";
 import { getOwnedEvent } from "../events/events.service";
 import { createGuestSchema, listGuestsQuerySchema, updateGuestSchema } from "./guests.schema";
+import { bulkSendInviteEmailsSchema, markInviteSentSchema } from "./invite.schema";
 import * as service from "./guests.service";
+import * as inviteService from "./invite.service";
 import { guestsToCsv, parseGuestsCsv } from "./guests.csv";
 import { guestsToPdf } from "./guests.pdf";
 
@@ -43,6 +45,28 @@ export async function checkIn(req: Request, res: Response) {
 export async function checkOut(req: Request, res: Response) {
   const guest = await service.checkOutGuest(req.userId!, req.params.guestId);
   return ok(res, { guest });
+}
+
+export async function getInviteLink(req: Request, res: Response) {
+  const link = await inviteService.getInviteLink(req.userId!, req.params.guestId);
+  return ok(res, link);
+}
+
+export async function markInviteSent(req: Request, res: Response) {
+  const input = markInviteSentSchema.parse(req.body);
+  const invitation = await inviteService.markInviteSent(req.userId!, req.params.guestId, input.channel);
+  return ok(res, { invitation });
+}
+
+export async function sendInviteEmail(req: Request, res: Response) {
+  const result = await inviteService.sendInviteEmail(req.userId!, req.params.guestId);
+  return ok(res, result);
+}
+
+export async function bulkSendInviteEmails(req: Request, res: Response) {
+  const input = bulkSendInviteEmailsSchema.parse(req.body);
+  const result = await inviteService.bulkSendInviteEmails(req.userId!, req.params.eventId, input.guestIds);
+  return ok(res, result);
 }
 
 export async function importCsv(req: Request, res: Response) {

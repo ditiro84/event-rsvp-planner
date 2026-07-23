@@ -232,3 +232,23 @@ export interface SeatingMap {
   tables: TableRecord[];
   unassignedGuests: UnassignedGuest[];
 }
+
+// ---------------------------------------------------------------------------
+// Invites
+// ---------------------------------------------------------------------------
+
+export interface InviteLink {
+  url: string;
+  qrDataUrl: string;
+  channel: string | null;
+  sentAt: string | null;
+  guestEmail: string | null;
+  guestPhone: string | null;
+}
+
+export interface GuestPrefill {
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+}

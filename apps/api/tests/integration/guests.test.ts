@@ -214,3 +214,86 @@ describe("Guests API: check-in", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("Guests API: invites", () => {
+  it("generates a stable personalized invite link and QR code", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson" });
+    const guestId = created.body.data.guest.id;
+
+    const first = await request(app).get(`/api/events/${eventId}/guests/${guestId}/invite`).set(auth);
+    expect(first.status).toBe(200);
+    expect(first.body.data.url).toContain("/rsvp/invite/");
+    expect(first.body.data.qrDataUrl).toMatch(/^data:image\/png;base64,/);
+    expect(first.body.data.sentAt).toBeFalsy();
+
+    // Calling it again returns the same link (stable token), not a new one.
+    const second = await request(app).get(`/api/events/${eventId}/guests/${guestId}/invite`).set(auth);
+    expect(second.body.data.url).toBe(first.body.data.url);
+  });
+
+  it("records that an invite was sent via WhatsApp (tap-to-send flow)", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson", phone: "+15551234567" });
+    const guestId = created.body.data.guest.id;
+
+    const res = await request(app)
+      .post(`/api/events/${eventId}/guests/${guestId}/invite/mark-sent`)
+      .set(auth)
+      .send({ channel: "whatsapp" });
+    expect(res.status).toBe(200);
+    expect(res.body.data.invitation.channel).toBe("whatsapp");
+    expect(res.body.data.invitation.sentAt).toBeTruthy();
+
+    const linkRes = await request(app).get(`/api/events/${eventId}/guests/${guestId}/invite`).set(auth);
+    expect(linkRes.body.data.channel).toBe("whatsapp");
+  });
+
+  it("returns a clear error sending an invite email when Resend isn't configured", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson", email: "sarah@example.com" });
+    const guestId = created.body.data.guest.id;
+
+    const res = await request(app).post(`/api/events/${eventId}/guests/${guestId}/invite/email`).set(auth);
+    // In CI/test, RESEND_API_KEY is intentionally unset -- this should fail
+    // with a clear, actionable message rather than crashing.
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/not configured/i);
+  });
+
+  it("rejects fetching another planner's guest invite link", async () => {
+    const { token } = await registerAndLogin(app);
+    const planner2 = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson" });
+    const guestId = created.body.data.guest.id;
+
+    const res = await request(app)
+      .get(`/api/events/${eventId}/guests/${guestId}/invite`)
+      .set("Authorization", `Bearer ${planner2.token}`);
+    expect(res.status).toBe(404);
+  });
+});

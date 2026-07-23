@@ -27,8 +27,10 @@ This guide covers local setup and production deployment for EventFlow: **Vercel*
 | `JWT_EXPIRES_IN` | Session length, e.g. `7d` |
 | `COOKIE_NAME` | Name of the session cookie |
 | `CORS_ORIGINS` | Comma-separated list of allowed frontend origins (e.g. your Vercel URL) |
-| `PUBLIC_APP_URL` | The deployed frontend URL (used to build RSVP links in future email/SMS features) |
+| `PUBLIC_APP_URL` | The deployed frontend URL (used to build personalized invite/RSVP links and QR codes) |
 | `RSVP_RATE_LIMIT_MAX` / `RSVP_RATE_LIMIT_WINDOW_MS` | Rate limiting on the public RSVP endpoint |
+| `RESEND_API_KEY` | Optional. API key from [resend.com](https://resend.com) -- enables the "Email invite" button and bulk invite emails. Without it, those endpoints return a clear 400 error instead of sending. |
+| `RESEND_FROM_EMAIL` | Optional. The "from" address for invite emails, e.g. `EventFlow <invites@yourdomain.com>`. Must be on a domain you've verified with Resend. |
 
 ### Frontend (`apps/web/.env`, see `apps/web/.env.example`)
 

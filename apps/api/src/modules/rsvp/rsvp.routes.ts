@@ -2,7 +2,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { env } from "../../config/env";
 import { validateBody, validateParams } from "../../middleware/validate";
-import { rsvpTokenParamsSchema, submitRsvpSchema } from "./rsvp.schema";
+import { invitationTokenParamsSchema, rsvpTokenParamsSchema, submitRsvpSchema } from "./rsvp.schema";
 import * as controller from "./rsvp.controller";
 
 // Public router: no authentication. Mounted at /api/rsvp
@@ -22,6 +22,23 @@ const readRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Personalized invite routes (registered before the generic /:token routes,
+// which is important: they have an extra path segment so there's no
+// ambiguity, but keeping the more specific routes first is the clearest).
+router.get(
+  "/invite/:invitationToken",
+  readRateLimit,
+  validateParams(invitationTokenParamsSchema),
+  controller.getPublicEventViaInvite
+);
+router.post(
+  "/invite/:invitationToken",
+  submitRateLimit,
+  validateParams(invitationTokenParamsSchema),
+  validateBody(submitRsvpSchema),
+  controller.submitViaInvite
+);
 
 router.get("/:token", readRateLimit, validateParams(rsvpTokenParamsSchema), controller.getPublicEvent);
 router.post(

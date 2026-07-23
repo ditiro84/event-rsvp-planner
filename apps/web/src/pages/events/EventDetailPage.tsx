@@ -96,7 +96,7 @@ export default function EventDetailPage() {
       </div>
 
       {tab === "overview" && <OverviewTab eventId={event.id} />}
-      {tab === "guests" && <GuestsTab eventId={event.id} />}
+      {tab === "guests" && <GuestsTab eventId={event.id} eventName={event.name} />}
       {tab === "rsvp" && <RsvpTab event={event} />}
       {tab === "seating" && <SeatingTab eventId={event.id} />}
       {tab === "checkin" && <CheckInTab eventId={event.id} />}

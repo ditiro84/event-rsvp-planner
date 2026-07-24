@@ -1,41 +1,46 @@
 import type { ReactNode } from "react";
-import { PartyPopper } from "lucide-react";
-import { SeatingIllustration } from "@/components/illustrations/SeatingIllustration";
+import { Share2 } from "lucide-react";
+import { NetworkIllustration } from "@/components/illustrations/NetworkIllustration";
 
-// Shared two-column shell for the login and register screens: a branded
-// left panel on desktop (hidden on mobile, where it would just push the
-// form below the fold) and a focused form area on the right. Keeping this
-// as one component means both auth screens automatically stay visually
-// identical as the brand evolves, instead of drifting apart.
+// Shared two-column shell for the login and register screens, matching the
+// Figma "login-desktop" mockup: a dark violet-gradient brand panel with an
+// abstract network illustration and tagline on desktop (hidden on mobile,
+// where it would just push the form below the fold), and a focused white
+// form area on the right.
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-canvas">
-      <div className="relative hidden w-[44%] max-w-lg flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 px-10 py-12 text-white lg:flex">
-        <div className="flex items-center gap-2">
-          <PartyPopper className="h-6 w-6" />
-          <span className="font-display text-xl font-semibold">EventFlow</span>
+    <div className="flex min-h-screen bg-white">
+      <div className="relative hidden w-[60%] max-w-[864px] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#1c0d3a] to-[#09031c] px-20 py-16 text-white lg:flex">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500 shadow-[0_4px_6px_rgba(124,92,255,0.5)]">
+            <Share2 className="h-[18px] w-[18px] text-white" />
+          </div>
+          <span className="font-display text-[22px] font-extrabold text-white">EventFlow</span>
         </div>
 
-        <div>
-          <p className="font-display text-3xl font-medium leading-tight text-white">
-            Plan beautifully.
-            <br />
-            Seat confidently.
-            <br />
-            Celebrate effortlessly.
-          </p>
-          <p className="mt-4 max-w-xs text-sm text-brand-100">
-            One connected workspace for guest lists, RSVPs, seating charts and event-day check-in.
-          </p>
+        <div className="flex h-[440px] items-center justify-center">
+          <NetworkIllustration className="h-full w-full max-w-[420px]" />
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 opacity-90">
-          <SeatingIllustration className="h-full w-full" />
+        <div className="flex flex-col gap-4">
+          <p className="font-display text-[36px] font-medium leading-[1.25] text-white">
+            Plan beautifully. <span className="text-brand-500">Seat confidently.</span> Celebrate effortlessly.
+          </p>
+          <p className="max-w-lg text-base leading-[1.6] text-white/70">
+            Empowering modern hosts, premium venues, and experience designers with seamless floor plan structures,
+            seating intelligence, and absolute control.
+          </p>
         </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-4 py-12 sm:px-8">
-        <div className="w-full max-w-sm">{children}</div>
+        <div className="mb-8 flex flex-col items-center gap-2 text-brand-700 lg:hidden">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500">
+            <Share2 className="h-[18px] w-[18px] text-white" />
+          </div>
+          <span className="font-display text-xl font-extrabold text-slate-950">EventFlow</span>
+        </div>
+        <div className="w-full max-w-[448px]">{children}</div>
       </div>
     </div>
   );

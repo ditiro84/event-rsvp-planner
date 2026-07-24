@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Eye, EyeOff, PartyPopper } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
@@ -44,50 +43,51 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout>
-      <div className="mb-8 flex flex-col items-center gap-2 text-brand-700 lg:hidden">
-        <PartyPopper className="h-8 w-8" />
-        <span className="font-display text-xl font-semibold">EventFlow</span>
+      <div className="flex flex-col gap-2.5">
+        <h1 className="font-display text-[32px] font-bold text-slate-950">Create your planner account</h1>
+        <p className="text-[15px] text-slate-600">Start planning your next event in minutes</p>
       </div>
 
-      <h1 className="text-2xl font-semibold text-slate-900">Create your planner account</h1>
-      <p className="mt-1 text-sm text-slate-500">Start planning your next event in minutes.</p>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
-        <Field label="Full name" htmlFor="name" error={errors.name?.message}>
-          <Input id="name" autoComplete="name" {...register("name")} error={!!errors.name} />
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-6">
+        <Field label="Full Name" htmlFor="name" error={errors.name?.message}>
+          <Input id="name" autoComplete="name" className="h-12" {...register("name")} error={!!errors.name} />
         </Field>
-        <Field label="Email" htmlFor="email" error={errors.email?.message}>
-          <Input id="email" type="email" autoComplete="email" {...register("email")} error={!!errors.email} />
+        <Field label="Email Address" htmlFor="email" error={errors.email?.message}>
+          <Input id="email" type="email" autoComplete="email" className="h-12" {...register("email")} error={!!errors.email} />
         </Field>
-        <Field label="Password" htmlFor="password" error={errors.password?.message} hint="At least 8 characters, with a letter and a number">
+        <Field
+          label="Password"
+          htmlFor="password"
+          error={errors.password?.message}
+          hint="At least 8 characters, with a letter and a number"
+        >
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
-              className="pr-10"
+              className="h-12 pr-16"
               {...register("password")}
               error={!!errors.password}
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-600"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-brand-600 hover:text-brand-700"
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? "Hide" : "Show"}
             </button>
           </div>
         </Field>
 
-        <Button type="submit" className="w-full" isLoading={isSubmitting}>
-          Create account
+        <Button type="submit" size="lg" className="h-[50px] w-full text-[15px]" isLoading={isSubmitting}>
+          Create Account
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <p className="mt-8 text-center text-sm text-slate-600">
         Already have an account?{" "}
-        <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">
+        <Link to="/login" className="font-bold text-brand-600 hover:text-brand-700">
           Log in
         </Link>
       </p>

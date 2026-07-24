@@ -32,6 +32,10 @@ const EventSeatingRoute = lazy(() =>
 const EventCheckInRoute = lazy(() =>
   import("@/pages/events/EventTabPages").then((m) => ({ default: m.EventCheckInRoute }))
 );
+const EventVendorsRoute = lazy(() =>
+  import("@/pages/events/EventTabPages").then((m) => ({ default: m.EventVendorsRoute }))
+);
+const AnalyticsPage = lazy(() => import("@/pages/analytics/AnalyticsPage"));
 
 function RouteFallback() {
   return (
@@ -60,6 +64,8 @@ export default function App() {
             <Route path="/events/:eventId/rsvp" element={<EventRsvpRoute />} />
             <Route path="/events/:eventId/seating" element={<EventSeatingRoute />} />
             <Route path="/events/:eventId/checkin" element={<EventCheckInRoute />} />
+            <Route path="/events/:eventId/vendors" element={<EventVendorsRoute />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
           </Route>
         </Route>
 

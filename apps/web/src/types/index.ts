@@ -271,3 +271,116 @@ export interface GuestPrefill {
   email: string | null;
   phone: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Vendors
+// ---------------------------------------------------------------------------
+
+export type VendorCategory =
+  | "CATERING"
+  | "VENUE"
+  | "PHOTOGRAPHY"
+  | "VIDEOGRAPHY"
+  | "FLORAL"
+  | "MUSIC_ENTERTAINMENT"
+  | "DECOR"
+  | "RENTALS"
+  | "TRANSPORTATION"
+  | "BEAUTY"
+  | "STATIONERY"
+  | "OTHER";
+
+export type VendorStatus = "CONTACTED" | "QUOTE_RECEIVED" | "BOOKED" | "CONFIRMED" | "CANCELLED";
+
+export interface VendorRecord {
+  id: string;
+  eventId: string;
+  name: string;
+  category: VendorCategory;
+  status: VendorStatus;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  cost: number | null;
+  depositPaid: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorSummary {
+  totalVendors: number;
+  bookedCount: number;
+  totalCost: number;
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export type NotificationType = "RSVP_CONFIRMED" | "RSVP_DECLINED" | "VENDOR_STATUS_CHANGED" | "SYSTEM";
+
+export interface NotificationRecord {
+  id: string;
+  userId: string;
+  eventId: string | null;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Needs Attention insights
+// ---------------------------------------------------------------------------
+
+export type InsightSeverity = "ACTION_REQUIRED" | "UPDATE";
+
+export interface InsightRecord {
+  id: string;
+  eventId: string;
+  eventName: string;
+  severity: InsightSeverity;
+  title: string;
+  description: string;
+  link: string;
+}
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+export interface AnalyticsByEvent {
+  eventId: string;
+  eventName: string;
+  date: string;
+  totalGuests: number;
+  confirmed: number;
+  declined: number;
+  pending: number;
+  maybe: number;
+  checkedIn: number;
+}
+
+export interface AnalyticsOverview {
+  totalEvents: number;
+  upcomingEvents: number;
+  pastEvents: number;
+  totalGuests: number;
+  confirmed: number;
+  declined: number;
+  pending: number;
+  maybe: number;
+  confirmationRate: number;
+  responseRate: number;
+  checkedIn: number;
+  checkInRate: number;
+  totalVendors: number;
+  vendorsBooked: number;
+  totalVendorSpend: number;
+  byEvent: AnalyticsByEvent[];
+}

@@ -7,6 +7,7 @@ import { EventOverviewTab } from "./OverviewTab";
 import { GuestsTab } from "./GuestsTab";
 import { RsvpTab } from "./RsvpTab";
 import { CheckInTab } from "./CheckInTab";
+import { VendorsTab } from "./VendorsTab";
 import type { EventRecord } from "@/types";
 
 // Split out on its own: the seating planner is the only screen that needs
@@ -66,4 +67,8 @@ export function EventSeatingRoute() {
 
 export function EventCheckInRoute() {
   return <EventRouteGuard>{(event) => <CheckInTab eventId={event.id} />}</EventRouteGuard>;
+}
+
+export function EventVendorsRoute() {
+  return <EventRouteGuard>{(event) => <VendorsTab eventId={event.id} />}</EventRouteGuard>;
 }

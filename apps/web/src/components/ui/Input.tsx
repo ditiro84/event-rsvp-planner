@@ -28,14 +28,17 @@ export function Field({ label, error, hint, htmlFor, children }: FieldWrapperPro
   );
 }
 
+// Default state uses a subtle slate-tinted fill that "pops" white on
+// focus -- matching the Figma design system's Form Input Fields component
+// (Default / Active-Focus / Error / Disabled states).
 const baseInputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-soft transition-shadow placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-400";
+  "w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-brand-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { error?: boolean }>(
   ({ className, error, ...props }, ref) => (
     <input
       ref={ref}
-      className={cn(baseInputClass, error && "border-red-400 focus:border-red-500 focus:ring-red-100", className)}
+      className={cn(baseInputClass, error && "border-danger-500 bg-danger-50 focus:border-danger-500 focus:ring-danger-100", className)}
       {...props}
     />
   )

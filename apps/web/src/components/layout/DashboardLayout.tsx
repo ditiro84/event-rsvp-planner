@@ -92,7 +92,7 @@ export function DashboardLayout() {
                 My Events
               </NavLink>
 
-              <div className="mb-4 rounded-xl2 border border-slate-100 bg-lavender-50/60 px-3 py-3">
+              <div className="mb-4 rounded-xl2 border border-slate-100 bg-brand-50/60 px-3 py-3">
                 <Badge variant="brand">{EVENT_TYPE_LABELS[event.type] ?? event.type}</Badge>
                 <p className="mt-2 text-sm font-semibold leading-snug text-slate-900">{event.name}</p>
                 <p className="mt-0.5 text-xs text-slate-500">{formatDateShort(event.date)}</p>

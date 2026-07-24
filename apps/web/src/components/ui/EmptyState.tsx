@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import { Button } from "./Button";
 
 const iconToneClasses = {
-  brand: "bg-lavender-100 text-brand-600",
+  brand: "bg-brand-100 text-brand-600",
   danger: "bg-danger-50 text-danger-600",
 } as const;
 

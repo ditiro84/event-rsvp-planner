@@ -1,11 +1,16 @@
 import { cn } from "@/lib/cn";
 import type { RsvpStatus } from "@/types";
 
+// Matches the Figma design system's "Status Badges" component: a tinted
+// background, solid border in the semantic color, and darker-weight text
+// for contrast (rather than the previous ring-based treatment). Note MAYBE
+// maps to a neutral slate treatment per the Figma spec -- Pending is the
+// one that owns the warning/amber color, not Maybe.
 const statusStyles: Record<RsvpStatus, string> = {
-  CONFIRMED: "bg-success-50 text-success-700 ring-success-600/20",
-  DECLINED: "bg-danger-50 text-danger-700 ring-danger-600/20",
-  PENDING: "bg-slate-100 text-slate-600 ring-slate-500/20",
-  MAYBE: "bg-warning-50 text-warning-700 ring-warning-600/20",
+  CONFIRMED: "bg-success-50 text-success-800 border border-success-500",
+  DECLINED: "bg-danger-50 text-danger-800 border border-danger-500",
+  PENDING: "bg-warning-50 text-warning-800 border border-warning-500",
+  MAYBE: "bg-slate-50 text-slate-700 border border-slate-500",
 };
 
 export function RsvpStatusBadge({ status }: { status: RsvpStatus }) {
@@ -13,11 +18,10 @@ export function RsvpStatusBadge({ status }: { status: RsvpStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
         statusStyles[status]
       )}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
       {label}
     </span>
   );
@@ -30,18 +34,22 @@ export function Badge({
 }: {
   children: React.ReactNode;
   className?: string;
-  variant?: "neutral" | "brand" | "success" | "warning" | "danger" | "info";
+  variant?: "neutral" | "brand" | "success" | "warning" | "danger" | "info" | "unassigned";
 }) {
   const variants: Record<NonNullable<typeof variant>, string> = {
     neutral: "bg-slate-100 text-slate-700",
     brand: "bg-brand-50 text-brand-700",
-    success: "bg-success-50 text-success-700",
-    warning: "bg-warning-50 text-warning-700",
-    danger: "bg-danger-50 text-danger-700",
-    info: "bg-info-50 text-info-700",
+    success: "bg-success-50 text-success-800 border border-success-500",
+    warning: "bg-warning-50 text-warning-800 border border-warning-500",
+    danger: "bg-danger-50 text-danger-800 border border-danger-500",
+    info: "bg-info-50 text-info-800 border border-info-500",
+    // "Unassigned" seating status -- the one accent in the Figma design
+    // system that isn't part of the core brand/semantic scale (stock
+    // Tailwind purple, distinct from the indigo brand color).
+    unassigned: "bg-purple-50 text-purple-800 border border-purple-400",
   };
   return (
-    <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", variants[variant], className)}>
+    <span className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold", variants[variant], className)}>
       {children}
     </span>
   );

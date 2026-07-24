@@ -4,77 +4,87 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary brand purple -- refined toward a slightly deeper, less
-        // saturated violet so it reads as premium rather than "default
-        // Tailwind purple". Used for primary actions, active nav, and the
-        // brand mark.
+        // Primary brand -- a saturated indigo/violet matching the approved
+        // Figma design system (design-system-components sheet: buttons,
+        // focus rings, tabs, and progress fills all use #4f46e5 as the
+        // living brand-600). This is Tailwind's stock "indigo" scale.
         brand: {
-          50: "#f6f4fd",
-          100: "#ede8fb",
-          200: "#dad0f7",
-          300: "#bfaded",
-          400: "#a688e6",
-          500: "#8b6fd6",
-          600: "#6f4fc4",
-          700: "#5c3ea8",
-          800: "#4b3388",
-          900: "#3d2b6e",
-          950: "#241a44",
+          50: "#eef2ff",
+          100: "#e0e7ff",
+          200: "#c7d2fe",
+          300: "#a5b4fc",
+          400: "#818cf8",
+          500: "#6366f1",
+          600: "#4f46e5",
+          700: "#4338ca",
+          800: "#3730a3",
+          900: "#312e81",
+          950: "#1e1b4b",
         },
-        // Soft lavender accent -- used sparingly for highlight backgrounds,
-        // subtle fills, and decorative surfaces (never for body text).
-        lavender: {
-          50: "#faf9fe",
-          100: "#f2effb",
-          200: "#e6def7",
-          300: "#d4c5f0",
-          400: "#bda3e4",
-        },
-        // Neutral background/surface scale kept distinct from brand so the
-        // app doesn't read as "everything is purple". Warmer than pure
-        // slate to feel less like a generic admin dashboard.
+        // Neutral background/surface scale. Retinted to a cool slate-50
+        // (matching the Figma design system's neutral ramp) instead of the
+        // previous warm lavender-tinted canvas, so it sits cleanly next to
+        // the more vivid indigo brand color.
         canvas: {
-          DEFAULT: "#faf9fc",
+          DEFAULT: "#f8fafc",
           surface: "#ffffff",
         },
-        // Semantic status colors, named intentionally rather than reused
-        // ad-hoc across screens.
+        // Semantic status colors -- mapped to Tailwind's stock
+        // emerald/amber/red/blue scales to match the Figma design system's
+        // "Semantic & Status Colours" section and component states matrix
+        // (badges/toasts use the 50/500/800 steps; buttons and other UI use
+        // 600/700 as before).
         success: {
           50: "#ecfdf5",
           100: "#d1fae5",
+          500: "#10b981",
           600: "#059669",
           700: "#047857",
+          800: "#065f46",
         },
         warning: {
           50: "#fffbeb",
           100: "#fef3c7",
+          500: "#f59e0b",
           600: "#d97706",
           700: "#b45309",
+          800: "#92400e",
         },
         danger: {
           50: "#fef2f2",
           100: "#fee2e2",
+          500: "#ef4444",
           600: "#dc2626",
           700: "#b91c1c",
+          800: "#991b1b",
         },
         info: {
           50: "#eff6ff",
           100: "#dbeafe",
+          500: "#3b82f6",
           600: "#2563eb",
           700: "#1d4ed8",
+          800: "#1e40af",
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Fraunces", "ui-serif", "Georgia", "serif"],
+        // Geist + Geist Mono, per the approved Figma design system typography
+        // scale. "display" previously pointed at a serif (Fraunces) -- the
+        // new system uses a single sans-serif family throughout, so it now
+        // points at the same Geist Sans family, just kept as a distinct
+        // token in case a display treatment is reintroduced later.
+        sans: ["Geist Sans", "system-ui", "sans-serif"],
+        display: ["Geist Sans", "system-ui", "sans-serif"],
+        mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       boxShadow: {
         soft: "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.03)",
-        card: "0 2px 8px -2px rgb(76 29 149 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.04)",
-        elevated: "0 12px 32px -8px rgb(76 29 149 / 0.14), 0 4px 12px -4px rgb(15 23 42 / 0.06)",
+        card: "0 2px 8px -2px rgb(49 46 129 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.04)",
+        elevated: "0 12px 32px -8px rgb(49 46 129 / 0.16), 0 4px 12px -4px rgb(15 23 42 / 0.06)",
       },
       borderRadius: {
-        xl2: "1.25rem",
+        // 12px -- matches the Figma design system's card radius (was 20px).
+        xl2: "0.75rem",
       },
     },
   },

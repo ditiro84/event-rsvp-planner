@@ -85,10 +85,21 @@ export function TableSelectionPanel({
           <X className="h-4 w-4" />
         </button>
       </div>
-      <p className="mb-3 text-xs text-slate-500">
-        {occupied} / {table.capacity} seats occupied &middot; {available} available
-      </p>
-      <ProgressBar value={occupied} max={table.capacity || 1} accent={occupied >= table.capacity ? "warning" : "brand"} className="mb-4" />
+      <ProgressBar value={occupied} max={table.capacity || 1} accent={occupied >= table.capacity ? "warning" : "brand"} className="mb-3" />
+      <div className="mb-4 grid grid-cols-3 gap-2">
+        <div className="rounded-lg bg-slate-50 p-2.5 text-center">
+          <p className="text-[10px] font-semibold uppercase text-slate-400">Capacity</p>
+          <p className="mt-0.5 text-sm font-bold text-slate-900">{table.capacity}</p>
+        </div>
+        <div className="rounded-lg bg-slate-50 p-2.5 text-center">
+          <p className="text-[10px] font-semibold uppercase text-slate-400">Occupied</p>
+          <p className="mt-0.5 text-sm font-bold text-slate-900">{occupied}</p>
+        </div>
+        <div className="rounded-lg bg-slate-50 p-2.5 text-center">
+          <p className="text-[10px] font-semibold uppercase text-slate-400">Available</p>
+          <p className="mt-0.5 text-sm font-bold text-slate-900">{available}</p>
+        </div>
+      </div>
       <div className="space-y-3">
         <Field label="Name">
           <Input value={name} onChange={(e) => setName(e.target.value)} />

@@ -9,6 +9,7 @@ import {
   Mail,
   Menu,
   Pencil,
+  ShoppingBag,
   Sparkles,
   Store,
   Trash2,
@@ -29,6 +30,7 @@ const EVENT_SECTIONS = [
   { to: "guests", label: "Guests", icon: Users },
   { to: "rsvp", label: "RSVP", icon: Mail },
   { to: "vendors", label: "Vendors", icon: Store },
+  { to: "merchandise", label: "Merchandise", icon: ShoppingBag },
   { to: "seating", label: "Seating", icon: Armchair },
   { to: "checkin", label: "Check-in", icon: ClipboardCheck },
 ];

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { formatDate } from "@/lib/format";
 import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
+import { ShopSection } from "./ShopSection";
 
 const schema = z
   .object({
@@ -146,11 +147,20 @@ export default function PublicRsvpPage() {
   if (submitted) {
     const copy = CONFIRMATION_COPY[submitted.rsvpStatus] ?? CONFIRMATION_COPY.CONFIRMED;
     return (
-      <StatusScreen
-        icon={<CheckCircle2 className="mx-auto h-12 w-12 text-success-500" />}
-        title={copy.title(submitted.firstName)}
-        description={copy.body}
-      />
+      <div className="min-h-screen bg-canvas px-4 pb-16 pt-16">
+        <div className="mx-auto max-w-lg">
+          <div className="rounded-xl2 border border-slate-200 bg-white p-8 text-center shadow-card">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-success-500" />
+            <h1 className="mt-4 font-display text-xl font-semibold text-slate-900">{copy.title(submitted.firstName)}</h1>
+            <p className="mt-2 text-sm text-slate-500">{copy.body}</p>
+          </div>
+          {/* Shown right after confirming, not just before -- a guest who
+              just RSVP'd is the most likely to be curious about merch,
+              and this way they don't have to refresh the page to see it
+              again. It's a browse-only preview until checkout ships. */}
+          <ShopSection rsvpToken={event.rsvpToken} />
+        </div>
+      </div>
     );
   }
 
@@ -284,6 +294,8 @@ export default function PublicRsvpPage() {
             Submit RSVP
           </Button>
         </form>
+
+        <ShopSection rsvpToken={event.rsvpToken} />
       </div>
     </div>
   );

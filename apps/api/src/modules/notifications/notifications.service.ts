@@ -66,6 +66,20 @@ export async function notifyRsvpChange(eventOwnerId: string, event: { id: string
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function notifyOrderPaid(userId: string, event: { id: string; name: string }, order: any) {
+  await prisma.notification.create({
+    data: {
+      userId,
+      eventId: event.id,
+      type: "ORDER_PAID",
+      title: `New order from ${order.guestName}`,
+      body: `${order.guestName} paid for their order on ${event.name}.`,
+      link: `/events/${event.id}/merchandise`,
+    },
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function notifyVendorStatusChanged(userId: string, vendor: any) {
   const event = await prisma.event.findUnique({ where: { id: vendor.eventId }, select: { name: true } });
   if (!event) return;

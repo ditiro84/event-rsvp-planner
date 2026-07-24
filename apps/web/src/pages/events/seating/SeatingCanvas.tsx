@@ -4,9 +4,9 @@ import type Konva from "konva";
 import type { LayoutObjectRecord, SeatRecord, TableRecord, VenueLayoutRecord } from "@/types";
 import { computeSeatPositions, LAYOUT_OBJECT_COLORS, LAYOUT_OBJECT_LABELS } from "./seatGeometry";
 
-const BRAND = "#4f46e5"; // brand-600 -- kept in sync with tailwind.config.js's brand palette
+const BRAND = "#633bfe"; // brand-600 -- kept in sync with tailwind.config.js's brand palette
 const SEAT_EMPTY = "#ffffff";
-const SEAT_STROKE = "#94a3b8";
+const SEAT_STROKE = "#908b9f";
 const SEAT_VIP = "#eab308";
 const SEAT_PLUS_ONE = "#f97316";
 
@@ -100,10 +100,10 @@ export const SeatingCanvas = forwardRef<Konva.Stage, Props>(function SeatingCanv
   const { canvasWidth, canvasHeight, gridSize } = layout;
   if (gridSize > 0) {
     for (let x = 0; x <= canvasWidth; x += gridSize) {
-      gridLines.push(<Line key={`gx-${x}`} points={[x, 0, x, canvasHeight]} stroke="#e2e8f0" strokeWidth={1} listening={false} />);
+      gridLines.push(<Line key={`gx-${x}`} points={[x, 0, x, canvasHeight]} stroke="#e8e6ed" strokeWidth={1} listening={false} />);
     }
     for (let y = 0; y <= canvasHeight; y += gridSize) {
-      gridLines.push(<Line key={`gy-${y}`} points={[0, y, canvasWidth, y]} stroke="#e2e8f0" strokeWidth={1} listening={false} />);
+      gridLines.push(<Line key={`gy-${y}`} points={[0, y, canvasWidth, y]} stroke="#e8e6ed" strokeWidth={1} listening={false} />);
     }
   }
 
@@ -171,7 +171,7 @@ function DecorObject({
   onSelect: () => void;
   onDragEnd: (x: number, y: number) => void;
 }) {
-  const color = object.color || LAYOUT_OBJECT_COLORS[object.type] || "#94a3b8";
+  const color = object.color || LAYOUT_OBJECT_COLORS[object.type] || "#908b9f";
   return (
     <Group
       x={object.x}
@@ -207,7 +207,7 @@ function DecorObject({
         verticalAlign="middle"
         fontSize={13}
         fontStyle="600"
-        fill="#1e293b"
+        fill="#221b3d"
         listening={false}
       />
     </Group>
@@ -253,8 +253,8 @@ function TableNode({
         <Ellipse
           radiusX={table.width / 2}
           radiusY={table.height / 2}
-          fill="#f8fafc"
-          stroke={selected ? BRAND : "#cbd5e1"}
+          fill="#f8f7fa"
+          stroke={selected ? BRAND : "#d3d0dc"}
           strokeWidth={selected ? 3 : 1.5}
           shadowColor={BRAND}
           shadowBlur={selected ? 14 : 0}
@@ -266,8 +266,8 @@ function TableNode({
           y={-table.height / 2}
           width={table.width}
           height={table.height}
-          fill="#f8fafc"
-          stroke={selected ? BRAND : "#cbd5e1"}
+          fill="#f8f7fa"
+          stroke={selected ? BRAND : "#d3d0dc"}
           strokeWidth={selected ? 3 : 1.5}
           cornerRadius={6}
           shadowColor={BRAND}
@@ -284,7 +284,7 @@ function TableNode({
         align="center"
         fontSize={13}
         fontStyle="600"
-        fill="#334155"
+        fill="#3d3a54"
         listening={false}
       />
       <Text
@@ -294,7 +294,7 @@ function TableNode({
         y={12}
         align="center"
         fontSize={11}
-        fill="#64748b"
+        fill="#6f6a82"
         listening={false}
       />
 

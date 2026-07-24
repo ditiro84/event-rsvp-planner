@@ -8,8 +8,8 @@ interface ProgressBarProps {
   trackClassName?: string;
 }
 
-// "brand" fill matches the Figma Progress Metrics component (#4f46e5 /
-// brand-600) exactly.
+// "brand" fill uses the brand-600 token (violet, per the approved
+// DESKTOP SCREENS mockups).
 const accentClasses: Record<NonNullable<ProgressBarProps["accent"]>, string> = {
   brand: "bg-brand-600",
   success: "bg-success-600",

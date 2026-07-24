@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Search, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { TableRecord, UnassignedGuest } from "@/types";
 
 export function GuestSidebar({
@@ -13,6 +14,11 @@ export function GuestSidebar({
   tables: TableRecord[];
   onAssign: (guestId: string, tableId: string) => void;
 }) {
+  const assignedCount = useMemo(
+    () => tables.reduce((sum, t) => sum + t.seats.filter((s) => s.assignment || s.partyAssignment).length, 0),
+    [tables]
+  );
+  const totalGuests = assignedCount + guests.length;
   const [search, setSearch] = useState("");
   // Keyboard-accessible alternative to the drag-and-drop assignment: pick a
   // guest's "Assign to table" button and choose from a native <select>. This
@@ -52,8 +58,11 @@ export function GuestSidebar({
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-100 px-4 py-3">
-        <h3 className="text-sm font-semibold text-slate-900">Unseated guests</h3>
-        <p className="text-xs text-slate-500">{guests.length} confirmed &middot; drag onto a table or use Assign</p>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-900">Unassigned Guests</h3>
+          <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-bold text-brand-700">{guests.length}</span>
+        </div>
+        <p className="mt-0.5 text-xs text-slate-500">drag onto a table or use Assign</p>
         <div className="relative mt-2.5">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <Input
@@ -132,6 +141,17 @@ export function GuestSidebar({
           </div>
         ))}
       </div>
+      {totalGuests > 0 && (
+        <div className="border-t border-slate-100 px-4 py-3">
+          <div className="mb-1.5 flex items-center justify-between text-xs">
+            <span className="font-medium text-slate-600">Seating Progress</span>
+            <span className="text-slate-500">
+              {assignedCount} / {totalGuests} assigned
+            </span>
+          </div>
+          <ProgressBar value={assignedCount} max={totalGuests} accent="success" />
+        </div>
+      )}
     </div>
   );
 }

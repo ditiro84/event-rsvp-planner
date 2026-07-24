@@ -1,136 +1,183 @@
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowRight, Armchair, ClipboardCheck, Mail, Users } from "lucide-react";
 import { useEventDashboard } from "@/hooks/useEvents";
+import { useInsights } from "@/hooks/useInsights";
 import { Card, StatCard } from "@/components/ui/Card";
-import { ProgressStat } from "@/components/ui/ProgressBar";
+import { RadialProgress } from "@/components/ui/RadialProgress";
+import { Stepper, type StepperStep } from "@/components/ui/Stepper";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/EmptyState";
-import { formatDate } from "@/lib/format";
 import type { EventRecord } from "@/types";
 
-interface ReadinessAction {
-  text: string;
-  cta: string;
-  to: string;
+// Short call-to-action label per insight destination, matching the
+// per-item buttons ("View Unassigned", "Send Reminder") in the
+// event-overview mockup's Action Required panel.
+function ctaForLink(link: string): string {
+  if (link.includes("/seating")) return "View Unassigned";
+  if (link.includes("/rsvp")) return "Send Reminder";
+  if (link.includes("/guests")) return "View Guests";
+  return "View";
 }
 
 export function EventOverviewTab({ event }: { event: EventRecord }) {
   const { data, isLoading, isError, refetch } = useEventDashboard(event.id);
+  const { data: insights } = useInsights(event.id);
   const navigate = useNavigate();
 
   if (isError) return <ErrorState title="We couldn't load this event's stats" onRetry={() => refetch()} />;
   if (isLoading || !data) return <Spinner />;
 
   const { stats } = data;
-  const pendingResponses = stats.pending + stats.maybe;
+  const actionItems = (insights ?? []).filter((i) => i.severity === "ACTION_REQUIRED");
+  const onTrack = actionItems.length === 0;
 
-  const actions: ReadinessAction[] = [];
-  if (pendingResponses > 0) {
-    actions.push({
-      text: `${pendingResponses} guest${pendingResponses === 1 ? " has" : "s have"} not responded yet.`,
-      cta: "View guests",
+  const rsvpTotal = stats.totalGuests || 0;
+  const rsvpDone = stats.confirmed;
+  const seatingTotal = stats.confirmed || 0;
+  const seatingDone = stats.assignedGuests;
+  const checkinTotal = stats.confirmed || 0;
+  const checkinDone = stats.checkedIn;
+
+  const steps: StepperStep[] = [
+    {
+      label: "Guests",
+      status: stats.totalGuests > 0 ? "completed" : "current",
+      statusLabel: stats.totalGuests > 0 ? "Completed" : "Add your guest list",
+    },
+    {
+      label: "RSVP Management",
+      status: rsvpTotal === 0 ? "upcoming" : rsvpDone >= rsvpTotal ? "completed" : "current",
+      statusLabel: rsvpTotal === 0 ? "Upcoming" : rsvpDone >= rsvpTotal ? "Completed" : "In Progress",
+    },
+    {
+      label: "Seating Planner",
+      status: seatingTotal === 0 ? "upcoming" : seatingDone >= seatingTotal ? "completed" : "current",
+      statusLabel: seatingTotal === 0 ? "Upcoming" : seatingDone >= seatingTotal ? "Completed" : "In Progress",
+    },
+    {
+      label: "Check-In",
+      status: checkinTotal === 0 || checkinDone === 0 ? "upcoming" : checkinDone >= checkinTotal ? "completed" : "current",
+      statusLabel: checkinTotal === 0 || checkinDone === 0 ? "Upcoming" : checkinDone >= checkinTotal ? "Completed" : "In Progress",
+    },
+  ];
+
+  const quickCards = [
+    {
+      label: "Guests",
+      icon: Users,
+      value: stats.totalGuests,
+      hint: "Total invited guests",
       to: `/events/${event.id}/guests`,
-    });
-  }
-  if (stats.unassignedConfirmedGuests > 0) {
-    actions.push({
-      text: `${stats.unassignedConfirmedGuests} confirmed guest${stats.unassignedConfirmedGuests === 1 ? "" : "s"} still need${
-        stats.unassignedConfirmedGuests === 1 ? "s" : ""
-      } a seat.`,
-      cta: "Open seating planner",
+    },
+    {
+      label: "RSVP Management",
+      icon: Mail,
+      value: stats.confirmed,
+      hint: "Confirmed attendees",
+      to: `/events/${event.id}/rsvp`,
+    },
+    {
+      label: "Seating Planner",
+      icon: Armchair,
+      value: stats.assignedGuests,
+      hint: "Guests assigned to tables",
       to: `/events/${event.id}/seating`,
-    });
-  }
-  if (event.rsvpDeadline && event.rsvpOpen) {
-    const daysLeft = Math.ceil((new Date(event.rsvpDeadline).getTime() - Date.now()) / 86400000);
-    if (daysLeft >= 0 && daysLeft <= 7) {
-      actions.push({
-        text: `RSVP deadline is approaching (${formatDate(event.rsvpDeadline)}).`,
-        cta: "View RSVP status",
-        to: `/events/${event.id}/rsvp`,
-      });
-    }
-  }
-
-  const onTrack = actions.length === 0;
+    },
+    {
+      label: "Check-In",
+      icon: ClipboardCheck,
+      value: stats.checkedIn > 0 ? stats.checkedIn : "Not Started",
+      hint: "Live registration tracking",
+      to: `/events/${event.id}/checkin`,
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <Card className="p-5 sm:p-6">
-        <div className="flex items-start gap-3">
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-              onTrack ? "bg-success-50 text-success-600" : "bg-warning-50 text-warning-600"
-            }`}
-          >
-            {onTrack ? <Sparkles className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {onTrack ? "Your event is on track" : "A few things need attention"}
-            </h2>
-            <p className="mt-0.5 text-sm text-slate-500">
-              {onTrack
-                ? "RSVPs, seating and check-in are all progressing well."
-                : "Here's what will make the biggest difference right now."}
-            </p>
-          </div>
-        </div>
+      <Stepper steps={steps} />
 
-        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
-          <ProgressStat label="RSVP progress" value={stats.confirmed} max={stats.totalGuests || 0} suffix="confirmed" />
-          <ProgressStat
-            label="Seating progress"
-            value={stats.assignedGuests}
-            max={stats.confirmed || 0}
-            suffix="assigned"
-            accent="success"
-          />
-          <ProgressStat
-            label="Check-in"
-            value={stats.checkedIn}
-            max={stats.confirmed || 0}
-            suffix="checked in"
-            accent="brand"
-          />
-        </div>
-      </Card>
-
-      {!onTrack && (
-        <Card className="p-5 sm:p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Action required</h3>
-          <div className="space-y-3">
-            {actions.map((action) => (
-              <div
-                key={action.cta + action.text}
-                className="flex flex-col gap-3 rounded-xl border border-warning-100 bg-warning-50/60 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <p className="text-sm text-slate-700">{action.text}</p>
-                <Button size="sm" variant="secondary" className="shrink-0" onClick={() => navigate(action.to)}>
-                  {action.cta}
-                </Button>
-              </div>
-            ))}
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <Card className="flex-1 p-6 sm:p-8">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <h2 className="text-xl font-bold text-slate-900">Event Readiness</h2>
+            <Badge variant={onTrack ? "success" : "warning"}>{onTrack ? "On Track" : "Needs Attention"}</Badge>
+          </div>
+          <p className="mb-6 text-sm text-slate-500">
+            {onTrack
+              ? "Your event is on track. Manage active RSVPs and seating layouts below."
+              : "A few items need attention below to stay on schedule."}
+          </p>
+          <div className="flex flex-col gap-5 sm:flex-row">
+            <RadialProgress value={rsvpDone} max={rsvpTotal} label="RSVP Progress" sublabel={`${rsvpDone} / ${rsvpTotal}`} accent="brand" />
+            <RadialProgress
+              value={seatingDone}
+              max={seatingTotal}
+              label="Seating Progress"
+              sublabel={`${seatingDone} / ${seatingTotal}`}
+              accent="success"
+            />
+            <RadialProgress
+              value={checkinDone}
+              max={checkinTotal}
+              label="Check-In Progress"
+              sublabel={checkinTotal === 0 ? "Upcoming" : `${checkinDone} / ${checkinTotal}`}
+              accent="warning"
+            />
           </div>
         </Card>
-      )}
 
-      {onTrack && (
-        <div className="flex items-center gap-2 rounded-xl border border-success-100 bg-success-50/60 px-4 py-3 text-sm text-success-700">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          Everything is on track. No outstanding actions right now.
-        </div>
-      )}
+        <Card className="w-full border-warning-200 bg-warning-50/60 p-6 sm:p-7 lg:w-[420px]">
+          <div className="mb-3 flex items-center gap-2">
+            <AlertTriangle className="h-[18px] w-[18px] text-warning-700" />
+            <h2 className="text-lg font-bold text-warning-900">{onTrack ? "All Clear" : "Action Required"}</h2>
+          </div>
+          <p className="mb-5 text-sm text-warning-700">
+            {onTrack
+              ? "No outstanding actions right now -- nice work staying ahead of things."
+              : "Please address these urgent planner items to maintain your timeline."}
+          </p>
+          {actionItems.length > 0 && (
+            <div className="space-y-3">
+              {actionItems.slice(0, 4).map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white p-4">
+                  <p className="min-w-0 flex-1 text-sm font-semibold text-slate-900">{item.title}</p>
+                  <Button size="sm" variant="secondary" className="shrink-0" onClick={() => navigate(item.link)}>
+                    {ctaForLink(item.link)}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
 
       <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Guest details</h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard label="Total invited" value={stats.totalGuests} />
-          <StatCard label="Declined" value={stats.declined} accent="red" />
-          <StatCard label="Expected attendees" value={stats.totalExpectedAttendees} />
-          <StatCard label="Tables created" value={stats.totalTables} />
-          <StatCard label="VIP guests" value={stats.vip} accent="purple" />
+        <h2 className="mb-4 text-lg font-bold text-slate-900">Quick Access Command Panels</h2>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {quickCards.map((qc) => (
+            <Card key={qc.label} className="flex flex-col gap-4 p-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-500">{qc.label}</span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
+                  <qc.icon className="h-4 w-4 text-brand-600" />
+                </span>
+              </div>
+              <div>
+                <p className="text-[28px] font-bold leading-tight text-slate-900">{qc.value}</p>
+                <p className="text-[13px] text-slate-400">{qc.hint}</p>
+              </div>
+              <div className="h-px w-full bg-slate-100" />
+              <button
+                onClick={() => navigate(qc.to)}
+                className="flex items-center gap-1 self-start text-[13px] font-semibold text-brand-600 hover:text-brand-700"
+              >
+                Go to planner
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </Card>
+          ))}
         </div>
       </div>
 

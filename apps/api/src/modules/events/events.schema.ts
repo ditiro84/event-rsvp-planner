@@ -37,6 +37,7 @@ export type CreateEventInput = z.infer<typeof createEventSchema>;
 
 export const updateEventSchema = createEventSchema.partial().extend({
   rsvpOpen: z.boolean().optional(),
+  merchandiseEnabled: z.boolean().optional(),
 });
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 

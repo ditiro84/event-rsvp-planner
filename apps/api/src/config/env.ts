@@ -36,4 +36,15 @@ export const env = {
   // domain there before setting RESEND_FROM_EMAIL to an address on it.
   resendApiKey: process.env.RESEND_API_KEY,
   resendFromEmail: process.env.RESEND_FROM_EMAIL,
+  // Optional: the event merchandise shop's checkout is disabled (with a
+  // clear error) until both of these are set. Get keys at
+  // https://dashboard.stripe.com/apikeys and set up an endpoint at
+  // https://dashboard.stripe.com/webhooks pointing at
+  // POST /api/webhooks/stripe (event: checkout.session.completed) to get
+  // the webhook signing secret.
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  // Single global currency for all shops -- this app has no per-event
+  // currency setting yet. ISO 4217, lowercase, as Stripe expects.
+  stripeCurrency: (process.env.STRIPE_CURRENCY ?? "usd").toLowerCase(),
 };

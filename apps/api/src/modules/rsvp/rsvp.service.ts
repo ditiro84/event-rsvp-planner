@@ -18,6 +18,11 @@ async function publicEventShape(event: any) {
   const cardCount = await prisma.eventInvitationCard.count({ where: { eventId: event.id } });
   return {
     id: event.id,
+    // Exposed so the guest-facing page can hit the shop endpoints
+    // (/api/shop/:token/...) regardless of whether the guest landed here via
+    // the shared event link or a personalized invite link -- the shop is
+    // always keyed by the one event-level token, not the per-guest one.
+    rsvpToken: event.rsvpToken,
     name: event.name,
     type: event.type,
     date: event.date,

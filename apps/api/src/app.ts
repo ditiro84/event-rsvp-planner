@@ -16,6 +16,8 @@ import guestByIdRoutes from "./modules/guests/guestById.routes";
 import notificationsRoutes from "./modules/notifications/notifications.routes";
 import insightsRoutes from "./modules/insights/insights.routes";
 import analyticsRoutes from "./modules/analytics/analytics.routes";
+import shopRoutes from "./modules/products/shop.routes";
+import webhookRoutes from "./modules/products/webhook.routes";
 
 export function createApp() {
   const app = express();
@@ -30,6 +32,11 @@ export function createApp() {
     })
   );
   app.use(cookieParser());
+
+  // Stripe webhooks MUST be mounted before express.json(): they need the raw
+  // request body for signature verification (see webhook.routes.ts).
+  app.use("/api/webhooks", webhookRoutes);
+
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
 
@@ -64,6 +71,7 @@ export function createApp() {
   app.use("/api/notifications", notificationsRoutes);
   app.use("/api/insights", insightsRoutes);
   app.use("/api/analytics", analyticsRoutes);
+  app.use("/api/shop", shopRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

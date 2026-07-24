@@ -42,6 +42,7 @@ export interface EventRecord {
   allowDietary: boolean;
   allowAccessibilityInfo: boolean;
   allowSpecialRequests: boolean;
+  merchandiseEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -134,6 +135,10 @@ export interface RsvpDashboard {
 
 export interface PublicEvent {
   id: string;
+  // Always the shared event-level token, even when this page was reached via
+  // a personalized invite link -- used to key the guest-facing shop, which
+  // isn't per-guest.
+  rsvpToken: string;
   name: string;
   type: EventType;
   date: string;
@@ -319,7 +324,7 @@ export interface VendorSummary {
 // Notifications
 // ---------------------------------------------------------------------------
 
-export type NotificationType = "RSVP_CONFIRMED" | "RSVP_DECLINED" | "VENDOR_STATUS_CHANGED" | "SYSTEM";
+export type NotificationType = "RSVP_CONFIRMED" | "RSVP_DECLINED" | "VENDOR_STATUS_CHANGED" | "ORDER_PAID" | "SYSTEM";
 
 export interface NotificationRecord {
   id: string;
@@ -383,4 +388,63 @@ export interface AnalyticsOverview {
   vendorsBooked: number;
   totalVendorSpend: number;
   byEvent: AnalyticsByEvent[];
+}
+
+// ---------------------------------------------------------------------------
+// Merchandise (event shop)
+// ---------------------------------------------------------------------------
+
+export interface ProductRecord {
+  id: string;
+  eventId: string;
+  name: string;
+  description: string | null;
+  price: number;
+  stockQuantity: number | null;
+  active: boolean;
+  hasImage: boolean;
+  soldCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type OrderStatus = "PENDING" | "PAID" | "CANCELLED";
+
+export interface OrderItemRecord {
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+}
+
+export interface OrderRecord {
+  id: string;
+  eventId: string;
+  guestId: string | null;
+  guestName: string;
+  guestEmail: string;
+  status: OrderStatus;
+  total: number;
+  deliveryMethod: string;
+  createdAt: string;
+  items: OrderItemRecord[];
+}
+
+export interface OrdersSummary {
+  totalSales: number;
+  orderCount: number;
+  itemsSold: number;
+}
+
+export interface PublicShopProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  stockQuantity: number | null;
+  hasImage: boolean;
+}
+
+export interface PublicShopListing {
+  enabled: boolean;
+  products: PublicShopProduct[];
 }

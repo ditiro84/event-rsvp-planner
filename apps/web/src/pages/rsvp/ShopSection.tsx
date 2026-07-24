@@ -2,11 +2,8 @@ import { Package, ShoppingBag } from "lucide-react";
 import { usePublicShop, publicProductImageUrl } from "@/hooks/useProducts";
 import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
+import { formatMoney } from "@/lib/format";
 import type { PublicShopProduct } from "@/types";
-
-function money(value: number) {
-  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 // Browse-only preview for now -- purchasing is a v2 feature. The checkout
 // mutation (useCheckout, in useProducts.ts) and the Stripe-backed backend
@@ -28,7 +25,7 @@ function ProductPreviewCard({ product }: { product: PublicShopProduct }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-slate-900">{product.name}</p>
         {product.description && <p className="truncate text-xs text-slate-500">{product.description}</p>}
-        <p className="mt-0.5 text-sm font-medium text-brand-700">{money(product.price)}</p>
+        <p className="mt-0.5 text-sm font-medium text-brand-700">{formatMoney(product.price, product.currency)}</p>
       </div>
       {soldOut && <span className="shrink-0 text-xs font-medium text-slate-400">Sold out</span>}
     </div>

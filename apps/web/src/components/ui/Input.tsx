@@ -6,12 +6,13 @@ interface FieldWrapperProps {
   error?: string;
   hint?: string;
   htmlFor?: string;
+  className?: string;
   children: React.ReactNode;
 }
 
-export function Field({ label, error, hint, htmlFor, children }: FieldWrapperProps) {
+export function Field({ label, error, hint, htmlFor, className, children }: FieldWrapperProps) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn("flex flex-col gap-1", className)}>
       {label && (
         <label htmlFor={htmlFor} className="text-sm font-medium text-slate-700">
           {label}

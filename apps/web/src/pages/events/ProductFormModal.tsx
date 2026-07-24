@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,19 +6,38 @@ import { toast } from "sonner";
 import { Upload } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { Checkbox, Field, Input, Textarea } from "@/components/ui/Input";
+import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/Input";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 import { getApiErrorMessage } from "@/lib/api";
-import { useCreateProduct, useUpdateProduct, useUploadProductImage, productImageUrl } from "@/hooks/useProducts";
+import { CURRENCIES } from "@/lib/format";
+import { useCreateProduct, useUpdateProduct, useUploadProductImage, productImagePath } from "@/hooks/useProducts";
 import type { ProductRecord } from "@/types";
 
 const schema = z.object({
   name: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
   price: z.coerce.number().min(0, "Price must be 0 or more"),
+  currency: z.enum(["USD", "GBP", "NGN"]),
   stockQuantity: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
   active: z.boolean().optional(),
 });
 type FormValues = z.infer<typeof schema>;
+
+// Local preview of a not-yet-uploaded file -- kept out of render so we don't
+// mint a new blob URL (and leak the old one) on every re-render.
+function usePendingFilePreview(file: File | null) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+  return url;
+}
 
 export function ProductFormModal({
   open,
@@ -37,6 +56,7 @@ export function ProductFormModal({
   const uploadImage = useUploadProductImage(eventId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const pendingPreviewUrl = usePendingFilePreview(pendingFile);
 
   const {
     register,
@@ -49,10 +69,11 @@ export function ProductFormModal({
           name: product.name,
           description: product.description ?? "",
           price: product.price,
+          currency: product.currency,
           stockQuantity: product.stockQuantity ?? "",
           active: product.active,
         }
-      : { name: "", description: "", price: 0, stockQuantity: "", active: true },
+      : { name: "", description: "", price: 0, currency: "USD", stockQuantity: "", active: true },
   });
 
   async function onSubmit(values: FormValues) {
@@ -85,10 +106,15 @@ export function ProductFormModal({
             onClick={() => fileInputRef.current?.click()}
             className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-brand-400 hover:text-brand-600"
           >
-            {pendingFile ? (
-              <img src={URL.createObjectURL(pendingFile)} alt="" className="h-full w-full object-cover" />
+            {pendingPreviewUrl ? (
+              <img src={pendingPreviewUrl} alt="" className="h-full w-full object-cover" />
             ) : product?.hasImage ? (
-              <img src={productImageUrl(eventId, product.id)} alt="" className="h-full w-full object-cover" />
+              <AuthedImage
+                src={productImagePath(eventId, product.id)}
+                alt=""
+                className="h-full w-full object-cover"
+                fallback={<Upload className="h-6 w-6" />}
+              />
             ) : (
               <Upload className="h-6 w-6" />
             )}
@@ -109,14 +135,23 @@ export function ProductFormModal({
         <Field label="Product name" htmlFor="p-name" error={errors.name?.message}>
           <Input id="p-name" {...register("name")} error={!!errors.name} />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Price" htmlFor="p-price" error={errors.price?.message}>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Price" htmlFor="p-price" error={errors.price?.message} className="col-span-2">
             <Input id="p-price" type="number" step="0.01" min="0" {...register("price")} error={!!errors.price} />
           </Field>
-          <Field label="Stock (blank = unlimited)" htmlFor="p-stock" error={errors.stockQuantity?.message as string | undefined}>
-            <Input id="p-stock" type="number" min="0" {...register("stockQuantity")} />
+          <Field label="Currency" htmlFor="p-currency">
+            <Select id="p-currency" {...register("currency")}>
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.symbol} {c.code}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
+        <Field label="Stock (blank = unlimited)" htmlFor="p-stock" error={errors.stockQuantity?.message as string | undefined}>
+          <Input id="p-stock" type="number" min="0" {...register("stockQuantity")} />
+        </Field>
         <Field label="Description" htmlFor="p-description">
           <Textarea id="p-description" rows={3} {...register("description")} />
         </Field>

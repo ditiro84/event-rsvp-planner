@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Package, Pencil, Plus, ShoppingCart, Store, Trash2 } from "lucide-react";
-import { useDeleteProduct, useOrders, useOrdersSummary, useProducts, productImageUrl } from "@/hooks/useProducts";
+import { useDeleteProduct, useOrders, useOrdersSummary, useProducts, productImagePath } from "@/hooks/useProducts";
 import { useUpdateEvent } from "@/hooks/useEvents";
 import { Card, StatCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
 import { ProductFormModal } from "./ProductFormModal";
 import type { EventRecord, ProductRecord } from "@/types";
@@ -120,7 +121,16 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
               <Card key={product.id} className="flex flex-col overflow-hidden">
                 <div className="h-40 w-full shrink-0 bg-slate-100">
                   {product.hasImage ? (
-                    <img src={productImageUrl(event.id, product.id)} alt={product.name} className="h-full w-full object-cover" />
+                    <AuthedImage
+                      src={productImagePath(event.id, product.id)}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center text-slate-300">
+                          <Package className="h-8 w-8" />
+                        </div>
+                      }
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-slate-300">
                       <Package className="h-8 w-8" />
@@ -130,7 +140,7 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
                 <div className="flex flex-1 flex-col gap-4 p-5">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold text-slate-900">${product.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                      <p className="text-lg font-bold text-slate-900">{formatMoney(product.price, product.currency)}</p>
                       {stockBadge(product)}
                     </div>
                     <p className="truncate font-semibold text-slate-900">{product.name}</p>

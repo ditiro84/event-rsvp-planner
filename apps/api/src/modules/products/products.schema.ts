@@ -5,6 +5,7 @@ export const createProductSchema = z.object({
   description: z.string().trim().max(2000).optional().nullable(),
   // Whole-currency amount from the client (e.g. dollars); stored as cents.
   price: z.coerce.number().min(0).max(1_000_000),
+  currency: z.enum(["USD", "GBP", "NGN"]).optional(),
   stockQuantity: z.coerce.number().int().min(0).max(1_000_000).optional().nullable(),
   active: z.boolean().optional(),
 });

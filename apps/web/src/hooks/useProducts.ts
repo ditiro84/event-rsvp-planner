@@ -60,8 +60,12 @@ export function useUploadProductImage(eventId: string) {
   });
 }
 
-export function productImageUrl(eventId: string, productId: string) {
-  return `${apiBaseUrl}/events/${eventId}/products/${productId}/image`;
+// Path (not a full URL) for the authenticated planner-side image download --
+// meant to be fetched via the `api` axios client (see AuthedImage.tsx), not
+// used as a plain <img src>, since that route requires the Bearer token /
+// session cookie that a bare <img> tag can't send cross-site.
+export function productImagePath(eventId: string, productId: string) {
+  return `/events/${eventId}/products/${productId}/image`;
 }
 
 export function publicProductImageUrl(productId: string) {

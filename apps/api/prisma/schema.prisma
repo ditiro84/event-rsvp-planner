@@ -495,6 +495,17 @@ model Notification {
 // MERCHANDISE (event shop)
 // ---------------------------------------------------------------------------
 
+// Which currency a product's price is denominated in. Chosen per-product by
+// the planner (e.g. a UK-based event might price in GBP, a Nigerian one in
+// NGN) -- this is purely a display/storage label, not live FX conversion.
+// Orders/checkout are still a v2 feature (see ShopSection.tsx), so there's
+// no cross-currency cart math to reconcile yet.
+enum ProductCurrency {
+  USD
+  GBP
+  NGN
+}
+
 // A single sellable item on an event's shop (e.g. favour boxes, t-shirts).
 // One optional image, stored the same way as EventInvitationCard (bytes in
 // Postgres) rather than an external bucket -- consistent with the rest of
@@ -509,6 +520,7 @@ model Product {
   // Minor currency units (cents), not a float, to avoid rounding drift --
   // same convention as Vendor.costCents.
   priceCents  Int
+  currency    ProductCurrency @default(USD)
   // Null = unlimited stock. Decremented when an order for this product is
   // marked PAID (see markOrderPaid in orders.service.ts).
   stockQuantity Int?

@@ -12,6 +12,8 @@ export type EventType =
 
 export type RsvpStatus = "PENDING" | "CONFIRMED" | "DECLINED" | "MAYBE";
 
+export type CurrencyCode = "USD" | "GBP" | "NGN";
+
 export interface User {
   id: string;
   name: string;
@@ -400,6 +402,7 @@ export interface ProductRecord {
   name: string;
   description: string | null;
   price: number;
+  currency: CurrencyCode;
   stockQuantity: number | null;
   active: boolean;
   hasImage: boolean;
@@ -440,6 +443,7 @@ export interface PublicShopProduct {
   name: string;
   description: string | null;
   price: number;
+  currency: CurrencyCode;
   stockQuantity: number | null;
   hasImage: boolean;
 }

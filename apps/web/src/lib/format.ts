@@ -1,3 +1,5 @@
+import type { CurrencyCode } from "@/types";
+
 export function formatDate(value: string | null | undefined) {
   if (!value) return "—";
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -24,6 +26,28 @@ export function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// --- Currency -----------------------------------------------------------
+// Merchandise product prices support three currencies (planner picks one
+// per product; there's no live FX conversion, it's just which symbol/code
+// is stored and displayed). Orders/checkout are still a v2 feature, so
+// there's no cross-currency cart math to worry about yet.
+export const CURRENCIES: { code: CurrencyCode; symbol: string; label: string }[] = [
+  { code: "USD", symbol: "$", label: "US Dollar" },
+  { code: "GBP", symbol: "£", label: "British Pound" },
+  { code: "NGN", symbol: "₦", label: "Nigerian Naira" },
+];
+
+const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+  USD: "$",
+  GBP: "£",
+  NGN: "₦",
+};
+
+export function formatMoney(amount: number, currency: CurrencyCode = "USD") {
+  const symbol = CURRENCY_SYMBOLS[currency] ?? "$";
+  return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {

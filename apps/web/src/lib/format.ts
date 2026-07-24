@@ -1,4 +1,4 @@
-import type { CurrencyCode } from "@/types";
+import type { CurrencyCode, CurrencyTotal } from "@/types";
 
 export function formatDate(value: string | null | undefined) {
   if (!value) return "—";
@@ -29,10 +29,12 @@ export function formatFileSize(bytes: number) {
 }
 
 // --- Currency -----------------------------------------------------------
-// Merchandise product prices support three currencies (planner picks one
-// per product; there's no live FX conversion, it's just which symbol/code
-// is stored and displayed). Orders/checkout are still a v2 feature, so
-// there's no cross-currency cart math to worry about yet.
+// Money amounts across the app (merchandise prices, vendor costs) support
+// three currencies -- the planner picks one per record; there's no live FX
+// conversion, it's just which symbol/code is stored and displayed. Where a
+// figure aggregates several records (e.g. total vendor spend), it's broken
+// down per currency rather than blended into one misleading number -- see
+// formatMoneyBreakdown.
 export const CURRENCIES: { code: CurrencyCode; symbol: string; label: string }[] = [
   { code: "USD", symbol: "$", label: "US Dollar" },
   { code: "GBP", symbol: "£", label: "British Pound" },
@@ -48,6 +50,14 @@ const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
 export function formatMoney(amount: number, currency: CurrencyCode = "USD") {
   const symbol = CURRENCY_SYMBOLS[currency] ?? "$";
   return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Renders a per-currency total list as e.g. "$500.00 + £120.00". Returns a
+// plain "—" when there's nothing to show, and skips the "+"-joining when
+// there's only one currency (the common case).
+export function formatMoneyBreakdown(totals: CurrencyTotal[]) {
+  if (totals.length === 0) return "—";
+  return totals.map((t) => formatMoney(t.total, t.currency)).join(" + ");
 }
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {

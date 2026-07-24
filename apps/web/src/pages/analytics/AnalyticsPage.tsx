@@ -3,7 +3,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { StatCard } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoneyBreakdown } from "@/lib/format";
 
 function pct(value: number) {
   return `${Math.round(value * 100)}%`;
@@ -53,7 +53,7 @@ export default function AnalyticsPage() {
             <StatCard label="Vendors" value={data.totalVendors} hint={`${data.vendorsBooked} booked or confirmed`} icon={<Store className="h-4 w-4" />} />
             <StatCard
               label="Vendor Spend"
-              value={`$${data.totalVendorSpend.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              value={formatMoneyBreakdown(data.vendorSpendByCurrency)}
               icon={<DollarSign className="h-4 w-4" />}
             />
             <StatCard label="Response Rate" value={pct(data.responseRate)} hint="Confirmed, declined, or maybe" />

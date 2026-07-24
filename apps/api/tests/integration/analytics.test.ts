@@ -47,6 +47,7 @@ describe("Analytics overview", () => {
     expect(res.body.data.totalVendors).toBe(1);
     expect(res.body.data.vendorsBooked).toBe(1);
     expect(res.body.data.totalVendorSpend).toBe(200);
+    expect(res.body.data.vendorSpendByCurrency).toEqual([{ currency: "USD", total: 200 }]);
     expect(res.body.data.byEvent).toHaveLength(1);
     expect(res.body.data.byEvent[0].eventName).toBe("Test Gala");
   });

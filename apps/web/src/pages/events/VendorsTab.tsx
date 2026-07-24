@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { getApiErrorMessage } from "@/lib/api";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format";
 import { VendorFormModal } from "./VendorFormModal";
 import type { VendorRecord, VendorStatus } from "@/types";
 
@@ -75,7 +76,7 @@ export function VendorsTab({ eventId }: { eventId: string }) {
         />
         <StatCard
           label="Total Cost"
-          value={`$${(summary?.totalCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+          value={formatMoneyBreakdown(summary?.costsByCurrency ?? [])}
           accent="purple"
           icon={<DollarSign className="h-4 w-4" />}
         />
@@ -126,7 +127,7 @@ export function VendorsTab({ eventId }: { eventId: string }) {
                     {vendor.contactName || vendor.email || vendor.phone || <span className="text-slate-300">—</span>}
                   </td>
                   <td className="px-5 py-3.5 text-slate-600">
-                    {vendor.cost != null ? `$${vendor.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
+                    {vendor.cost != null ? formatMoney(vendor.cost, vendor.currency) : "—"}
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex justify-end gap-1.5">

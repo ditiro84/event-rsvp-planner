@@ -33,6 +33,7 @@ export const createVendorSchema = z.object({
   website: z.string().trim().max(500).optional().nullable(),
   // Whole-currency amount from the client (e.g. dollars); stored as cents.
   cost: z.coerce.number().min(0).max(10_000_000).optional().nullable(),
+  currency: z.enum(["USD", "GBP", "NGN"]).optional(),
   depositPaid: z.boolean().optional(),
   notes: z.string().trim().max(5000).optional().nullable(),
 });

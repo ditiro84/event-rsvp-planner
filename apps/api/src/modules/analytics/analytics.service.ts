@@ -1,5 +1,22 @@
 import { prisma } from "../../lib/prisma";
 
+// Vendors can each be priced in a different currency, so a single blended
+// "total spend" number would be misleading -- group by currency instead.
+// Mirrors the identical helper in vendors.service.ts (kept local rather
+// than shared, matching this codebase's existing convention of small
+// per-module helpers over a shared utils grab-bag).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function groupCostsByCurrency(vendors: any[]) {
+  const totalsByCurrency = new Map<string, number>();
+  for (const v of vendors) {
+    if (v.costCents === null || v.costCents === undefined) continue;
+    totalsByCurrency.set(v.currency, (totalsByCurrency.get(v.currency) ?? 0) + v.costCents);
+  }
+  return Array.from(totalsByCurrency.entries())
+    .map(([currency, cents]) => ({ currency, total: cents / 100 }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+}
+
 // Cross-event aggregate stats for the planner's Analytics page. Everything
 // here is derived from existing Event/Guest/Table/Vendor rows -- there is
 // no separate metrics/snapshot table, so figures always reflect current
@@ -29,6 +46,7 @@ export async function getAnalyticsOverview(userId: string) {
       totalVendors: 0,
       vendorsBooked: 0,
       totalVendorSpend: 0,
+      vendorSpendByCurrency: [],
       byEvent: [],
     };
   }
@@ -44,7 +62,7 @@ export async function getAnalyticsOverview(userId: string) {
     }),
     prisma.vendor.findMany({
       where: { eventId: { in: eventIds } },
-      select: { eventId: true, status: true, costCents: true },
+      select: { eventId: true, status: true, costCents: true, currency: true },
     }),
   ]);
 
@@ -98,6 +116,7 @@ export async function getAnalyticsOverview(userId: string) {
   const totalVendors = vendors.length;
   const vendorsBooked = vendors.filter((v: { status: string }) => v.status === "BOOKED" || v.status === "CONFIRMED").length;
   const totalVendorSpend = vendors.reduce((sum: number, v: { costCents: number | null }) => sum + (v.costCents ?? 0), 0) / 100;
+  const vendorSpendByCurrency = groupCostsByCurrency(vendors);
 
   return {
     totalEvents: events.length,
@@ -115,6 +134,7 @@ export async function getAnalyticsOverview(userId: string) {
     totalVendors,
     vendorsBooked,
     totalVendorSpend,
+    vendorSpendByCurrency,
     byEvent,
   };
 }

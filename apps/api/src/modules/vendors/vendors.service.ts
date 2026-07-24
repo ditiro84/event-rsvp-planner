@@ -22,6 +22,23 @@ function serializeVendor(vendor: any) {
   };
 }
 
+// Vendors can each be priced in a different currency (see Vendor.currency),
+// so a single blended "total cost" number would be misleading -- this
+// groups by currency instead, e.g. [{currency: "USD", total: 500}, {currency:
+// "GBP", total: 120}], so the UI can show "$500.00 + £120.00" rather than
+// silently summing unlike units under one $ sign.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function groupCostsByCurrency(vendors: any[]) {
+  const totalsByCurrency = new Map<string, number>();
+  for (const v of vendors) {
+    if (v.costCents === null || v.costCents === undefined) continue;
+    totalsByCurrency.set(v.currency, (totalsByCurrency.get(v.currency) ?? 0) + v.costCents);
+  }
+  return Array.from(totalsByCurrency.entries())
+    .map(([currency, cents]) => ({ currency, total: cents / 100 }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+}
+
 export async function getOwnedVendor(userId: string, eventId: string, vendorId: string) {
   await getOwnedEvent(userId, eventId);
   const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
@@ -60,6 +77,7 @@ export async function createVendor(userId: string, eventId: string, input: Creat
       phone: input.phone || null,
       website: input.website || null,
       costCents: toCents(input.cost) ?? null,
+      currency: input.currency ?? "USD",
       depositPaid: input.depositPaid ?? false,
       notes: input.notes || null,
     },
@@ -108,6 +126,10 @@ export async function getVendorSummary(userId: string, eventId: string) {
   return {
     totalVendors: vendors.length,
     bookedCount,
+    // Kept for backwards compatibility (a plain sum, only meaningful if
+    // every vendor shares one currency) -- costsByCurrency below is what
+    // the UI actually displays.
     totalCost: totalCostCents / 100,
+    costsByCurrency: groupCostsByCurrency(vendors),
   };
 }

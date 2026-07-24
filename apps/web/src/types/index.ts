@@ -310,16 +310,23 @@ export interface VendorRecord {
   phone: string | null;
   website: string | null;
   cost: number | null;
+  currency: CurrencyCode;
   depositPaid: boolean;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface CurrencyTotal {
+  currency: CurrencyCode;
+  total: number;
+}
+
 export interface VendorSummary {
   totalVendors: number;
   bookedCount: number;
   totalCost: number;
+  costsByCurrency: CurrencyTotal[];
 }
 
 // ---------------------------------------------------------------------------
@@ -389,6 +396,7 @@ export interface AnalyticsOverview {
   totalVendors: number;
   vendorsBooked: number;
   totalVendorSpend: number;
+  vendorSpendByCurrency: CurrencyTotal[];
   byEvent: AnalyticsByEvent[];
 }
 

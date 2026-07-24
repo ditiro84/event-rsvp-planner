@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { getApiErrorMessage } from "@/lib/api";
+import { CURRENCIES } from "@/lib/format";
 import { useCreateVendor, useUpdateVendor } from "@/hooks/useVendors";
 import type { VendorRecord } from "@/types";
 
@@ -35,6 +36,7 @@ const schema = z.object({
   phone: z.string().optional(),
   website: z.string().optional(),
   cost: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
+  currency: z.enum(["USD", "GBP", "NGN"]),
   depositPaid: z.boolean().optional(),
   notes: z.string().optional(),
 });
@@ -71,10 +73,11 @@ export function VendorFormModal({
           phone: vendor.phone ?? "",
           website: vendor.website ?? "",
           cost: vendor.cost ?? "",
+          currency: vendor.currency,
           depositPaid: vendor.depositPaid,
           notes: vendor.notes ?? "",
         }
-      : { name: "", category: "OTHER", status: "CONTACTED", depositPaid: false },
+      : { name: "", category: "OTHER", status: "CONTACTED", currency: "USD", depositPaid: false },
   });
 
   async function onSubmit(values: FormValues) {
@@ -119,12 +122,21 @@ export function VendorFormModal({
             </Select>
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Contact name" htmlFor="v-contact">
-            <Input id="v-contact" {...register("contactName")} />
-          </Field>
-          <Field label="Cost ($)" htmlFor="v-cost" error={errors.cost?.message as string | undefined}>
+        <Field label="Contact name" htmlFor="v-contact">
+          <Input id="v-contact" {...register("contactName")} />
+        </Field>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Cost" htmlFor="v-cost" error={errors.cost?.message as string | undefined} className="col-span-2">
             <Input id="v-cost" type="number" step="0.01" min="0" {...register("cost")} />
+          </Field>
+          <Field label="Currency" htmlFor="v-currency">
+            <Select id="v-currency" {...register("currency")}>
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.symbol} {c.code}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">

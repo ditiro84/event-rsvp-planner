@@ -445,6 +445,7 @@ model Vendor {
   website     String?
   // Minor currency units (e.g. cents), not a float, to avoid rounding drift.
   costCents   Int?
+  currency    Currency @default(USD)
   depositPaid Boolean @default(false)
   notes       String?
 
@@ -495,12 +496,15 @@ model Notification {
 // MERCHANDISE (event shop)
 // ---------------------------------------------------------------------------
 
-// Which currency a product's price is denominated in. Chosen per-product by
-// the planner (e.g. a UK-based event might price in GBP, a Nigerian one in
-// NGN) -- this is purely a display/storage label, not live FX conversion.
+// Shared currency label for anything money-related in the app (product
+// prices, vendor costs). Chosen per-record by the planner (e.g. a UK-based
+// event might price in GBP, a Nigerian one in NGN) -- this is purely a
+// display/storage label, not live FX conversion, so totals across records
+// with different currencies are reported per-currency rather than blended
+// into one misleading number (see costsByCurrency / vendorSpendByCurrency).
 // Orders/checkout are still a v2 feature (see ShopSection.tsx), so there's
-// no cross-currency cart math to reconcile yet.
-enum ProductCurrency {
+// no cross-currency cart math to reconcile there yet.
+enum Currency {
   USD
   GBP
   NGN
@@ -520,7 +524,7 @@ model Product {
   // Minor currency units (cents), not a float, to avoid rounding drift --
   // same convention as Vendor.costCents.
   priceCents  Int
-  currency    ProductCurrency @default(USD)
+  currency    Currency @default(USD)
   // Null = unlimited stock. Decremented when an order for this product is
   // marked PAID (see markOrderPaid in orders.service.ts).
   stockQuantity Int?

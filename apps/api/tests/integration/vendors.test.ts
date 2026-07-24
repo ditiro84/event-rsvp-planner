@@ -125,12 +125,20 @@ describe("Vendors", () => {
     const auth = { Authorization: `Bearer ${token}` };
 
     await request(app).post(`/api/events/${eventId}/vendors`).set(auth).send({ name: "Vendor A", cost: 1000, status: "BOOKED" });
-    await request(app).post(`/api/events/${eventId}/vendors`).set(auth).send({ name: "Vendor B", cost: 500, status: "CONTACTED" });
+    await request(app).post(`/api/events/${eventId}/vendors`).set(auth).send({ name: "Vendor B", cost: 500, status: "CONTACTED", currency: "GBP" });
 
     const res = await request(app).get(`/api/events/${eventId}/vendors/summary`).set(auth);
     expect(res.status).toBe(200);
     expect(res.body.data.totalVendors).toBe(2);
     expect(res.body.data.bookedCount).toBe(1);
     expect(res.body.data.totalCost).toBe(1500);
+    // Vendors priced in different currencies shouldn't be blended into one
+    // total -- each currency gets its own entry.
+    expect(res.body.data.costsByCurrency).toEqual(
+      expect.arrayContaining([
+        { currency: "USD", total: 1000 },
+        { currency: "GBP", total: 500 },
+      ])
+    );
   });
 });

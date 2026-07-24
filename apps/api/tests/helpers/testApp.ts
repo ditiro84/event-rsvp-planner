@@ -7,6 +7,8 @@ export function buildTestApp() {
 
 // Deletes all rows between tests, respecting FK order (children first).
 export async function resetDatabase() {
+  await prisma.notification.deleteMany();
+  await prisma.vendor.deleteMany();
   await prisma.checkIn.deleteMany();
   await prisma.seatingAssignment.deleteMany();
   await prisma.seat.deleteMany();

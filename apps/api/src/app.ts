@@ -13,6 +13,9 @@ import authRoutes from "./modules/auth/auth.routes";
 import eventsRoutes from "./modules/events/events.routes";
 import rsvpRoutes from "./modules/rsvp/rsvp.routes";
 import guestByIdRoutes from "./modules/guests/guestById.routes";
+import notificationsRoutes from "./modules/notifications/notifications.routes";
+import insightsRoutes from "./modules/insights/insights.routes";
+import analyticsRoutes from "./modules/analytics/analytics.routes";
 
 export function createApp() {
   const app = express();
@@ -58,6 +61,9 @@ export function createApp() {
   app.use("/api/events", eventsRoutes);
   app.use("/api/rsvp", rsvpRoutes);
   app.use("/api/guests", guestByIdRoutes);
+  app.use("/api/notifications", notificationsRoutes);
+  app.use("/api/insights", insightsRoutes);
+  app.use("/api/analytics", analyticsRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

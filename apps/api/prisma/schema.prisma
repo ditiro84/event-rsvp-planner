@@ -22,7 +22,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  events Event[]
+  events        Event[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -84,6 +85,8 @@ model Event {
   tables          Table[]
   checkIns        CheckIn[]
   invitationCard  EventInvitationCard?
+  vendors         Vendor[]
+  notifications   Notification[]
 
   @@index([userId])
   @@map("events")
@@ -392,3 +395,90 @@ model CheckIn {
 }
 
 // Relation from Table -> SeatingAssignment (reverse, needed for onDelete cascade clarity)
+
+// ---------------------------------------------------------------------------
+// VENDORS
+// ---------------------------------------------------------------------------
+
+enum VendorCategory {
+  CATERING
+  VENUE
+  PHOTOGRAPHY
+  VIDEOGRAPHY
+  FLORAL
+  MUSIC_ENTERTAINMENT
+  DECOR
+  RENTALS
+  TRANSPORTATION
+  BEAUTY
+  STATIONERY
+  OTHER
+}
+
+enum VendorStatus {
+  CONTACTED
+  QUOTE_RECEIVED
+  BOOKED
+  CONFIRMED
+  CANCELLED
+}
+
+model Vendor {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name        String
+  category    VendorCategory @default(OTHER)
+  status      VendorStatus   @default(CONTACTED)
+  contactName String?
+  email       String?
+  phone       String?
+  website     String?
+  // Minor currency units (e.g. cents), not a float, to avoid rounding drift.
+  costCents   Int?
+  depositPaid Boolean @default(false)
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  @@map("vendors")
+}
+
+// ---------------------------------------------------------------------------
+// NOTIFICATIONS
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  RSVP_CONFIRMED
+  RSVP_DECLINED
+  VENDOR_STATUS_CHANGED
+  SYSTEM
+}
+
+model Notification {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  type  NotificationType
+  title String
+  body  String?
+  // Frontend route to deep-link into when the notification is clicked,
+  // e.g. "/events/:eventId/guests".
+  link  String?
+
+  read   Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([eventId])
+  @@map("notifications")
+}
+

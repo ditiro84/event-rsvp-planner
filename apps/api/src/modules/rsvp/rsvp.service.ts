@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { getOwnedEvent } from "../events/events.service";
+import { notifyRsvpChange } from "../notifications/notifications.service";
 import { SubmitRsvpInput } from "./rsvp.schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,6 +119,8 @@ export async function submitRsvp(token: string, input: SubmitRsvpInput) {
     return g;
   });
 
+  await notifyRsvpChange(event.userId, event, savedGuest);
+
   return savedGuest;
 }
 
@@ -166,6 +169,8 @@ export async function submitRsvpViaInvitation(invitationToken: string, input: Su
     }
     return g;
   });
+
+  await notifyRsvpChange(invitation.event.userId, invitation.event, savedGuest);
 
   return savedGuest;
 }

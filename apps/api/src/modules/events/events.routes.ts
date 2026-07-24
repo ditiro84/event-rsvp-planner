@@ -6,6 +6,7 @@ import { createEventSchema, eventIdParamsSchema, updateEventSchema } from "./eve
 import * as controller from "./events.controller";
 import guestsRouter from "../guests/guests.routes";
 import seatingRouter from "../seating/seating.routes";
+import vendorsRouter from "../vendors/vendors.routes";
 import * as rsvpController from "../rsvp/rsvp.controller";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -37,5 +38,8 @@ router.use("/:eventId/guests", validateParams(eventIdParamsSchema), guestsRouter
 
 // Nested seating routes: /api/events/:eventId/seating
 router.use("/:eventId/seating", validateParams(eventIdParamsSchema), seatingRouter);
+
+// Nested vendor routes: /api/events/:eventId/vendors
+router.use("/:eventId/vendors", validateParams(eventIdParamsSchema), vendorsRouter);
 
 export default router;

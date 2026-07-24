@@ -206,7 +206,7 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
                           {guest.seatAssignment.seat ? ` · Seat ${guest.seatAssignment.seat.seatNumber}` : ""}
                         </span>
                       ) : (
-                        <span className="text-slate-400">Unassigned</span>
+                        <Badge variant="unassigned">Unassigned</Badge>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
@@ -251,12 +251,15 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
                   <RsvpStatusBadge status={guest.rsvpStatus} />
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                  <span>
-                    {guest.seatAssignment
-                      ? `${guest.seatAssignment.table.name}${guest.seatAssignment.seat ? ` · Seat ${guest.seatAssignment.seat.seatNumber}` : ""}`
-                      : "Unassigned"}
-                  </span>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
+                  {guest.seatAssignment ? (
+                    <span>
+                      {guest.seatAssignment.table.name}
+                      {guest.seatAssignment.seat ? ` · Seat ${guest.seatAssignment.seat.seatNumber}` : ""}
+                    </span>
+                  ) : (
+                    <Badge variant="unassigned">Unassigned</Badge>
+                  )}
                   {guest.checkedIn && <Badge variant="success">Checked in</Badge>}
                   {guest.dietaryRequirements && <span>{guest.dietaryRequirements}</span>}
                 </div>

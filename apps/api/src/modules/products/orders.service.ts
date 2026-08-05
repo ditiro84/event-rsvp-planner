@@ -88,7 +88,11 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
 
   const orderItemsData: { productId: string; productName: string; unitPriceCents: number; quantity: number }[] = [];
   let totalCents = 0;
-  let currency: string | null = null;
+  // Typed `any` (not `string`) so it flows freely into the `Currency` enum
+  // fields below regardless of whether the Prisma client in this build is
+  // fully generated -- see the `productById` note above.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let currency: any = null;
 
   for (const item of input.items) {
     const product = productById.get(item.productId);

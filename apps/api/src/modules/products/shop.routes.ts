@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { validateBody, validateParams } from "../../middleware/validate";
-import { createCheckoutSchema, rsvpTokenParamsSchema } from "./orders.schema";
+import { capturePaypalOrderSchema, createCheckoutSchema, rsvpTokenParamsSchema } from "./orders.schema";
 import { productIdParamsSchema } from "./products.schema";
 import * as controller from "./orders.controller";
 
@@ -33,5 +33,12 @@ router.get(
   controller.publicProductImage
 );
 router.post("/:token/checkout", checkoutRateLimit, validateParams(rsvpTokenParamsSchema), validateBody(createCheckoutSchema), controller.checkout);
+router.post(
+  "/:token/checkout/paypal/capture",
+  checkoutRateLimit,
+  validateParams(rsvpTokenParamsSchema),
+  validateBody(capturePaypalOrderSchema),
+  controller.capturePaypal
+);
 
 export default router;

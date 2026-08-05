@@ -1,23 +1,15 @@
+import crypto from "crypto";
 import Stripe from "stripe";
 import { prisma } from "../../lib/prisma";
 import { env } from "../../config/env";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
+import { getStripeClient } from "../../lib/stripeClient";
+import { paystackRequest } from "../../lib/paystackClient";
+import { capturePaypalOrder, createPaypalOrder } from "../../lib/paypalClient";
 import { getOwnedEvent } from "../events/events.service";
 import { notifyOrderPaid } from "../notifications/notifications.service";
+import { handleStripeAccountUpdated, isPayoutAccountConnected } from "../payouts/payouts.service";
 import { CreateCheckoutInput } from "./orders.schema";
-
-// Lazily constructed (and only when actually needed) so the app can run
-// with checkout disabled -- matching the same "clear error until
-// configured" pattern as invite.service.ts's getResendClient(). Guest
-// checkout and the webhook are the only two things that need this.
-function getStripeClient() {
-  if (!env.stripeSecretKey) {
-    throw new BadRequestError(
-      "The shop isn't accepting payments yet. Add STRIPE_SECRET_KEY (and STRIPE_WEBHOOK_SECRET) to enable checkout."
-    );
-  }
-  return new Stripe(env.stripeSecretKey);
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeOrder(order: any) {
@@ -28,6 +20,7 @@ function serializeOrder(order: any) {
     guestName: order.guestName,
     guestEmail: order.guestEmail,
     status: order.status,
+    currency: order.currency,
     total: order.totalCents / 100,
     deliveryMethod: order.deliveryMethod,
     createdAt: order.createdAt,
@@ -73,6 +66,9 @@ export async function getOrdersSummary(userId: string, eventId: string) {
 
 // --- Public (guest-facing) checkout ------------------------------------------
 
+// Preferred provider when the guest/frontend doesn't specify one explicitly.
+const DEFAULT_PROVIDER_PREFERENCE = ["STRIPE_CONNECT", "PAYSTACK", "PAYPAL"] as const;
+
 export async function createCheckoutSession(rsvpToken: string, input: CreateCheckoutInput) {
   const event = await prisma.event.findUnique({
     where: { rsvpToken },
@@ -90,9 +86,9 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productById = new Map<string, any>(products.map((p: any) => [p.id, p]));
 
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
   const orderItemsData: { productId: string; productName: string; unitPriceCents: number; quantity: number }[] = [];
   let totalCents = 0;
+  let currency: string | null = null;
 
   for (const item of input.items) {
     const product = productById.get(item.productId);
@@ -100,6 +96,15 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
     if (product.stockQuantity !== null && product.stockQuantity < item.quantity) {
       throw new BadRequestError(`Only ${product.stockQuantity} of "${product.name}" left in stock`);
     }
+    // Carts can't mix currencies -- one Order settles through exactly one
+    // EventPayoutAccount, so every item in it must price in the same
+    // currency (the frontend groups the shop by currency to prevent this
+    // in the first place, this is the backend backstop).
+    if (currency && product.currency !== currency) {
+      throw new BadRequestError("Your cart mixes items priced in different currencies -- please check out one currency at a time.");
+    }
+    currency = product.currency;
+
     totalCents += product.priceCents * item.quantity;
     orderItemsData.push({
       productId: product.id,
@@ -107,15 +112,33 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
       unitPriceCents: product.priceCents,
       quantity: item.quantity,
     });
-    lineItems.push({
-      quantity: item.quantity,
-      price_data: {
-        currency: env.stripeCurrency,
-        unit_amount: product.priceCents,
-        product_data: { name: product.name },
-      },
-    });
   }
+
+  if (!currency) throw new BadRequestError("Your cart is empty");
+
+  const payoutAccounts = await prisma.eventPayoutAccount.findMany({ where: { eventId: event.id, currency } });
+  const connectedAccounts = payoutAccounts.filter(isPayoutAccountConnected);
+  if (connectedAccounts.length === 0) {
+    throw new BadRequestError(`This event hasn't connected a way to accept ${currency} payments yet.`);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let payoutAccount: any;
+  if (input.provider) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    payoutAccount = connectedAccounts.find((a: any) => a.provider === input.provider);
+    if (!payoutAccount) {
+      throw new BadRequestError(`${input.provider} isn't connected for ${currency} on this event.`);
+    }
+  } else {
+    for (const provider of DEFAULT_PROVIDER_PREFERENCE) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      payoutAccount = connectedAccounts.find((a: any) => a.provider === provider);
+      if (payoutAccount) break;
+    }
+  }
+
+  const platformFeeCents = Math.round(totalCents * (env.platformFeePercent / 100));
 
   const order = await prisma.order.create({
     data: {
@@ -124,39 +147,176 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
       guestName: input.guestName,
       guestEmail: input.guestEmail,
       status: "PENDING",
+      currency,
+      provider: payoutAccount.provider,
+      payoutAccountId: payoutAccount.id,
       totalCents,
+      platformFeeCents,
       deliveryMethod: input.deliveryMethod ?? "AT_EVENT",
       items: { create: orderItemsData },
     },
   });
 
+  try {
+    if (payoutAccount.provider === "STRIPE_CONNECT") {
+      return await startStripeCheckout(event, rsvpToken, order, orderItemsData, currency, platformFeeCents, payoutAccount);
+    }
+    if (payoutAccount.provider === "PAYSTACK") {
+      return await startPaystackCheckout(event, rsvpToken, order, totalCents, payoutAccount);
+    }
+    return await startPaypalCheckout(order, rsvpToken, totalCents, currency, platformFeeCents, payoutAccount);
+  } catch (err) {
+    // Clean up the pending order if the processor rejected checkout, rather
+    // than leaving an orphaned PENDING order with no way to ever complete it.
+    await prisma.order.delete({ where: { id: order.id } });
+    throw err;
+  }
+}
+
+async function startStripeCheckout(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  event: any,
+  rsvpToken: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  order: any,
+  orderItemsData: { productName: string; unitPriceCents: number; quantity: number }[],
+  currency: string,
+  platformFeeCents: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payoutAccount: any
+) {
   const stripe = getStripeClient();
   const successUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=success`;
   const cancelUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=cancelled`;
 
-  let session: Stripe.Checkout.Session;
-  try {
-    session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: lineItems,
-      customer_email: input.guestEmail,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: { orderId: order.id, eventId: event.id },
-    });
-  } catch (err) {
-    // Clean up the pending order if Stripe rejected the session, rather than
-    // leaving an orphaned PENDING order with no way to ever complete it.
-    await prisma.order.delete({ where: { id: order.id } });
-    throw err;
-  }
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = orderItemsData.map((item) => ({
+    quantity: item.quantity,
+    price_data: {
+      currency: currency.toLowerCase(),
+      unit_amount: item.unitPriceCents,
+      product_data: { name: item.productName },
+    },
+  }));
+
+  // Destination charge: the PaymentIntent is created on our platform Stripe
+  // account, but funds (minus our application_fee_amount cut) transfer
+  // straight to the planner's connected account -- see payouts.service.ts
+  // connectStripe for how stripeAccountId gets onboarded.
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: lineItems,
+    customer_email: order.guestEmail,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: { orderId: order.id, eventId: event.id },
+    payment_intent_data: {
+      application_fee_amount: platformFeeCents,
+      transfer_data: { destination: payoutAccount.stripeAccountId },
+    },
+  });
 
   await prisma.order.update({ where: { id: order.id }, data: { stripeCheckoutSessionId: session.id } });
-
   return { checkoutUrl: session.url };
 }
 
-// --- Webhook -----------------------------------------------------------------
+async function startPaystackCheckout(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  event: any,
+  rsvpToken: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  order: any,
+  totalCents: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payoutAccount: any
+) {
+  const successUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=success`;
+
+  // Paystack's "amount" is the smallest currency unit (kobo for NGN) --
+  // the same convention as our own *Cents fields, so totalCents needs no
+  // conversion. percentage_charge was already fixed on the subaccount at
+  // connect time (see payouts.service.ts connectPaystack), so the split
+  // happens automatically without repeating it here.
+  const transaction = await paystackRequest<{ authorization_url: string; access_code: string; reference: string }>(
+    "/transaction/initialize",
+    {
+      method: "POST",
+      body: {
+        email: order.guestEmail,
+        amount: totalCents,
+        currency: "NGN",
+        subaccount: payoutAccount.paystackSubaccountCode,
+        callback_url: successUrl,
+        metadata: { orderId: order.id, eventId: event.id },
+      },
+    }
+  );
+
+  await prisma.order.update({ where: { id: order.id }, data: { paystackReference: transaction.reference } });
+  return { checkoutUrl: transaction.authorization_url };
+}
+
+async function startPaypalCheckout(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  order: any,
+  rsvpToken: string,
+  totalCents: number,
+  currency: string,
+  platformFeeCents: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payoutAccount: any
+) {
+  const paypalOrder = await createPaypalOrder({
+    amount: totalCents / 100,
+    currency: currency as "USD" | "GBP" | "NGN",
+    payeeEmail: payoutAccount.paypalEmail,
+    platformFeeAmount: platformFeeCents / 100,
+    orderId: order.id,
+    // PayPal appends its own ?token=<paypalOrderId>&PayerID=... to this once
+    // the guest approves -- the frontend reads that `token` param (it's the
+    // PayPal order id) and calls capturePaypalCheckout with it (see
+    // orders.controller.ts capturePaypal / ShopSection.tsx).
+    returnUrl: `${env.publicAppUrl}/rsvp/${rsvpToken}?order=paypal_return`,
+    cancelUrl: `${env.publicAppUrl}/rsvp/${rsvpToken}?order=cancelled`,
+  });
+
+  const approveLink = paypalOrder.links.find((l) => l.rel === "approve" || l.rel === "payer-action");
+  if (!approveLink) throw new BadRequestError("PayPal didn't return an approval link for this order");
+
+  await prisma.order.update({
+    where: { id: order.id },
+    // If PayPal rejected the platform_fees attempt (no Partner enrollment
+    // yet -- see lib/paypalClient.ts), the planner gets 100% of this order
+    // instead of us silently keeping a fee we didn't actually collect.
+    data: { paypalOrderId: paypalOrder.id, platformFeeCents: paypalOrder.feeApplied ? platformFeeCents : 0 },
+  });
+
+  return { checkoutUrl: approveLink.href };
+}
+
+// Called once the guest approves the PayPal order and is redirected back to
+// our RSVP page (PayPal Orders v2's "capture on return" pattern -- simpler
+// than standing up full webhook subscription infrastructure for this).
+export async function capturePaypalCheckout(rsvpToken: string, paypalOrderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { paypalOrderId },
+    include: { items: true, event: { select: { id: true, name: true, userId: true, rsvpToken: true } } },
+  });
+  // Not found, or belongs to a different event's RSVP link -- treat both as
+  // "not found" rather than confirming a valid paypalOrderId exists elsewhere.
+  if (!order || order.event.rsvpToken !== rsvpToken) throw new NotFoundError("Order not found");
+  if (order.status !== "PENDING") return serializeOrder(order);
+
+  const capture = await capturePaypalOrder(paypalOrderId);
+  const captured = capture.purchase_units[0]?.payments?.captures?.[0];
+  if (capture.status !== "COMPLETED" || captured?.status !== "COMPLETED") {
+    throw new BadRequestError("PayPal hasn't confirmed this payment yet");
+  }
+
+  await finalizeOrderPaid(order);
+  return serializeOrder(order);
+}
+
+// --- Webhooks ------------------------------------------------------------------
 
 // Raw request body is required for Stripe's signature verification -- see
 // the dedicated express.raw() middleware mounted for this route in app.ts,
@@ -179,13 +339,19 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string | u
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    await markOrderPaid(session.id, typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id);
+    await markStripeOrderPaid(session.id, typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id);
+  } else if (event.type === "account.updated") {
+    // Fired as a planner progresses through Stripe Connect's hosted
+    // onboarding -- flips EventPayoutAccount.stripeOnboardingComplete once
+    // Stripe confirms the connected account can actually receive charges
+    // and payouts (see payouts.service.ts).
+    await handleStripeAccountUpdated(event.data.object as Stripe.Account);
   }
 
   return { received: true };
 }
 
-async function markOrderPaid(stripeCheckoutSessionId: string, stripePaymentIntentId: string | undefined) {
+async function markStripeOrderPaid(stripeCheckoutSessionId: string, stripePaymentIntentId: string | undefined) {
   const order = await prisma.order.findUnique({
     where: { stripeCheckoutSessionId },
     include: { items: true, event: { select: { id: true, name: true, userId: true } } },
@@ -194,10 +360,55 @@ async function markOrderPaid(stripeCheckoutSessionId: string, stripePaymentInten
   // either way there's nothing more to do.
   if (!order || order.status !== "PENDING") return;
 
+  await finalizeOrderPaid(order, { stripePaymentIntentId: stripePaymentIntentId ?? null });
+}
+
+// Paystack posts events as raw JSON, signed with an HMAC-SHA512 of the raw
+// body using the secret key -- verified the same "raw body before the
+// global JSON parser" way as Stripe's signature (see webhook.routes.ts).
+export async function handlePaystackWebhook(rawBody: Buffer, signature: string | undefined) {
+  if (!env.paystackSecretKey) {
+    throw new BadRequestError("PAYSTACK_SECRET_KEY is not configured");
+  }
+  if (!signature) {
+    throw new BadRequestError("Missing x-paystack-signature header");
+  }
+
+  const expected = crypto.createHmac("sha512", env.paystackSecretKey).update(rawBody).digest("hex");
+  if (expected !== signature) {
+    throw new BadRequestError("Webhook signature verification failed");
+  }
+
+  const event = JSON.parse(rawBody.toString("utf8")) as { event: string; data: { reference: string } };
+  if (event.event === "charge.success") {
+    await markPaystackOrderPaid(event.data.reference);
+  }
+
+  return { received: true };
+}
+
+async function markPaystackOrderPaid(paystackReference: string) {
+  const order = await prisma.order.findUnique({
+    where: { paystackReference },
+    include: { items: true, event: { select: { id: true, name: true, userId: true } } },
+  });
+  if (!order || order.status !== "PENDING") return;
+
+  await finalizeOrderPaid(order);
+}
+
+// Shared PAID transition for all three processors: flips status, decrements
+// stock, and fires the planner notification -- never trusted from a
+// client-supplied call, only from a verified webhook/capture confirmation.
+async function finalizeOrderPaid(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  order: any,
+  extra: { stripePaymentIntentId?: string | null } = {}
+) {
   await prisma.$transaction([
     prisma.order.update({
       where: { id: order.id },
-      data: { status: "PAID", stripePaymentIntentId: stripePaymentIntentId ?? null },
+      data: { status: "PAID", ...extra },
     }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...order.items

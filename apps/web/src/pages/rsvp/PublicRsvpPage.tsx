@@ -82,7 +82,9 @@ export default function PublicRsvpPage() {
     ? `${apiBaseUrl}/rsvp/invite/${invitationToken}/invitation-card`
     : `${apiBaseUrl}/rsvp/${token}/invitation-card`;
 
-  const [submitted, setSubmitted] = useState<{ firstName: string; rsvpStatus: string } | null>(null);
+  const [submitted, setSubmitted] = useState<{ firstName: string; lastName: string; email: string; rsvpStatus: string } | null>(
+    null
+  );
 
   const {
     register,
@@ -126,7 +128,12 @@ export default function PublicRsvpPage() {
         accessibilityRequirements: values.accessibilityRequirements || undefined,
         message: values.message || undefined,
       });
-      setSubmitted({ firstName: result.guest.firstName, rsvpStatus: result.guest.rsvpStatus });
+      setSubmitted({
+        firstName: result.guest.firstName,
+        lastName: values.lastName,
+        email: values.email || "",
+        rsvpStatus: result.guest.rsvpStatus,
+      });
     } catch (err) {
       alert(getApiErrorMessage(err));
     }
@@ -157,8 +164,12 @@ export default function PublicRsvpPage() {
           {/* Shown right after confirming, not just before -- a guest who
               just RSVP'd is the most likely to be curious about merch,
               and this way they don't have to refresh the page to see it
-              again. It's a browse-only preview until checkout ships. */}
-          <ShopSection rsvpToken={event.rsvpToken} />
+              again. */}
+          <ShopSection
+            rsvpToken={event.rsvpToken}
+            guestName={`${submitted.firstName} ${submitted.lastName}`.trim()}
+            guestEmail={submitted.email || undefined}
+          />
         </div>
       </div>
     );
@@ -295,7 +306,11 @@ export default function PublicRsvpPage() {
           </Button>
         </form>
 
-        <ShopSection rsvpToken={event.rsvpToken} />
+        <ShopSection
+          rsvpToken={event.rsvpToken}
+          guestName={guestPrefill ? `${guestPrefill.firstName} ${guestPrefill.lastName}`.trim() : undefined}
+          guestEmail={guestPrefill?.email ?? undefined}
+        />
       </div>
     </div>
   );

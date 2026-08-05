@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { getOwnedEvent } from "../events/events.service";
+import { getConnectedProvidersByCurrency } from "../payouts/payouts.service";
 import { CreateProductInput, UpdateProductInput } from "./products.schema";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -147,15 +148,24 @@ export async function listPublicProducts(rsvpToken: string) {
     select: { id: true, merchandiseEnabled: true },
   });
   if (!event) throw new NotFoundError("This RSVP link is invalid");
-  if (!event.merchandiseEnabled) return { enabled: false, products: [] };
+  if (!event.merchandiseEnabled) return { enabled: false, products: [], paymentOptionsByCurrency: {} };
 
-  const products = await prisma.product.findMany({
-    where: { eventId: event.id, active: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [products, paymentOptionsByCurrency] = await Promise.all([
+    prisma.product.findMany({
+      where: { eventId: event.id, active: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    getConnectedProvidersByCurrency(event.id),
+  ]);
 
   return {
     enabled: true,
+    // Which processors are ready to accept payment, per currency -- lets
+    // the shop UI gray out an "Add to cart" for a currency nothing is
+    // connected for yet, rather than guests only discovering that at
+    // checkout (see orders.service.ts createCheckoutSession for the
+    // authoritative, re-validated version of this check).
+    paymentOptionsByCurrency,
     products: products
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((p: any) => p.stockQuantity === null || p.stockQuantity > 0)

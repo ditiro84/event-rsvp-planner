@@ -44,7 +44,28 @@ export const env = {
   // the webhook signing secret.
   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-  // Single global currency for all shops -- this app has no per-event
-  // currency setting yet. ISO 4217, lowercase, as Stripe expects.
-  stripeCurrency: (process.env.STRIPE_CURRENCY ?? "usd").toLowerCase(),
+  // This same key is also used for Stripe Connect (creating Express
+  // accounts and Account Links for planner payout onboarding) -- Connect
+  // itself doesn't need a separate secret, just needs to be turned on for
+  // this Stripe account at https://dashboard.stripe.com/connect/overview.
+
+  // Optional: Nigerian (NGN) payouts via Paystack Subaccounts. Get a secret
+  // key at https://dashboard.paystack.com/#/settings/developers. Without
+  // this, planners can't connect an NGN payout account and NGN products
+  // stay in the "not available to buy yet" state.
+  paystackSecretKey: process.env.PAYSTACK_SECRET_KEY,
+
+  // Optional: PayPal as a cross-currency payout option. Create an app at
+  // https://developer.paypal.com/dashboard/applications to get these.
+  // paypalMode picks sandbox vs. live API base URLs.
+  paypalClientId: process.env.PAYPAL_CLIENT_ID,
+  paypalClientSecret: process.env.PAYPAL_CLIENT_SECRET,
+  paypalMode: (process.env.PAYPAL_MODE ?? "sandbox") as "sandbox" | "live",
+
+  // EventFlow's cut of each merchandise sale, taken via each processor's
+  // own fee mechanism (Stripe application_fee_amount, Paystack subaccount
+  // split, PayPal platform_fees) so the rest lands directly with the
+  // planner. A plain number (e.g. 2.5 = 2.5%), adjustable any time from the
+  // Railway dashboard without a code change or redeploy of app logic.
+  platformFeePercent: Number(process.env.PLATFORM_FEE_PERCENT ?? 2.5),
 };

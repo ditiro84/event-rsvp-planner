@@ -459,4 +459,36 @@ export interface PublicShopProduct {
 export interface PublicShopListing {
   enabled: boolean;
   products: PublicShopProduct[];
+  // Which processors are connected and ready to accept payment, per
+  // currency -- e.g. { USD: ["STRIPE_CONNECT", "PAYPAL"], NGN: ["PAYSTACK"] }.
+  // A currency missing here (or with an empty array) has nothing connected
+  // yet, so checkout for it should be disabled in the UI.
+  paymentOptionsByCurrency: Partial<Record<CurrencyCode, PayoutProvider[]>>;
+}
+
+// ---------------------------------------------------------------------------
+// Payouts (multi-processor payments marketplace)
+// ---------------------------------------------------------------------------
+
+export type PayoutProvider = "STRIPE_CONNECT" | "PAYSTACK" | "PAYPAL";
+
+export interface PayoutAccountRecord {
+  id: string;
+  currency: CurrencyCode;
+  provider: PayoutProvider;
+  // Whether this account can actually receive payments yet -- for Stripe
+  // Connect that means onboarding finished, for Paystack/PayPal it means
+  // the account details were saved successfully.
+  connected: boolean;
+  stripeOnboardingComplete?: boolean;
+  paystackBankName?: string;
+  paystackAccountLast4?: string;
+  paypalEmail?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaystackBank {
+  name: string;
+  code: string;
 }

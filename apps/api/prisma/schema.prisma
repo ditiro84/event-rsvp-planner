@@ -89,6 +89,7 @@ model Event {
   notifications   Notification[]
   products        Product[]
   orders          Order[]
+  payoutAccounts  EventPayoutAccount[]
 
   // "Shop Enabled" toggle on the Merchandise dashboard -- guests only see
   // the purchase flow on their RSVP page once this is on, so a planner can
@@ -544,15 +545,67 @@ model Product {
   @@map("products")
 }
 
+// Which processor settles a payout account. Chosen per currency because no
+// single processor covers all three: Stripe Connect can't settle NGN into a
+// Nigerian bank account, and Nigeria isn't a supported Stripe account
+// country at all -- so USD/GBP go through Stripe Connect, NGN goes through
+// Paystack, and PayPal is offered as an additional cross-currency option
+// wherever the planner has connected one.
+enum PayoutProvider {
+  STRIPE_CONNECT
+  PAYSTACK
+  PAYPAL
+}
+
+// A planner's payout destination for one currency, via one processor. A
+// planner can connect more than one provider for the same currency (e.g.
+// both Stripe Connect and PayPal for USD) -- the guest picks at checkout.
+// Deliberately does NOT store raw bank account numbers: Stripe Connect's
+// bank details are collected entirely on Stripe's own hosted onboarding
+// page (see payouts.service.ts), and while Paystack's subaccount API does
+// require the account number to pass through our backend once to reach
+// Paystack, it is never persisted here -- only the resulting reference
+// (subaccountCode) and a masked last-4 for display.
+model EventPayoutAccount {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  currency Currency
+  provider PayoutProvider
+
+  // --- Stripe Connect (USD/GBP) ---
+  stripeAccountId          String?
+  stripeOnboardingComplete Boolean @default(false)
+
+  // --- Paystack Subaccount (NGN) ---
+  paystackSubaccountCode String?
+  paystackBankName       String?
+  paystackAccountLast4   String?
+
+  // --- PayPal (cross-currency) ---
+  paypalEmail String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@unique([eventId, currency, provider])
+  @@index([eventId])
+  @@map("event_payout_accounts")
+}
+
 enum OrderStatus {
   PENDING
   PAID
   CANCELLED
 }
 
-// A guest's purchase. Created in PENDING state when a Stripe Checkout
-// Session is opened, then flipped to PAID by the Stripe webhook once
-// payment actually clears -- never marked PAID from a client-trusted call.
+// A guest's purchase. Created in PENDING state when a checkout is opened
+// with whichever processor the event has connected for this currency, then
+// flipped to PAID by that processor's webhook/confirmation once payment
+// actually clears -- never marked PAID from a client-trusted call.
 model Order {
   id      String @id @default(cuid())
   eventId String
@@ -567,11 +620,24 @@ model Order {
   guestEmail String
 
   status        OrderStatus @default(PENDING)
+  // All items in one order share this currency (carts don't mix currencies
+  // -- see ShopSection.tsx) and are settled through this provider, to
+  // whichever EventPayoutAccount the planner connected for that pairing.
+  currency      Currency
+  provider      PayoutProvider?
+  payoutAccountId String?
+  payoutAccount   EventPayoutAccount? @relation(fields: [payoutAccountId], references: [id], onDelete: SetNull)
   totalCents    Int
+  // EventFlow's cut of totalCents, per PLATFORM_FEE_PERCENT at the time of
+  // checkout -- kept on the order itself (not recomputed later) so a later
+  // change to the fee percentage doesn't rewrite historical order amounts.
+  platformFeeCents Int?
   deliveryMethod String @default("AT_EVENT") // AT_EVENT | SHIPPING (future)
 
   stripeCheckoutSessionId String? @unique
   stripePaymentIntentId   String?
+  paystackReference       String? @unique
+  paypalOrderId           String? @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

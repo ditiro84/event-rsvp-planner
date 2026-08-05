@@ -12,6 +12,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
 import { ProductFormModal } from "./ProductFormModal";
+import { PayoutsSection } from "./PayoutsSection";
 import type { EventRecord, ProductRecord } from "@/types";
 
 function stockBadge(product: ProductRecord) {
@@ -84,6 +85,8 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
           </Button>
         </div>
       </div>
+
+      <PayoutsSection eventId={event.id} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard

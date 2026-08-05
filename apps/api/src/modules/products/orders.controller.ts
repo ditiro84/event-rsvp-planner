@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ok } from "../../lib/apiResponse";
-import { createCheckoutSchema } from "./orders.schema";
+import { capturePaypalOrderSchema, createCheckoutSchema } from "./orders.schema";
 import * as ordersService from "./orders.service";
 import * as productsService from "./products.service";
 
@@ -32,4 +32,12 @@ export async function checkout(req: Request, res: Response) {
   const input = createCheckoutSchema.parse(req.body);
   const result = await ordersService.createCheckoutSession(req.params.token, input);
   return ok(res, result);
+}
+
+// Called by the frontend once the guest approves payment on PayPal's site
+// and lands back on our RSVP page (see orders.service.ts capturePaypalCheckout).
+export async function capturePaypal(req: Request, res: Response) {
+  const input = capturePaypalOrderSchema.parse(req.body);
+  const order = await ordersService.capturePaypalCheckout(req.params.token, input.paypalOrderId);
+  return ok(res, { order });
 }

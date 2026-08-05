@@ -126,7 +126,7 @@ describe("Public shop", () => {
     expect(shop.body.data.products[0].name).toBe("In stock");
   });
 
-  it("returns a clear error from checkout when Stripe isn't configured", async () => {
+  it("returns a clear error from checkout when no payout account is connected for the cart's currency", async () => {
     const { token } = await registerAndLogin(app);
     const eventId = await createEventWithToken(token);
     const auth = { Authorization: `Bearer ${token}` };
@@ -141,12 +141,15 @@ describe("Public shop", () => {
     const eventRes = await request(app).get(`/api/events/${eventId}`).set(auth);
     const rsvpToken = eventRes.body.data.event.rsvpToken;
 
+    // No EventPayoutAccount has been connected for this event/currency yet
+    // (that's the multi-processor payments flow -- see payouts.test.ts), so
+    // checkout should fail clearly before ever reaching a specific processor.
     const checkout = await request(app)
       .post(`/api/shop/${rsvpToken}/checkout`)
       .send({ guestName: "Jane Guest", guestEmail: "jane@example.com", items: [{ productId, quantity: 1 }] });
 
     expect(checkout.status).toBe(400);
-    expect(checkout.body.error.message).toMatch(/STRIPE_SECRET_KEY/);
+    expect(checkout.body.error.message).toMatch(/hasn't connected a way to accept/);
   });
 
   it("rejects checkout with an empty cart", async () => {

@@ -18,4 +18,15 @@ router.post("/stripe", express.raw({ type: "application/json" }), async (req, re
   return ok(res, result);
 });
 
+// Same raw-body requirement as Stripe's route above -- Paystack's signature
+// (x-paystack-signature) is an HMAC-SHA512 over the exact raw request bytes.
+router.post("/paystack", express.raw({ type: "application/json" }), async (req, res) => {
+  const signature = req.headers["x-paystack-signature"];
+  const result = await ordersService.handlePaystackWebhook(
+    req.body as Buffer,
+    typeof signature === "string" ? signature : undefined
+  );
+  return ok(res, result);
+});
+
 export default router;

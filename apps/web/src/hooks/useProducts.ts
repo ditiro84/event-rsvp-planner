@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, apiBaseUrl } from "@/lib/api";
-import type { OrderRecord, OrdersSummary, ProductRecord, PublicShopListing } from "@/types";
+import type { OrderRecord, OrdersSummary, PayoutProvider, ProductRecord, PublicShopListing } from "@/types";
 
 export function useProducts(eventId: string | undefined) {
   return useQuery({
@@ -114,9 +114,22 @@ export function useCheckout(rsvpToken: string) {
       guestEmail: string;
       guestId?: string;
       items: { productId: string; quantity: number }[];
+      provider?: PayoutProvider;
     }) => {
       const res = await api.post(`/shop/${rsvpToken}/checkout`, input);
       return res.data.data as { checkoutUrl: string };
+    },
+  });
+}
+
+// Called once the guest approves payment on PayPal's site and lands back on
+// our RSVP page with PayPal's own ?token=<paypalOrderId> query param (see
+// orders.service.ts capturePaypalCheckout).
+export function useCapturePaypal(rsvpToken: string) {
+  return useMutation({
+    mutationFn: async (paypalOrderId: string) => {
+      const res = await api.post(`/shop/${rsvpToken}/checkout/paypal/capture`, { paypalOrderId });
+      return res.data.data as { order: OrderRecord };
     },
   });
 }

@@ -68,7 +68,43 @@ export async function listPayoutAccounts(userId: string, eventId: string) {
     where: { eventId },
     orderBy: [{ currency: "asc" }, { provider: "asc" }],
   });
-  return accounts.map(serializePayoutAccount);
+
+  // Belt-and-suspenders: don't rely solely on the account.updated webhook
+  // landing (Connect webhook delivery has its own set-up gotchas -- see
+  // handleStripeAccountUpdated). Any time this list is fetched, actively
+  // re-check status for Stripe accounts still marked incomplete, so the UI
+  // reflects reality even if a webhook was missed or delayed.
+  const synced = await Promise.all(
+    accounts.map((account) =>
+      account.provider === "STRIPE_CONNECT" && !account.stripeOnboardingComplete && account.stripeAccountId
+        ? syncStripeOnboardingStatus(account)
+        : account
+    )
+  );
+
+  return synced.map(serializePayoutAccount);
+}
+
+// Pulls the connected account's live charges_enabled/payouts_enabled state
+// straight from Stripe and updates our record if it's changed -- a direct
+// fallback for when the account.updated webhook hasn't (yet) landed.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncStripeOnboardingStatus(account: any) {
+  try {
+    const stripe = getStripeClient();
+    const stripeAccount = await stripe.accounts.retrieve(account.stripeAccountId);
+    const complete = Boolean(stripeAccount.charges_enabled && stripeAccount.payouts_enabled);
+    if (complete === account.stripeOnboardingComplete) return account;
+    return await prisma.eventPayoutAccount.update({
+      where: { id: account.id },
+      data: { stripeOnboardingComplete: complete },
+    });
+  } catch {
+    // Stripe not configured, account since deleted, transient API error --
+    // fall back to whatever's already in the DB rather than failing the
+    // whole payouts list over a best-effort sync.
+    return account;
+  }
 }
 
 export async function disconnectPayoutAccount(userId: string, eventId: string, payoutAccountId: string) {

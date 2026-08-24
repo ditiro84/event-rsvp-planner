@@ -49,6 +49,16 @@ export const env = {
   // itself doesn't need a separate secret, just needs to be turned on for
   // this Stripe account at https://dashboard.stripe.com/connect/overview.
 
+  // Optional: Stripe requires "events on your account" (checkout.session.completed)
+  // and "events on connected accounts" (account.updated, fired as a planner
+  // completes Connect onboarding) to be configured as separate audiences on
+  // a webhook destination. If you created a second destination for
+  // connected-account events instead of adding that audience to the
+  // existing one, it gets its own signing secret -- set that here so both
+  // are accepted at the single POST /api/webhooks/stripe endpoint. If you
+  // only have one destination covering both audiences, leave this unset.
+  stripeConnectWebhookSecret: process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+
   // Optional: Nigerian (NGN) payouts via Paystack Subaccounts. Get a secret
   // key at https://dashboard.paystack.com/#/settings/developers. Without
   // this, planners can't connect an NGN payout account and NGN products

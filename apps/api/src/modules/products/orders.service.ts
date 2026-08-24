@@ -334,11 +334,24 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string | u
   }
 
   const stripe = getStripeClient();
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, env.stripeWebhookSecret);
-  } catch (err) {
-    throw new BadRequestError(`Webhook signature verification failed: ${(err as Error).message}`);
+  // Try the primary (own-account) secret first, then the connected-accounts
+  // secret if that's configured and the first check fails -- see the
+  // env.stripeConnectWebhookSecret comment for why there can be two.
+  const secretsToTry = [env.stripeWebhookSecret, env.stripeConnectWebhookSecret].filter(
+    (s): s is string => Boolean(s)
+  );
+  let event: Stripe.Event | undefined;
+  let lastError: Error | undefined;
+  for (const secret of secretsToTry) {
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, secret);
+      break;
+    } catch (err) {
+      lastError = err as Error;
+    }
+  }
+  if (!event) {
+    throw new BadRequestError(`Webhook signature verification failed: ${lastError?.message}`);
   }
 
   if (event.type === "checkout.session.completed") {

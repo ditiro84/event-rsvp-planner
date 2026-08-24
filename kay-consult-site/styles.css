@@ -1,0 +1,213 @@
+:root {
+  --navy: #10192f;
+  --indigo: #4f46e5;
+  --indigo-dark: #3730a3;
+  --slate: #475569;
+  --slate-light: #64748b;
+  --border: #e2e8f0;
+  --bg: #f8fafc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--navy);
+  background: #fff;
+  line-height: 1.6;
+}
+
+a { color: var(--indigo); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+header.site-header {
+  background: var(--navy);
+  color: #fff;
+  padding: 18px 0;
+}
+
+.site-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #fff;
+}
+
+.brand span {
+  color: #a5b4fc;
+}
+
+nav.site-nav a {
+  color: #cbd5e1;
+  margin-left: 24px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+nav.site-nav a:hover {
+  color: #fff;
+  text-decoration: none;
+}
+
+.hero {
+  background: linear-gradient(180deg, var(--navy) 0%, #1e293b 100%);
+  color: #fff;
+  padding: 72px 0 88px;
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 2.4rem;
+  margin: 0 0 12px;
+}
+
+.hero p {
+  font-size: 1.15rem;
+  color: #cbd5e1;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+section {
+  padding: 64px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+section:last-of-type { border-bottom: none; }
+
+h2 {
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.section-lead {
+  color: var(--slate-light);
+  margin-top: 0;
+  margin-bottom: 32px;
+  max-width: 640px;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.service-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  background: var(--bg);
+}
+
+.service-card h3 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.service-card p {
+  margin: 0;
+  color: var(--slate);
+  font-size: 0.92rem;
+}
+
+.product-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  background: var(--bg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.product-card .product-copy {
+  flex: 1 1 380px;
+}
+
+.product-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+}
+
+.product-card p {
+  color: var(--slate);
+  margin: 0 0 16px;
+}
+
+.btn {
+  display: inline-block;
+  background: var(--indigo);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.btn:hover {
+  background: var(--indigo-dark);
+  text-decoration: none;
+}
+
+.contact-details {
+  color: var(--slate);
+}
+
+.contact-details a {
+  font-weight: 600;
+}
+
+footer.site-footer {
+  background: var(--bg);
+  padding: 32px 0;
+  text-align: center;
+  color: var(--slate-light);
+  font-size: 0.88rem;
+}
+
+footer.site-footer a {
+  color: var(--slate-light);
+  margin: 0 10px;
+}
+
+/* Legal pages (privacy / terms) */
+.legal main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+}
+
+.legal h1 {
+  font-size: 1.9rem;
+  margin-bottom: 4px;
+}
+
+.legal .updated {
+  color: var(--slate-light);
+  font-size: 0.9rem;
+  margin-bottom: 32px;
+}
+
+.legal h2 {
+  font-size: 1.2rem;
+  margin-top: 36px;
+}
+
+.legal p, .legal li {
+  color: var(--slate);
+}

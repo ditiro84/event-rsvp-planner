@@ -62,11 +62,10 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
             <Badge variant={event.merchandiseEnabled ? "success" : "neutral"}>
               {event.merchandiseEnabled ? "Preview Enabled" : "Preview Disabled"}
             </Badge>
-            <Badge variant="info">Checkout coming soon</Badge>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Guests can browse merchandise when they RSVP. Purchasing is a future release — set up your catalog now
-            so it's ready.
+            Guests can browse and buy merchandise when they RSVP. Connect a payout account below so guests can check
+            out.
           </p>
         </div>
         <div className="flex shrink-0 gap-2.5">

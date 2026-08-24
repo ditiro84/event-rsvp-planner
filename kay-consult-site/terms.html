@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terms of Service — Kay Consult Limited</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="legal">
+
+<header class="site-header">
+  <div class="container">
+    <div class="brand"><a href="/" style="color:#fff;">Kay Consult <span>Limited</span></a></div>
+    <nav class="site-nav">
+      <a href="/#services">Services</a>
+      <a href="/#products">Products</a>
+      <a href="/#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>Terms of Service</h1>
+  <p class="updated">Last updated: <span id="date"></span></p>
+
+  <p>These terms govern use of services and software provided by Kay Consult Limited, including our product EventFlow. By using our services, you agree to these terms.</p>
+
+  <h2>Our services</h2>
+  <p>Kay Consult Limited provides IT consultancy services (software development, data analysis, data annotation, computer hardware supplies and installation, and networking) and operates EventFlow, an event planning and RSVP platform with an optional merchandise marketplace.</p>
+
+  <h2>Payments and fees</h2>
+  <p>Where EventFlow facilitates merchandise sales, payments are processed by third-party payment providers (Stripe, Paystack, or PayPal), routed directly to the event organizer's own connected account. Kay Consult Limited retains a platform fee on each processed sale, disclosed to event organizers when they connect a payout account. We are not a party to the underlying transaction between an event organizer and a guest, and are not responsible for the quality, delivery, or fulfillment of merchandise sold.</p>
+
+  <h2>Refunds and cancellations</h2>
+  <p>Refund and cancellation requests for merchandise purchases should be directed to the event organizer in the first instance. Where a payment was processed in error, contact us and we will assist in coordinating with the relevant payment provider.</p>
+
+  <h2>Acceptable use</h2>
+  <p>You agree not to use our services for unlawful purposes, to misrepresent an event or product, or to attempt to circumvent the security of our platform.</p>
+
+  <h2>Limitation of liability</h2>
+  <p>Our services are provided on an "as is" basis. To the maximum extent permitted by law, Kay Consult Limited is not liable for indirect, incidental, or consequential damages arising from use of our services.</p>
+
+  <h2>Changes to these terms</h2>
+  <p>We may update these terms from time to time. Continued use of our services after changes take effect constitutes acceptance of the updated terms.</p>
+
+  <h2>Contact us</h2>
+  <p>Kay Consult Limited<br />Email: <a href="mailto:olaabiri84@gmail.com">olaabiri84@gmail.com</a></p>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>&copy; <span id="year"></span> Kay Consult Limited. All rights reserved.</div>
+    <div style="margin-top: 8px;">
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+  document.getElementById("date").textContent = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+</script>
+
+</body>
+</html>

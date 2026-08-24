@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy Policy — Kay Consult Limited</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="legal">
+
+<header class="site-header">
+  <div class="container">
+    <div class="brand"><a href="/" style="color:#fff;">Kay Consult <span>Limited</span></a></div>
+    <nav class="site-nav">
+      <a href="/#services">Services</a>
+      <a href="/#products">Products</a>
+      <a href="/#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: <span id="date"></span></p>
+
+  <p>Kay Consult Limited ("we", "us", "our") provides IT consultancy services and software products, including EventFlow. This policy explains what information we collect and how we use it.</p>
+
+  <h2>Information we collect</h2>
+  <p>Through EventFlow, we collect information event planners provide about themselves and their events (name, email, event details), and information guests provide when responding to an RSVP or purchasing merchandise (name, email, RSVP responses, order details).</p>
+
+  <h2>Payment information</h2>
+  <p>We do not collect or store card numbers, bank account numbers, or other raw payment credentials. Payments are processed directly by our payment partners — Stripe, Paystack, and PayPal — each governed by their own privacy policy. We only receive confirmation that a payment succeeded, along with a transaction reference.</p>
+
+  <h2>How we use information</h2>
+  <p>We use collected information to operate the relevant service (for example, running an event's RSVP or merchandise shop), to communicate with users about their account or orders, and to maintain the security and reliability of our products.</p>
+
+  <h2>Sharing</h2>
+  <p>We do not sell personal information. We share information with payment processors (Stripe, Paystack, PayPal) only as needed to process a transaction, and with service providers who help us operate our infrastructure (such as hosting providers), under confidentiality obligations.</p>
+
+  <h2>Data retention</h2>
+  <p>We retain information for as long as needed to provide the relevant service, or as required by law.</p>
+
+  <h2>Your rights</h2>
+  <p>You may request access to, correction of, or deletion of your personal information by contacting us at the address below.</p>
+
+  <h2>Contact us</h2>
+  <p>Kay Consult Limited<br />Email: <a href="mailto:olaabiri84@gmail.com">olaabiri84@gmail.com</a></p>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>&copy; <span id="year"></span> Kay Consult Limited. All rights reserved.</div>
+    <div style="margin-top: 8px;">
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+  document.getElementById("date").textContent = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+</script>
+
+</body>
+</html>

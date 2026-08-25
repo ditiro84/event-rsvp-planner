@@ -38,7 +38,7 @@ export function paletteColor(index: number): PaletteEntry {
 export function CategoryChart({
   data,
   chartType,
-  height = 220,
+  height = 170,
   totalLabel = "Total",
 }: {
   data: CategoryDatum[];
@@ -72,9 +72,9 @@ export function CategoryChart({
   }
 
   const width = 640;
-  const paddingLeft = 32;
-  const paddingBottom = 34;
-  const paddingTop = 12;
+  const paddingLeft = 34;
+  const paddingBottom = 30;
+  const paddingTop = 14;
   const plotWidth = width - paddingLeft - 8;
   const plotHeight = height - paddingTop - paddingBottom;
   const maxValue = Math.max(1, ...data.map((d) => d.value));
@@ -89,7 +89,12 @@ export function CategoryChart({
   }
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label="Breakdown by category">
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="mx-auto block w-full max-w-xl"
+      role="img"
+      aria-label="Breakdown by category"
+    >
       {[0, 0.5, 1].map((frac) => (
         <line
           key={frac}
@@ -141,8 +146,8 @@ export function CategoryChart({
       )}
 
       {data.map((d, i) => (
-        <text key={d.label} x={xFor(i)} y={height - 6} textAnchor="middle" className="fill-slate-500 text-[9px]">
-          {d.label.length > 14 ? `${d.label.slice(0, 13)}…` : d.label}
+        <text key={d.label} x={xFor(i)} y={height - 8} textAnchor="middle" className="fill-slate-500 text-[8px]">
+          {d.label.length > 10 ? `${d.label.slice(0, 9)}…` : d.label}
         </text>
       ))}
     </svg>

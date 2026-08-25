@@ -13,7 +13,7 @@ export interface TrendSeries {
 export function TrendChart({
   series,
   dates,
-  height = 200,
+  height = 150,
   chartType = "line",
 }: {
   series: TrendSeries[];
@@ -22,9 +22,9 @@ export function TrendChart({
   chartType?: "line" | "bar";
 }) {
   const width = 640;
-  const paddingLeft = 32;
-  const paddingBottom = 24;
-  const paddingTop = 12;
+  const paddingLeft = 34;
+  const paddingBottom = 26;
+  const paddingTop = 14;
   const plotWidth = width - paddingLeft - 8;
   const plotHeight = height - paddingTop - paddingBottom;
 
@@ -53,7 +53,7 @@ export function TrendChart({
   const labelIndices = dates.length > 1 ? [0, Math.floor((dates.length - 1) / 2), dates.length - 1] : [0];
 
   return (
-    <div>
+    <div className="max-w-xl">
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label="Trend over time">
         {[0, 0.5, 1].map((frac) => (
           <line

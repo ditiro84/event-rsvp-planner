@@ -123,6 +123,36 @@ export function useCheckOutGuest(eventId: string) {
   });
 }
 
+// Door check-in by scanning a guest's invitation QR (wristband/badge/phone
+// screen) -- looks the guest up by token server-side rather than requiring
+// a known guestId, see checkInGuestByToken.
+export function useCheckInByScan(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (token: string) => {
+      const res = await api.post(`/events/${eventId}/guests/checkin/scan`, { token });
+      return res.data.data.guest as Guest;
+    },
+    onSuccess: () => invalidateEvent(qc, eventId),
+  });
+}
+
+export function useExportWristbandsPdf(eventId: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.get(`/events/${eventId}/guests/wristbands/pdf`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `wristbands-${eventId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    },
+  });
+}
+
 function invalidateEvent(qc: ReturnType<typeof useQueryClient>, eventId: string) {
   qc.invalidateQueries({ queryKey: ["events", eventId, "guests"] });
   qc.invalidateQueries({ queryKey: ["events", eventId, "dashboard"] });

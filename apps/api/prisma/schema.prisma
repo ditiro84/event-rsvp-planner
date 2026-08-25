@@ -55,6 +55,20 @@ enum EventType {
   OTHER
 }
 
+// Categories for the public ticketing side of the product (distinct from
+// EventType, which describes a private planner's event). Deliberately kept
+// to a small, curated set for the initial launch -- nightlife/small-venue
+// events -- rather than trying to cover every Eventbrite category at once.
+enum PublicEventCategory {
+  NIGHTLIFE
+  BOAT_CRUISE
+  CONCERT
+  FESTIVAL
+  COMEDY_SHOW
+  PRIVATE_PARTY
+  OTHER
+}
+
 model Event {
   id          String    @id @default(cuid())
   userId      String
@@ -76,6 +90,24 @@ model Event {
   rsvpOpen        Boolean   @default(true)
   rsvpDeadline    DateTime?
   customMessage   String?
+
+  // --- Public ticketing (separate from the private RSVP flow above) ---
+  // A private wedding/party event and a public ticketed event (nightclub
+  // night, boat cruise) are both just "Event" rows -- isPublic is what
+  // switches an event into the ticket-selling flow: it gets a public
+  // listing page, ticket types instead of a guest list, and a discovery
+  // slug. Deliberately not a separate model/table -- would duplicate date/
+  // venue/name and force every future Event feature to be built twice.
+  isPublic        Boolean              @default(false)
+  publicCategory  PublicEventCategory?
+  // Stable, URL-safe identifier for the public event page (/tickets/:slug),
+  // generated once from the name at creation and immutable after, same
+  // pattern as Article.slug.
+  publicSlug      String?              @unique
+  publicDescription String?
+  minAge          Int?
+  coverImageData     Bytes?
+  coverImageMimeType String?
 
   // RSVP form feature toggles
   allowPlusOnes         Boolean @default(true)
@@ -101,6 +133,7 @@ model Event {
   orders          Order[]
   payoutAccounts  EventPayoutAccount[]
   paymentEvents   PaymentEvent[]
+  ticketTypes     TicketType[]
 
   // "Shop Enabled" toggle on the Merchandise dashboard -- guests only see
   // the purchase flow on their RSVP page once this is on, so a planner can
@@ -608,6 +641,88 @@ model EventPayoutAccount {
 }
 
 // ---------------------------------------------------------------------------
+// PUBLIC TICKETING (separate from the merchandise shop above, but reuses
+// the same Order/OrderItem/payout machinery -- see OrderKind.TICKET)
+// ---------------------------------------------------------------------------
+
+// One purchasable tier on a public (isPublic) event -- e.g. "General
+// Admission", "VIP", "Early Bird". A planner defines one or more of these;
+// there's no ticketing until at least one exists. quantitySold is
+// denormalized (not just derived from paid Tickets) so checkout can check
+// remaining capacity with a single read under a transaction lock -- see
+// tickets.service.ts reserveTickets.
+model TicketType {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  priceCents  Int
+  currency    Currency
+
+  // Null = unlimited. quantitySold is only ever incremented inside the same
+  // transaction that creates the PENDING order, and decremented if that
+  // order is later cancelled/expires unpaid -- see tickets.service.ts.
+  quantityTotal Int?
+  quantitySold  Int  @default(0)
+
+  salesStartAt DateTime?
+  salesEndAt   DateTime?
+  minPerOrder  Int @default(1)
+  maxPerOrder  Int @default(10)
+
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+  tickets    Ticket[]
+
+  @@index([eventId])
+  @@map("ticket_types")
+}
+
+enum TicketStatus {
+  VALID
+  CHECKED_IN
+  CANCELLED
+}
+
+// One issued, individually-scannable ticket -- created per unit purchased
+// once an order is marked PAID (an order for 4 GA tickets creates 4 Ticket
+// rows). Deliberately not modeled as a Guest: public ticket buyers usually
+// only give one name/email for the whole order, not per-attendee details,
+// so this stays a lightweight admission credential rather than forcing the
+// private-event Guest/RSVP/seating machinery onto anonymous ticket buyers.
+// `code` is the value encoded in the QR (see tickets.service.ts) -- a
+// separate random token, not the row id, so ticket codes can't be enumerated.
+model Ticket {
+  id           String     @id @default(cuid())
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  code   String       @unique @default(cuid())
+  status TicketStatus @default(VALID)
+
+  attendeeName  String?
+  attendeeEmail String?
+
+  checkedInAt DateTime?
+  checkedInBy String?
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketTypeId])
+  @@index([orderId])
+  @@map("tickets")
+}
+
+// ---------------------------------------------------------------------------
 // ADMIN / SUPPORT TOOLING
 // ---------------------------------------------------------------------------
 
@@ -674,6 +789,16 @@ enum OrderStatus {
   CANCELLED
 }
 
+// What an order is actually for -- lets the same Order/OrderItem/checkout
+// machinery (currency, provider, platform fee, PENDING->PAID webhook flow)
+// serve both the merchandise shop and public ticket sales without a parallel
+// set of models. TICKET orders additionally spawn Ticket rows (one per unit
+// purchased) once paid -- see markOrderPaid.
+enum OrderKind {
+  MERCHANDISE
+  TICKET
+}
+
 // A guest's purchase. Created in PENDING state when a checkout is opened
 // with whichever processor the event has connected for this currency, then
 // flipped to PAID by that processor's webhook/confirmation once payment
@@ -684,6 +809,8 @@ model Order {
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   guestId String?
   guest   Guest?  @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  kind OrderKind @default(MERCHANDISE)
 
   // Captured directly (not just via guestId) so an order is still
   // identifiable even if the guest record is later removed, and so a guest
@@ -700,9 +827,11 @@ model Order {
   payoutAccountId String?
   payoutAccount   EventPayoutAccount? @relation(fields: [payoutAccountId], references: [id], onDelete: SetNull)
   totalCents    Int
-  // EventFlow's cut of totalCents, per PLATFORM_FEE_PERCENT at the time of
-  // checkout -- kept on the order itself (not recomputed later) so a later
-  // change to the fee percentage doesn't rewrite historical order amounts.
+  // EventFlow's cut of totalCents -- per PLATFORM_FEE_PERCENT for
+  // merchandise orders or TICKET_FEE_PERCENT for ticket orders (see
+  // env.ts), at the time of checkout. Kept on the order itself (not
+  // recomputed later) so a later change to either percentage doesn't
+  // rewrite historical order amounts.
   platformFeeCents Int?
   deliveryMethod String @default("AT_EVENT") // AT_EVENT | SHIPPING (future)
 
@@ -716,6 +845,7 @@ model Order {
 
   items         OrderItem[]
   paymentEvents PaymentEvent[]
+  tickets       Ticket[]
 
   @@index([eventId])
   @@index([eventId, status])
@@ -723,13 +853,16 @@ model Order {
 }
 
 // Line item snapshot -- name/price captured at time of purchase so a later
-// product edit (renamed, repriced) doesn't rewrite order history.
+// product edit (renamed, repriced) doesn't rewrite order history. Points at
+// exactly one of product/ticketType depending on Order.kind.
 model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String?
   product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  ticketTypeId String?
+  ticketType   TicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: SetNull)
 
   productName     String
   unitPriceCents  Int

@@ -2,8 +2,9 @@ import QRCode from "qrcode";
 import { Resend } from "resend";
 import { prisma } from "../../lib/prisma";
 import { env } from "../../config/env";
-import { BadRequestError } from "../../lib/errors";
-import { getOwnedGuest } from "./guests.service";
+import { BadRequestError, NotFoundError } from "../../lib/errors";
+import { getOwnedEvent } from "../events/events.service";
+import { checkInGuest, getOwnedGuest } from "./guests.service";
 import { eventHasInvitationCard, getInvitationCardBytesForEvent } from "../events/invitationCard.service";
 import { formatFromHeader } from "../../utils/email";
 
@@ -40,6 +41,53 @@ export async function getInviteLink(userId: string, guestId: string) {
     guestPhone: guest.phone,
     hasInvitationCard,
   };
+}
+
+// Every guest's invitation link, creating one where it doesn't exist yet --
+// feeds the wristband/badge PDF export (see guests.wristbands.pdf.ts). Runs
+// sequentially rather than Promise.all since eventInvitation.create needs a
+// per-guest existence check first; fine for a print job's guest-list size.
+export async function getGuestsWithInviteLinks(userId: string, eventId: string) {
+  await getOwnedEvent(userId, eventId);
+
+  const guests = await prisma.guest.findMany({
+    where: { eventId },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    select: { id: true, firstName: true, lastName: true },
+  });
+
+  const results: { firstName: string; lastName: string; inviteUrl: string }[] = [];
+  for (const guest of guests) {
+    let invitation = await prisma.eventInvitation.findUnique({ where: { guestId: guest.id } });
+    if (!invitation) {
+      invitation = await prisma.eventInvitation.create({ data: { eventId, guestId: guest.id } });
+    }
+    results.push({
+      firstName: guest.firstName,
+      lastName: guest.lastName,
+      inviteUrl: buildInviteUrl(invitation.token),
+    });
+  }
+  return results;
+}
+
+// Door check-in via QR/wristband scan: staff scan the same invitation QR
+// code already generated for the guest's invite (see getInviteLink /
+// sendInviteEmail) instead of searching the guest list by name -- no
+// separate "wristband" model or QR needed, the invitation token already
+// uniquely identifies the guest. Idempotent: re-scanning an
+// already-checked-in guest just returns their current state (checkInGuest
+// upserts) rather than erroring, since staff will often scan the same
+// wristband twice by accident.
+export async function checkInGuestByToken(userId: string, eventId: string, token: string, checkedInBy?: string) {
+  await getOwnedEvent(userId, eventId);
+
+  const invitation = await prisma.eventInvitation.findUnique({ where: { token } });
+  if (!invitation || invitation.eventId !== eventId || !invitation.guestId) {
+    throw new NotFoundError("This QR code doesn't match a guest for this event");
+  }
+
+  return checkInGuest(userId, invitation.guestId, checkedInBy);
 }
 
 export async function markInviteSent(userId: string, guestId: string, channel: string) {

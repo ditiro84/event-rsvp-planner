@@ -142,8 +142,8 @@ export async function checkInGuest(userId: string, guestId: string, checkedInBy?
   const checkedInAt = new Date();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updated = await prisma.$transaction(async (tx: any) => {
-    const g = await tx.guest.update({
+  await prisma.$transaction(async (tx: any) => {
+    await tx.guest.update({
       where: { id: guestId },
       data: { checkedIn: true, checkedInAt },
     });
@@ -152,10 +152,13 @@ export async function checkInGuest(userId: string, guestId: string, checkedInBy?
       create: { eventId: guest.eventId, guestId, checkedInAt, checkedInBy: checkedInBy ?? null },
       update: { checkedInAt, checkedInBy: checkedInBy ?? null },
     });
-    return g;
   });
 
-  return updated;
+  // Re-fetch with the same relations (seatAssignment, party) as every other
+  // guest read -- a bare `update()` result only has scalar columns, which
+  // would make the door-scan flow's card show "Unassigned" for a guest who
+  // actually has a seat (see checkInGuestByToken / QrScanner usage).
+  return getOwnedGuest(userId, guestId);
 }
 
 export async function checkOutGuest(userId: string, guestId: string) {

@@ -1,8 +1,14 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Search, Undo2, UserCheck, X } from "lucide-react";
+import { Check, Printer, QrCode, Search, Undo2, UserCheck, X } from "lucide-react";
 import { useEventDashboard } from "@/hooks/useEvents";
-import { useCheckInGuest, useCheckOutGuest, useGuests } from "@/hooks/useGuests";
+import {
+  useCheckInByScan,
+  useCheckInGuest,
+  useCheckOutGuest,
+  useExportWristbandsPdf,
+  useGuests,
+} from "@/hooks/useGuests";
 import { Card } from "@/components/ui/Card";
 import { RadialProgress } from "@/components/ui/RadialProgress";
 import { Avatar } from "@/components/ui/Avatar";
@@ -10,9 +16,21 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
+import { QrScanner } from "@/components/ui/QrScanner";
+import { cn } from "@/lib/cn";
 import { formatRelativeTime } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
 import type { Guest } from "@/types";
+
+// A scanned QR either encodes the full invite URL (.../rsvp/invite/<token>)
+// -- from a printed wristband/badge or the guest's invite email/screen --
+// or, in principle, a bare token. Either way the token is whatever's after
+// the last "/".
+function extractInviteToken(rawValue: string): string {
+  const trimmed = rawValue.trim();
+  const parts = trimmed.split("/").filter(Boolean);
+  return parts[parts.length - 1] ?? trimmed;
+}
 
 // Event-day check-in: search-then-confirm flow for a single door staffer,
 // matching the check-in-tablet mockup's kiosk pattern (one active guest at
@@ -20,8 +38,14 @@ import type { Guest } from "@/types";
 // grid-of-cards -- a genuine usability win at a busy door where fumbling
 // through a grid on a phone costs time.
 export function CheckInTab({ eventId }: { eventId: string }) {
+  const [mode, setMode] = useState<"search" | "scan">("search");
   const [search, setSearch] = useState("");
   const [activeGuestId, setActiveGuestId] = useState<string | null>(null);
+  // A scanned guest might not be in `guests` below (that list is filtered to
+  // CONFIRMED status) or might not have refetched into it yet -- keep the
+  // mutation's own response as the source of truth for the card right after
+  // a scan, falling back to the live list once it's stale/cleared.
+  const [scannedGuest, setScannedGuest] = useState<Guest | null>(null);
   const { data: dashboard } = useEventDashboard(eventId);
   const {
     data: guests,
@@ -32,14 +56,39 @@ export function CheckInTab({ eventId }: { eventId: string }) {
   const { data: allConfirmed } = useGuests(eventId, { status: "CONFIRMED" });
   const checkIn = useCheckInGuest(eventId);
   const checkOut = useCheckOutGuest(eventId);
+  const checkInByScan = useCheckInByScan(eventId);
+  const exportWristbands = useExportWristbandsPdf(eventId);
+
+  const handleScan = useCallback(
+    (rawValue: string) => {
+      const token = extractInviteToken(rawValue);
+      checkInByScan.mutate(token, {
+        onSuccess: (guest) => {
+          toast.success(`${guest.firstName} ${guest.lastName} checked in`);
+          setScannedGuest(guest);
+          setActiveGuestId(guest.id);
+        },
+        onError: (err) => toast.error(getApiErrorMessage(err)),
+      });
+    },
+    [checkInByScan]
+  );
+
+  async function handlePrintWristbands() {
+    try {
+      await exportWristbands.mutateAsync();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  }
 
   const stats = dashboard?.stats;
   const remaining = stats ? Math.max(stats.confirmed - stats.checkedIn, 0) : 0;
 
-  const activeGuest = useMemo(
-    () => guests?.find((g) => g.id === activeGuestId) ?? (search && guests?.length === 1 ? guests[0] : undefined),
-    [guests, activeGuestId, search]
-  );
+  const activeGuest = useMemo(() => {
+    if (scannedGuest && scannedGuest.id === activeGuestId) return scannedGuest;
+    return guests?.find((g) => g.id === activeGuestId) ?? (search && guests?.length === 1 ? guests[0] : undefined);
+  }, [guests, activeGuestId, search, scannedGuest]);
 
   const recentCheckIns = useMemo(() => {
     if (!allConfirmed) return [];
@@ -64,43 +113,92 @@ export function CheckInTab({ eventId }: { eventId: string }) {
     try {
       await checkOut.mutateAsync(guest.id);
       toast.success(`${guest.firstName} ${guest.lastName} un-checked-in`);
+      // Drop the cached scan result so the card falls back to the live
+      // (now-invalidated) guests list rather than showing a stale
+      // checkedIn: true from the scan response.
+      setScannedGuest(null);
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
   }
 
+  function handleModeChange(next: "search" | "scan") {
+    setMode(next);
+    setActiveGuestId(null);
+    setScannedGuest(null);
+    setSearch("");
+  }
+
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       <div className="flex flex-1 flex-col gap-5">
-        <div className="flex items-center gap-4 rounded-2xl border-2 border-brand-600 bg-white px-6 py-4">
-          <Search className="h-6 w-6 shrink-0 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setActiveGuestId(null);
-            }}
-            placeholder="Search confirmed guests by name..."
-            className="flex-1 border-none bg-transparent text-lg text-slate-900 placeholder:text-slate-400 focus:outline-none"
-          />
-          {search && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
             <button
-              onClick={() => {
-                setSearch("");
-                setActiveGuestId(null);
-              }}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 hover:bg-brand-100"
-              aria-label="Clear search"
+              onClick={() => handleModeChange("search")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
+                mode === "search" ? "bg-white text-brand-700 shadow-soft" : "text-slate-500 hover:text-slate-800"
+              )}
             >
-              <X className="h-3.5 w-3.5" />
+              <Search className="h-4 w-4" />
+              Search
             </button>
-          )}
+            <button
+              onClick={() => handleModeChange("scan")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
+                mode === "scan" ? "bg-white text-brand-700 shadow-soft" : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              <QrCode className="h-4 w-4" />
+              Scan QR
+            </button>
+          </div>
+          <Button variant="secondary" size="sm" onClick={handlePrintWristbands} isLoading={exportWristbands.isPending}>
+            <Printer className="h-4 w-4" />
+            Print wristbands
+          </Button>
         </div>
 
-        {isLoading && <Spinner />}
-        {isError && <ErrorState title="We couldn't load confirmed guests" onRetry={() => refetch()} />}
+        {mode === "search" ? (
+          <div className="flex items-center gap-4 rounded-2xl border-2 border-brand-600 bg-white px-6 py-4">
+            <Search className="h-6 w-6 shrink-0 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setActiveGuestId(null);
+              }}
+              placeholder="Search confirmed guests by name..."
+              className="flex-1 border-none bg-transparent text-lg text-slate-900 placeholder:text-slate-400 focus:outline-none"
+            />
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setActiveGuestId(null);
+                }}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 hover:bg-brand-100"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div>
+            <QrScanner active={mode === "scan"} onScan={handleScan} />
+            <p className="mt-2 text-center text-xs text-slate-400">
+              Point the camera at a guest's wristband, badge, or invite QR code.
+            </p>
+          </div>
+        )}
 
-        {!isLoading && !isError && search && guests && guests.length > 1 && !activeGuest && (
+        {mode === "search" && isLoading && <Spinner />}
+        {mode === "search" && isError && <ErrorState title="We couldn't load confirmed guests" onRetry={() => refetch()} />}
+
+        {mode === "search" && !isLoading && !isError && search && guests && guests.length > 1 && !activeGuest && (
           <Card className="divide-y divide-slate-100 p-2">
             {guests.map((guest) => (
               <button
@@ -121,7 +219,7 @@ export function CheckInTab({ eventId }: { eventId: string }) {
           </Card>
         )}
 
-        {!isLoading && !isError && search && guests?.length === 0 && (
+        {mode === "search" && !isLoading && !isError && search && guests?.length === 0 && (
           <EmptyState icon={<UserCheck className="h-8 w-8" />} title="No confirmed guests match" description="Try a different search." />
         )}
 
@@ -184,11 +282,19 @@ export function CheckInTab({ eventId }: { eventId: string }) {
           </Card>
         )}
 
-        {!search && !activeGuest && (
+        {mode === "search" && !search && !activeGuest && (
           <EmptyState
             icon={<UserCheck className="h-8 w-8" />}
             title="Search for a guest to check them in"
             description="Start typing a confirmed guest's name above."
+          />
+        )}
+
+        {mode === "scan" && !activeGuest && (
+          <EmptyState
+            icon={<QrCode className="h-8 w-8" />}
+            title="Waiting for a QR code"
+            description="Checked-in guests show up here automatically once scanned."
           />
         )}
       </div>

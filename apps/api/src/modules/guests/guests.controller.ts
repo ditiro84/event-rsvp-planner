@@ -3,11 +3,12 @@ import { created, noContent, ok } from "../../lib/apiResponse";
 import { BadRequestError } from "../../lib/errors";
 import { getOwnedEvent } from "../events/events.service";
 import { createGuestSchema, listGuestsQuerySchema, updateGuestSchema } from "./guests.schema";
-import { bulkSendInviteEmailsSchema, markInviteSentSchema } from "./invite.schema";
+import { bulkSendInviteEmailsSchema, checkInScanSchema, markInviteSentSchema } from "./invite.schema";
 import * as service from "./guests.service";
 import * as inviteService from "./invite.service";
 import { guestsToCsv, parseGuestsCsv } from "./guests.csv";
 import { guestsToPdf } from "./guests.pdf";
+import { guestsToWristbandsPdf } from "./guests.wristbands.pdf";
 
 export async function list(req: Request, res: Response) {
   const query = listGuestsQuerySchema.parse(req.query);
@@ -44,6 +45,12 @@ export async function checkIn(req: Request, res: Response) {
 
 export async function checkOut(req: Request, res: Response) {
   const guest = await service.checkOutGuest(req.userId!, req.params.guestId);
+  return ok(res, { guest });
+}
+
+export async function checkInScan(req: Request, res: Response) {
+  const input = checkInScanSchema.parse(req.body);
+  const guest = await inviteService.checkInGuestByToken(req.userId!, req.params.eventId, input.token, req.userId);
   return ok(res, { guest });
 }
 
@@ -94,6 +101,18 @@ export async function exportPdf(req: Request, res: Response) {
   const doc = guestsToPdf(event.name, guests);
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="guests-${req.params.eventId}.pdf"`);
+  doc.pipe(res);
+  doc.end();
+}
+
+export async function exportWristbandsPdf(req: Request, res: Response) {
+  const [event, guests] = await Promise.all([
+    getOwnedEvent(req.userId!, req.params.eventId),
+    inviteService.getGuestsWithInviteLinks(req.userId!, req.params.eventId),
+  ]);
+  const doc = await guestsToWristbandsPdf(event.name, guests);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="wristbands-${req.params.eventId}.pdf"`);
   doc.pipe(res);
   doc.end();
 }

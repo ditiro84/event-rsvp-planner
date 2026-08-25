@@ -11,6 +11,7 @@ import vendorsRouter from "../vendors/vendors.routes";
 import productsRouter from "../products/products.routes";
 import ordersRouter from "../products/orders.routes";
 import payoutsRouter from "../payouts/payouts.routes";
+import ticketTypesRouter from "../tickets/ticketTypes.routes";
 import * as rsvpController from "../rsvp/rsvp.controller";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -57,5 +58,8 @@ router.use("/:eventId/orders", validateParams(eventIdParamsSchema), ordersRouter
 
 // Nested payout account routes: /api/events/:eventId/payouts
 router.use("/:eventId/payouts", validateParams(eventIdParamsSchema), payoutsRouter);
+
+// Nested ticket type routes: /api/events/:eventId/ticket-types
+router.use("/:eventId/ticket-types", validateParams(eventIdParamsSchema), ticketTypesRouter);
 
 export default router;

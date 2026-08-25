@@ -12,8 +12,10 @@ export async function resetDatabase() {
   await prisma.article.deleteMany(); // must precede user.deleteMany() -- authorId has no ON DELETE
   await prisma.landingService.deleteMany();
   await prisma.notification.deleteMany();
+  await prisma.ticket.deleteMany(); // must precede orderItem/order/ticketType deletion
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.ticketType.deleteMany();
   await prisma.product.deleteMany();
   await prisma.vendor.deleteMany();
   await prisma.checkIn.deleteMany();

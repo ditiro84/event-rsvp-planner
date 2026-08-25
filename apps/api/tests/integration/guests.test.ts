@@ -215,6 +215,100 @@ describe("Guests API: check-in", () => {
   });
 });
 
+describe("Guests API: door check-in scan (QR/wristband)", () => {
+  it("checks a guest in by scanning their invitation QR token", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Wrist", lastName: "Band" });
+    const guestId = created.body.data.guest.id;
+
+    const invite = await request(app).get(`/api/events/${eventId}/guests/${guestId}/invite`).set(auth);
+    const qrToken = invite.body.data.url.split("/").pop();
+
+    const scanRes = await request(app)
+      .post(`/api/events/${eventId}/guests/checkin/scan`)
+      .set(auth)
+      .send({ token: qrToken });
+    expect(scanRes.status).toBe(200);
+    expect(scanRes.body.data.guest.id).toBe(guestId);
+    expect(scanRes.body.data.guest.checkedIn).toBe(true);
+  });
+
+  it("is idempotent -- scanning an already-checked-in guest's QR again doesn't error", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Wrist", lastName: "Band" });
+    const guestId = created.body.data.guest.id;
+    const invite = await request(app).get(`/api/events/${eventId}/guests/${guestId}/invite`).set(auth);
+    const qrToken = invite.body.data.url.split("/").pop();
+
+    await request(app).post(`/api/events/${eventId}/guests/checkin/scan`).set(auth).send({ token: qrToken });
+    const second = await request(app)
+      .post(`/api/events/${eventId}/guests/checkin/scan`)
+      .set(auth)
+      .send({ token: qrToken });
+    expect(second.status).toBe(200);
+    expect(second.body.data.guest.checkedIn).toBe(true);
+  });
+
+  it("rejects an unknown QR token", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const res = await request(app)
+      .post(`/api/events/${eventId}/guests/checkin/scan`)
+      .set(auth)
+      .send({ token: "not-a-real-token" });
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects a QR token that belongs to a different event", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId1 = await createEventWithToken(token);
+    const eventId2 = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId1}/guests`)
+      .set(auth)
+      .send({ firstName: "Wrist", lastName: "Band" });
+    const guestId = created.body.data.guest.id;
+    const invite = await request(app).get(`/api/events/${eventId1}/guests/${guestId}/invite`).set(auth);
+    const qrToken = invite.body.data.url.split("/").pop();
+
+    const res = await request(app)
+      .post(`/api/events/${eventId2}/guests/checkin/scan`)
+      .set(auth)
+      .send({ token: qrToken });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("Guests API: wristband PDF export", () => {
+  it("generates a wristbands PDF for the event's guest list", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    await request(app).post(`/api/events/${eventId}/guests`).set(auth).send({ firstName: "Wrist", lastName: "Band" });
+
+    const res = await request(app).get(`/api/events/${eventId}/guests/wristbands/pdf`).set(auth);
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toBe("application/pdf");
+  });
+});
+
 describe("Guests API: invites", () => {
   it("generates a stable personalized invite link and QR code", async () => {
     const { token } = await registerAndLogin(app);

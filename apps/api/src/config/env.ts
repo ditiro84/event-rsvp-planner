@@ -78,4 +78,14 @@ export const env = {
   // planner. A plain number (e.g. 2.5 = 2.5%), adjustable any time from the
   // Railway dashboard without a code change or redeploy of app logic.
   platformFeePercent: Number(process.env.PLATFORM_FEE_PERCENT ?? 2.5),
+
+  // EventFlow's cut of each public ticket sale -- kept separate from
+  // platformFeePercent since ticketing is priced to undercut Eventbrite
+  // (whose service fee is roughly 3.7% + $1.79 per ticket, before their own
+  // 2.9% payment processing on top). A flat percentage rather than
+  // Eventbrite's percent-plus-fixed-fee model, deliberately: a fixed cents
+  // amount doesn't translate sanely across USD/GBP/NGN's very different
+  // scales, and a flat rate is simpler for an organizer to reason about.
+  // Applied the same way as platformFeePercent (see orders.service.ts).
+  ticketFeePercent: Number(process.env.TICKET_FEE_PERCENT ?? 5),
 };

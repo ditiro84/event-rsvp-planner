@@ -127,17 +127,17 @@ async function getSignupsAndEventsTrend(days: number): Promise<{ date: string; s
       gs::date AS day,
       COALESCE(u.count, 0)::int AS signups,
       COALESCE(e.count, 0)::int AS events
-    FROM generate_series((CURRENT_DATE - make_interval(days => ${days - 1})), CURRENT_DATE, '1 day') AS gs
+    FROM generate_series((CURRENT_DATE - make_interval(days => ${days - 1}::int)), CURRENT_DATE, '1 day') AS gs
     LEFT JOIN (
       SELECT date_trunc('day', "createdAt")::date AS day, COUNT(*) AS count
       FROM "users"
-      WHERE "createdAt" >= CURRENT_DATE - make_interval(days => ${days - 1})
+      WHERE "createdAt" >= CURRENT_DATE - make_interval(days => ${days - 1}::int)
       GROUP BY 1
     ) u ON u.day = gs::date
     LEFT JOIN (
       SELECT date_trunc('day', "createdAt")::date AS day, COUNT(*) AS count
       FROM "events"
-      WHERE "createdAt" >= CURRENT_DATE - make_interval(days => ${days - 1})
+      WHERE "createdAt" >= CURRENT_DATE - make_interval(days => ${days - 1}::int)
       GROUP BY 1
     ) e ON e.day = gs::date
     ORDER BY gs;

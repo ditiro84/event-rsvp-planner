@@ -18,7 +18,7 @@ type Tab = "subscribers" | "events" | "audit" | "payments" | "analytics" | "arti
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: "subscribers", label: "Subscribers", icon: Users },
   { id: "events", label: "Events", icon: ShieldCheck },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "analytics", label: "Platform Analytics", icon: BarChart3 },
   { id: "audit", label: "Audit Log", icon: ClipboardList },
   { id: "payments", label: "Payment Logs", icon: CreditCard },
   { id: "articles", label: "Articles", icon: Newspaper },

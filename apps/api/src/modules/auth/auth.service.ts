@@ -13,7 +13,7 @@ export async function registerUser(input: RegisterInput) {
   const passwordHash = await hashPassword(input.password);
   const user = await prisma.user.create({
     data: { name: input.name, email: input.email, passwordHash },
-    select: { id: true, name: true, email: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, createdAt: true },
   });
 
   const token = signAuthToken({ userId: user.id });
@@ -33,7 +33,7 @@ export async function loginUser(input: LoginInput) {
 
   const token = signAuthToken({ userId: user.id });
   return {
-    user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt },
     token,
   };
 }

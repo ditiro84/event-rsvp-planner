@@ -18,6 +18,7 @@ import insightsRoutes from "./modules/insights/insights.routes";
 import analyticsRoutes from "./modules/analytics/analytics.routes";
 import shopRoutes from "./modules/products/shop.routes";
 import webhookRoutes from "./modules/products/webhook.routes";
+import adminRoutes from "./modules/admin/admin.routes";
 
 export function createApp() {
   const app = express();
@@ -72,6 +73,7 @@ export function createApp() {
   app.use("/api/insights", insightsRoutes);
   app.use("/api/analytics", analyticsRoutes);
   app.use("/api/shop", shopRoutes);
+  app.use("/api/admin", adminRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

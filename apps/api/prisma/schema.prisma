@@ -14,11 +14,20 @@ datasource db {
 // USERS / AUTH
 // ---------------------------------------------------------------------------
 
+// PLANNER is every normal subscriber account. ADMIN is internal EventFlow
+// staff (support) -- see getOwnedEvent's admin bypass in events.service.ts
+// and the /api/admin/* module for what that unlocks.
+enum UserRole {
+  PLANNER
+  ADMIN
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
   name         String
+  role         UserRole @default(PLANNER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -90,6 +99,7 @@ model Event {
   products        Product[]
   orders          Order[]
   payoutAccounts  EventPayoutAccount[]
+  paymentEvents   PaymentEvent[]
 
   // "Shop Enabled" toggle on the Merchandise dashboard -- guests only see
   // the purchase flow on their RSVP page once this is on, so a planner can
@@ -596,6 +606,67 @@ model EventPayoutAccount {
   @@map("event_payout_accounts")
 }
 
+// ---------------------------------------------------------------------------
+// ADMIN / SUPPORT TOOLING
+// ---------------------------------------------------------------------------
+
+// A record of every admin action taken on a subscriber's event -- written
+// automatically by the auditAdminEventActions middleware whenever an ADMIN
+// user mutates an event they don't own (see events.routes.ts). Deliberately
+// has no FK/cascade to Event or User: this history should survive even if
+// the event or admin account is later deleted.
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String
+  adminEmail  String
+  eventId     String?
+  eventName   String?
+  method      String
+  summary     String
+
+  createdAt DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([eventId])
+  @@map("admin_audit_logs")
+}
+
+enum PaymentEventStatus {
+  SUCCESS
+  FAILED
+  EXPIRED
+  INFO
+}
+
+// A record of every payment attempt reported by Stripe/Paystack/PayPal --
+// successes AND declines/failures/expirations, not just the ones that ended
+// in a PAID order. Order-level status only tells you the current outcome;
+// this is the evidence trail for disputes ("guest says they paid but it
+// shows unpaid", chargebacks, etc). rawPayload keeps the provider's own
+// response/event body so support can point to the actual record, not just
+// our interpretation of it.
+model PaymentEvent {
+  id      String  @id @default(cuid())
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  provider    PayoutProvider?
+  type        String // raw provider event type, e.g. "checkout.session.completed", "charge.failed"
+  status      PaymentEventStatus
+  amountCents Int?
+  currency    Currency?
+  message     String? // human-readable summary / decline reason where available
+  rawPayload  String // JSON.stringify of the relevant provider object
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([orderId])
+  @@map("payment_events")
+}
+
 enum OrderStatus {
   PENDING
   PAID
@@ -642,7 +713,8 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items OrderItem[]
+  items         OrderItem[]
+  paymentEvents PaymentEvent[]
 
   @@index([eventId])
   @@index([eventId, status])

@@ -2,10 +2,33 @@ import { prisma } from "../../lib/prisma";
 import { NotFoundError } from "../../lib/errors";
 import { CreateEventInput, UpdateEventInput } from "./events.schema";
 
-// Loads an event and verifies the requesting user owns it.
-// Returns NotFound (not Forbidden) for events owned by someone else, so we
-// never confirm to an attacker whether a given eventId exists.
+// Loads an event, allowing either the owning planner or an ADMIN (support)
+// account through. Returns NotFound (not Forbidden) either way there's no
+// access, so we never confirm to an attacker whether a given eventId exists.
+//
+// This is the single ownership choke point every module (guests, seating,
+// vendors, products, orders, payouts, insights, invitation cards) calls
+// before touching an event -- so an ADMIN passed in here gets read/write
+// access everywhere those modules already allow the owner to act, by
+// design (see the admin support-access decision). A short blocklist of
+// actions deliberately does NOT use this function and calls
+// getOwnedEventStrict instead, so admin access never extends to them
+// regardless of role: deleting an event outright (see deleteEvent below),
+// and connecting/changing a payout account's financial details (see
+// payouts.service.ts connectStripe/connectPaystack/connectPaypal).
 export async function getOwnedEvent(userId: string, eventId: string) {
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!event) throw new NotFoundError("Event not found");
+  if (event.userId === userId) return event;
+
+  const requester = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (requester?.role === "ADMIN") return event;
+
+  throw new NotFoundError("Event not found");
+}
+
+// Owner-only, no admin bypass -- see getOwnedEvent's blocklist note above.
+export async function getOwnedEventStrict(userId: string, eventId: string) {
   const event = await prisma.event.findUnique({ where: { id: eventId } });
   if (!event || event.userId !== userId) {
     throw new NotFoundError("Event not found");
@@ -120,7 +143,7 @@ export async function updateEvent(userId: string, eventId: string, input: Update
 }
 
 export async function deleteEvent(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventStrict(userId, eventId);
   await prisma.event.delete({ where: { id: eventId } });
 }
 

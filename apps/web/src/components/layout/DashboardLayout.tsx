@@ -9,6 +9,7 @@ import {
   Mail,
   Menu,
   Pencil,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
@@ -17,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useDeleteEvent, useEvent } from "@/hooks/useEvents";
+import { useAuth } from "@/lib/AuthContext";
 import { Badge } from "@/components/ui/Badge";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -52,9 +54,18 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
   const { data: event } = useEvent(eventId);
+  const { user } = useAuth();
   const deleteEvent = useDeleteEvent();
   const [showEdit, setShowEdit] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const globalSections =
+    user?.role === "ADMIN" ? [...GLOBAL_SECTIONS, { to: "/admin", label: "Admin" }] : GLOBAL_SECTIONS;
+  // True when an admin has drilled into a subscriber's event they don't own
+  // (support mode) -- see getOwnedEvent's admin bypass in events.service.ts.
+  // Deleting an event is on the admin blocklist server-side regardless, but
+  // hiding the button here avoids a confusing failed-request toast.
+  const viewingAsAdmin = !!event && !!user && event.userId !== user.id;
 
   async function handleDelete() {
     if (!event) return;
@@ -84,7 +95,7 @@ export function DashboardLayout() {
 
             <nav className="hidden h-full items-center gap-1 md:flex">
               {!inEvent &&
-                GLOBAL_SECTIONS.map((section) => (
+                globalSections.map((section) => (
                   <NavLink
                     key={section.to}
                     to={section.to}
@@ -155,6 +166,12 @@ export function DashboardLayout() {
               <Badge variant="brand">{EVENT_TYPE_LABELS[event.type] ?? event.type}</Badge>
               <p className="truncate text-sm font-semibold text-slate-900">{event.name}</p>
               <span className="hidden text-xs text-slate-400 sm:inline">{formatDateShort(event.date)}</span>
+              {viewingAsAdmin && (
+                <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Support view -- editing as admin
+                </span>
+              )}
             </div>
             <div className="flex shrink-0 gap-1.5">
               <button
@@ -164,20 +181,25 @@ export function DashboardLayout() {
                 <Pencil className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Edit</span>
               </button>
-              <button
-                onClick={handleDelete}
-                aria-label="Delete event"
-                className="flex items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-400 hover:border-danger-200 hover:bg-danger-50 hover:text-danger-600"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {/* Deleting an event is owner-only, no admin bypass (see
+                  getOwnedEventStrict) -- hidden here rather than shown and
+                  failing with a confusing error. */}
+              {!viewingAsAdmin && (
+                <button
+                  onClick={handleDelete}
+                  aria-label="Delete event"
+                  className="flex items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-400 hover:border-danger-200 hover:bg-danger-50 hover:text-danger-600"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           </div>
         )}
 
         {mobileNavOpen && (
           <nav className="flex flex-col gap-1 border-t border-slate-100 bg-white px-4 py-2 md:hidden">
-            {(!inEvent ? GLOBAL_SECTIONS : EVENT_SECTIONS.map((s) => ({ to: `/events/${eventId}/${s.to}`, label: s.label }))).map(
+            {(!inEvent ? globalSections : EVENT_SECTIONS.map((s) => ({ to: `/events/${eventId}/${s.to}`, label: s.label }))).map(
               (section) => (
                 <NavLink
                   key={section.to}

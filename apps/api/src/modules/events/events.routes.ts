@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { requireAuth } from "../../middleware/auth";
 import { validateBody, validateParams } from "../../middleware/validate";
+import { auditAdminEventActions } from "../../middleware/auditAdminEventActions";
 import { createEventSchema, eventIdParamsSchema, updateEventSchema } from "./events.schema";
 import * as controller from "./events.controller";
 import guestsRouter from "../guests/guests.routes";
@@ -17,6 +18,11 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 *
 const router = Router();
 
 router.use(requireAuth);
+// Prefix-matches "/:eventId" and everything under it (guests, seating,
+// vendors, products, orders, payouts, dashboard, invitation-card) -- see
+// auditAdminEventActions.ts. Registered before those routes so it runs
+// first for every one of them.
+router.use("/:eventId", auditAdminEventActions());
 
 router.get("/", controller.list);
 router.post("/", validateBody(createEventSchema), controller.create);

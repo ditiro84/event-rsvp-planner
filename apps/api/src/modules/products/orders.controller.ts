@@ -14,6 +14,11 @@ export async function summary(req: Request, res: Response) {
   return ok(res, result);
 }
 
+export async function paymentEvents(req: Request, res: Response) {
+  const events = await ordersService.listPaymentEvents(req.userId!, req.params.eventId);
+  return ok(res, { events });
+}
+
 // --- Public (guest-facing shop) ----------------------------------------------
 
 export async function publicListProducts(req: Request, res: Response) {

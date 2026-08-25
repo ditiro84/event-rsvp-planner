@@ -4,7 +4,7 @@ import { env } from "../../config/env";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { getStripeClient } from "../../lib/stripeClient";
 import { paystackRequest } from "../../lib/paystackClient";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEvent, getOwnedEventStrict } from "../events/events.service";
 import { ConnectPaypalInput, ConnectPaystackInput, ConnectStripeInput } from "./payouts.schema";
 
 // Which Stripe Connect account country to create per currency. NGN has no
@@ -123,7 +123,9 @@ export async function disconnectPayoutAccount(userId: string, eventId: string, p
 // event+currency: an already-created-but-incomplete account just gets a new
 // link (Account Links are single-use and expire after a few minutes).
 export async function connectStripe(userId: string, eventId: string, input: ConnectStripeInput) {
-  await getOwnedEvent(userId, eventId);
+  // Strict (owner-only, no admin bypass): connecting a payout account
+  // enters/changes financial routing details -- on the admin blocklist.
+  await getOwnedEventStrict(userId, eventId);
   const country = STRIPE_COUNTRY_BY_CURRENCY[input.currency];
   if (!country) {
     throw new BadRequestError(`Stripe Connect doesn't support ${input.currency} payouts -- use Paystack for NGN.`);
@@ -214,7 +216,8 @@ export async function listNigerianBanks() {
 // and is never written to our database -- only the resulting
 // subaccount_code and a masked last-4 are stored, for display.
 export async function connectPaystack(userId: string, eventId: string, input: ConnectPaystackInput) {
-  const event = await getOwnedEvent(userId, eventId);
+  // Strict (owner-only, no admin bypass) -- see connectStripe's note.
+  const event = await getOwnedEventStrict(userId, eventId);
 
   // Verifies the account number/bank code pair is real (and gets the bank's
   // display name) before we create anything -- Paystack's resolve endpoint
@@ -269,7 +272,8 @@ export async function connectPaystack(userId: string, eventId: string, input: Co
 // connected for any of the three currencies, independent of whether the
 // event also has Stripe Connect/Paystack set up for that currency.
 export async function connectPaypal(userId: string, eventId: string, input: ConnectPaypalInput) {
-  await getOwnedEvent(userId, eventId);
+  // Strict (owner-only, no admin bypass) -- see connectStripe's note.
+  await getOwnedEventStrict(userId, eventId);
 
   const account = await prisma.eventPayoutAccount.upsert({
     where: { eventId_currency_provider: { eventId, currency: input.currency, provider: "PAYPAL" } },

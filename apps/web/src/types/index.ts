@@ -14,10 +14,13 @@ export type RsvpStatus = "PENDING" | "CONFIRMED" | "DECLINED" | "MAYBE";
 
 export type CurrencyCode = "USD" | "GBP" | "NGN";
 
+export type UserRole = "PLANNER" | "ADMIN";
+
 export interface User {
   id: string;
   name: string;
   email: string;
+  role: UserRole;
   createdAt: string;
 }
 
@@ -491,4 +494,59 @@ export interface PayoutAccountRecord {
 export interface PaystackBank {
   name: string;
   code: string;
+}
+
+// ---------------------------------------------------------------------------
+// Admin / support tooling
+// ---------------------------------------------------------------------------
+
+export interface AdminUserSummary {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+  eventCount: number;
+}
+
+export interface AdminEventSummary {
+  id: string;
+  name: string;
+  type: EventType;
+  date: string;
+  createdAt: string;
+  owner: { id: string; name: string; email: string };
+  guestCount: number;
+  orderCount: number;
+}
+
+export interface AdminAuditLogEntry {
+  id: string;
+  adminUserId: string;
+  adminEmail: string;
+  eventId: string | null;
+  eventName: string | null;
+  method: string;
+  summary: string;
+  createdAt: string;
+}
+
+export type PaymentEventStatus = "SUCCESS" | "FAILED" | "EXPIRED" | "INFO";
+
+export interface PaymentEventEntry {
+  id: string;
+  eventId: string | null;
+  eventName: string | null;
+  orderId: string | null;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  orderStatus?: OrderStatus | null;
+  provider: PayoutProvider | null;
+  type: string;
+  status: PaymentEventStatus;
+  amount: number | null;
+  currency: CurrencyCode | null;
+  message: string | null;
+  rawPayload?: string;
+  createdAt: string;
 }

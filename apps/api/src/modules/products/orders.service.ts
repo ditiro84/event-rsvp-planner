@@ -45,6 +45,30 @@ export async function listOrders(userId: string, eventId: string) {
   return orders.map(serializeOrder);
 }
 
+// Every payment attempt logged for this event -- successes AND
+// declines/failures/expirations, see logPaymentEvent below. Available to
+// both the owning planner and admin support (getOwnedEvent's bypass) --
+// the cross-event admin view lives separately at GET /api/admin/payment-events.
+export async function listPaymentEvents(userId: string, eventId: string) {
+  await getOwnedEvent(userId, eventId);
+  const events = await prisma.paymentEvent.findMany({
+    where: { eventId },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+  return events.map((e) => ({
+    id: e.id,
+    orderId: e.orderId,
+    provider: e.provider,
+    type: e.type,
+    status: e.status,
+    amount: e.amountCents !== null ? e.amountCents / 100 : null,
+    currency: e.currency,
+    message: e.message,
+    createdAt: e.createdAt,
+  }));
+}
+
 export async function getOrdersSummary(userId: string, eventId: string) {
   await getOwnedEvent(userId, eventId);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,6 +240,11 @@ async function startStripeCheckout(
     payment_intent_data: {
       application_fee_amount: platformFeeCents,
       transfer_data: { destination: payoutAccount.stripeAccountId },
+      // Checkout Sessions don't propagate their own metadata onto the
+      // PaymentIntent they create -- set it here too so a later
+      // payment_intent.payment_failed webhook can still be tied back to
+      // this order/event (see logPaymentEvent below).
+      metadata: { orderId: order.id, eventId: event.id },
     },
   });
 
@@ -312,12 +341,65 @@ export async function capturePaypalCheckout(rsvpToken: string, paypalOrderId: st
 
   const capture = await capturePaypalOrder(paypalOrderId);
   const captured = capture.purchase_units[0]?.payments?.captures?.[0];
-  if (capture.status !== "COMPLETED" || captured?.status !== "COMPLETED") {
+  const success = capture.status === "COMPLETED" && captured?.status === "COMPLETED";
+
+  await logPaymentEvent({
+    eventId: order.eventId,
+    orderId: order.id,
+    provider: "PAYPAL",
+    type: "paypal.order.capture",
+    status: success ? "SUCCESS" : "FAILED",
+    amountCents: order.totalCents,
+    currency: order.currency,
+    rawPayload: capture,
+  });
+
+  if (!success) {
     throw new BadRequestError("PayPal hasn't confirmed this payment yet");
   }
 
   await finalizeOrderPaid(order);
   return serializeOrder(order);
+}
+
+// --- Payment event log (dispute evidence) ---------------------------------
+
+// Records every payment attempt Stripe/Paystack/PayPal report to us --
+// success, decline, failure, or expiry -- not just the ones that end in a
+// PAID order. rawPayload keeps the provider's own object so support has
+// real evidence to point to, not just our interpretation of it. Best-effort:
+// a logging failure here should never break the actual webhook/capture flow
+// it's called from.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function logPaymentEvent(params: {
+  eventId?: string | null;
+  orderId?: string | null;
+  provider?: "STRIPE_CONNECT" | "PAYSTACK" | "PAYPAL";
+  type: string;
+  status: "SUCCESS" | "FAILED" | "EXPIRED" | "INFO";
+  amountCents?: number | null;
+  currency?: string | null;
+  message?: string | null;
+  rawPayload: unknown;
+}) {
+  try {
+    await prisma.paymentEvent.create({
+      data: {
+        eventId: params.eventId || null,
+        orderId: params.orderId || null,
+        provider: params.provider ?? null,
+        type: params.type,
+        status: params.status,
+        amountCents: params.amountCents ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        currency: (params.currency?.toUpperCase() as any) || null,
+        message: params.message ?? null,
+        rawPayload: JSON.stringify(params.rawPayload).slice(0, 20000),
+      },
+    });
+  } catch {
+    // best-effort -- never break the real payment flow over a logging failure
+  }
 }
 
 // --- Webhooks ------------------------------------------------------------------
@@ -356,7 +438,49 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string | u
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    await logPaymentEvent({
+      eventId: session.metadata?.eventId,
+      orderId: session.metadata?.orderId,
+      provider: "STRIPE_CONNECT",
+      type: event.type,
+      status: "SUCCESS",
+      amountCents: session.amount_total,
+      currency: session.currency ?? undefined,
+      rawPayload: session,
+    });
     await markStripeOrderPaid(session.id, typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id);
+  } else if (event.type === "checkout.session.expired") {
+    // Guest opened checkout but never completed it (closed the tab, session
+    // timed out) -- the order stays PENDING forever with no further signal
+    // otherwise, so this is the only record that anything was attempted.
+    const session = event.data.object as Stripe.Checkout.Session;
+    await logPaymentEvent({
+      eventId: session.metadata?.eventId,
+      orderId: session.metadata?.orderId,
+      provider: "STRIPE_CONNECT",
+      type: event.type,
+      status: "EXPIRED",
+      amountCents: session.amount_total,
+      currency: session.currency ?? undefined,
+      rawPayload: session,
+    });
+  } else if (event.type === "payment_intent.payment_failed") {
+    // A declined card, insufficient funds, etc. -- the checkout session
+    // itself may still be open for retry, but this is the actual decline
+    // event with Stripe's reason, useful evidence if a guest disputes
+    // "my payment didn't go through" or a planner asks why a sale is missing.
+    const intent = event.data.object as Stripe.PaymentIntent;
+    await logPaymentEvent({
+      eventId: intent.metadata?.eventId,
+      orderId: intent.metadata?.orderId,
+      provider: "STRIPE_CONNECT",
+      type: event.type,
+      status: "FAILED",
+      amountCents: intent.amount,
+      currency: intent.currency,
+      message: intent.last_payment_error?.message ?? null,
+      rawPayload: intent,
+    });
   } else if (event.type === "account.updated") {
     // Fired as a planner progresses through Stripe Connect's hosted
     // onboarding -- flips EventPayoutAccount.stripeOnboardingComplete once
@@ -396,9 +520,32 @@ export async function handlePaystackWebhook(rawBody: Buffer, signature: string |
     throw new BadRequestError("Webhook signature verification failed");
   }
 
-  const event = JSON.parse(rawBody.toString("utf8")) as { event: string; data: { reference: string } };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const event = JSON.parse(rawBody.toString("utf8")) as { event: string; data: any };
   if (event.event === "charge.success") {
+    await logPaymentEvent({
+      eventId: event.data.metadata?.eventId,
+      orderId: event.data.metadata?.orderId,
+      provider: "PAYSTACK",
+      type: event.event,
+      status: "SUCCESS",
+      amountCents: event.data.amount,
+      currency: event.data.currency,
+      rawPayload: event.data,
+    });
     await markPaystackOrderPaid(event.data.reference);
+  } else if (event.event === "charge.failed") {
+    await logPaymentEvent({
+      eventId: event.data.metadata?.eventId,
+      orderId: event.data.metadata?.orderId,
+      provider: "PAYSTACK",
+      type: event.event,
+      status: "FAILED",
+      amountCents: event.data.amount,
+      currency: event.data.currency,
+      message: event.data.gateway_response ?? null,
+      rawPayload: event.data,
+    });
   }
 
   return { received: true };

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminRoute, ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -39,6 +39,7 @@ const EventMerchandiseRoute = lazy(() =>
   import("@/pages/events/EventTabPages").then((m) => ({ default: m.EventMerchandiseRoute }))
 );
 const AnalyticsPage = lazy(() => import("@/pages/analytics/AnalyticsPage"));
+const AdminPage = lazy(() => import("@/pages/admin/AdminPage"));
 
 function RouteFallback() {
   return (
@@ -70,6 +71,9 @@ export default function App() {
             <Route path="/events/:eventId/vendors" element={<EventVendorsRoute />} />
             <Route path="/events/:eventId/merchandise" element={<EventMerchandiseRoute />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminPage />} />
+            </Route>
           </Route>
         </Route>
 

@@ -6,5 +6,6 @@ const router = Router({ mergeParams: true });
 
 router.get("/", controller.list);
 router.get("/summary", controller.summary);
+router.get("/payment-events", controller.paymentEvents);
 
 export default router;

@@ -6,11 +6,22 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { getApiErrorMessage } from "@/lib/api";
-import { formatRelativeTime } from "@/lib/format";
+import { formatDate, formatRelativeTime } from "@/lib/format";
+import type { ExportColumn } from "@/lib/exportData";
 import { useAdminArticles, useDeleteArticle, usePublishArticle } from "@/hooks/useArticles";
 import type { Article } from "@/types";
 import { ArticleFormModal } from "./ArticleFormModal";
+
+const articleColumns: ExportColumn<Article>[] = [
+  { header: "Title", value: (a) => a.title },
+  { header: "Status", value: (a) => (a.status === "PUBLISHED" ? "Published" : "Draft") },
+  { header: "Author", value: (a) => a.author?.name ?? "—" },
+  { header: "Slug", value: (a) => a.slug },
+  { header: "Published", value: (a) => (a.publishedAt ? formatDate(a.publishedAt) : "—") },
+  { header: "Updated", value: (a) => formatDate(a.updatedAt) },
+];
 
 export function ArticlesTab() {
   const { data, isLoading, isError, refetch } = useAdminArticles();
@@ -46,10 +57,13 @@ export function ArticlesTab() {
         <p className="text-sm text-slate-500">
           Published articles appear on the public /articles blog and are teased on the landing page.
         </p>
-        <Button size="sm" onClick={() => setModalArticle("new")}>
-          <Plus className="h-4 w-4" />
-          New article
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportMenu data={data} columns={articleColumns} filename="articles" title="Articles" />
+          <Button size="sm" onClick={() => setModalArticle("new")}>
+            <Plus className="h-4 w-4" />
+            New article
+          </Button>
+        </div>
       </div>
 
       {data.length === 0 ? (

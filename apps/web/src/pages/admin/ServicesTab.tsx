@@ -7,10 +7,20 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { getApiErrorMessage } from "@/lib/api";
+import type { ExportColumn } from "@/lib/exportData";
 import { useAdminServices, useDeleteService, useReorderServices } from "@/hooks/useLandingServices";
 import type { LandingService } from "@/types";
 import { ServiceFormModal } from "./ServiceFormModal";
+
+const serviceColumns: ExportColumn<LandingService>[] = [
+  { header: "Title", value: (s) => s.title },
+  { header: "Description", value: (s) => s.description },
+  { header: "Icon", value: (s) => s.icon },
+  { header: "Visible", value: (s) => (s.isActive ? "Yes" : "Hidden") },
+  { header: "Order", value: (s) => s.sortOrder },
+];
 
 export function ServicesTab() {
   const { data, isLoading, isError, refetch } = useAdminServices();
@@ -51,10 +61,13 @@ export function ServicesTab() {
           These cards appear in the "Services" section of the public landing page. Add a new one any time you offer
           something new.
         </p>
-        <Button size="sm" onClick={() => setModalService("new")}>
-          <Plus className="h-4 w-4" />
-          Add service
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportMenu data={data} columns={serviceColumns} filename="services" title="Services" />
+          <Button size="sm" onClick={() => setModalService("new")}>
+            <Plus className="h-4 w-4" />
+            Add service
+          </Button>
+        </div>
       </div>
 
       {data.length === 0 ? (

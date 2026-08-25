@@ -6,9 +6,18 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { cn } from "@/lib/cn";
 import { EVENT_TYPE_LABELS, formatDate, formatMoney, formatRelativeTime } from "@/lib/format";
-import type { CurrencyCode, PaymentEventStatus } from "@/types";
+import type { ExportColumn } from "@/lib/exportData";
+import type {
+  AdminAuditLogEntry,
+  AdminEventSummary,
+  AdminUserSummary,
+  CurrencyCode,
+  PaymentEventEntry,
+  PaymentEventStatus,
+} from "@/types";
 import { ArticlesTab } from "./ArticlesTab";
 import { ServicesTab } from "./ServicesTab";
 import { PlatformAnalyticsTab } from "./PlatformAnalyticsTab";
@@ -65,6 +74,14 @@ export default function AdminPage() {
   );
 }
 
+const subscriberColumns: ExportColumn<AdminUserSummary>[] = [
+  { header: "Name", value: (u) => u.name },
+  { header: "Email", value: (u) => u.email },
+  { header: "Role", value: (u) => (u.role === "ADMIN" ? "Admin" : "Planner") },
+  { header: "Events", value: (u) => u.eventCount },
+  { header: "Joined", value: (u) => formatDate(u.createdAt) },
+];
+
 function SubscribersTab() {
   const { data, isLoading, isError, refetch } = useAdminUsers();
 
@@ -73,34 +90,49 @@ function SubscribersTab() {
   if (data.length === 0) return <EmptyState title="No subscribers yet" description="Accounts will show up here once people register." />;
 
   return (
-    <Card className="overflow-hidden">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
-          <tr>
-            <th className="px-5 py-3">Name</th>
-            <th className="px-5 py-3">Email</th>
-            <th className="px-5 py-3">Role</th>
-            <th className="px-5 py-3">Events</th>
-            <th className="px-5 py-3">Joined</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {data.map((u) => (
-            <tr key={u.id}>
-              <td className="px-5 py-3.5 font-semibold text-slate-900">{u.name}</td>
-              <td className="px-5 py-3.5 text-slate-600">{u.email}</td>
-              <td className="px-5 py-3.5">
-                <Badge variant={u.role === "ADMIN" ? "brand" : "neutral"}>{u.role === "ADMIN" ? "Admin" : "Planner"}</Badge>
-              </td>
-              <td className="px-5 py-3.5 text-slate-600">{u.eventCount}</td>
-              <td className="px-5 py-3.5 text-slate-500">{formatDate(u.createdAt)}</td>
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <ExportMenu data={data} columns={subscriberColumns} filename="subscribers" title="Subscribers" />
+      </div>
+      <Card className="overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Name</th>
+              <th className="px-5 py-3">Email</th>
+              <th className="px-5 py-3">Role</th>
+              <th className="px-5 py-3">Events</th>
+              <th className="px-5 py-3">Joined</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {data.map((u) => (
+              <tr key={u.id}>
+                <td className="px-5 py-3.5 font-semibold text-slate-900">{u.name}</td>
+                <td className="px-5 py-3.5 text-slate-600">{u.email}</td>
+                <td className="px-5 py-3.5">
+                  <Badge variant={u.role === "ADMIN" ? "brand" : "neutral"}>{u.role === "ADMIN" ? "Admin" : "Planner"}</Badge>
+                </td>
+                <td className="px-5 py-3.5 text-slate-600">{u.eventCount}</td>
+                <td className="px-5 py-3.5 text-slate-500">{formatDate(u.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
   );
 }
+
+const eventColumns: ExportColumn<AdminEventSummary>[] = [
+  { header: "Event", value: (e) => e.name },
+  { header: "Type", value: (e) => EVENT_TYPE_LABELS[e.type] ?? e.type },
+  { header: "Owner name", value: (e) => e.owner.name },
+  { header: "Owner email", value: (e) => e.owner.email },
+  { header: "Date", value: (e) => formatDate(e.date) },
+  { header: "Guests", value: (e) => e.guestCount },
+  { header: "Orders", value: (e) => e.orderCount },
+];
 
 function EventsTab() {
   const { data, isLoading, isError, refetch } = useAdminEvents();
@@ -111,42 +143,54 @@ function EventsTab() {
   if (data.length === 0) return <EmptyState title="No events yet" description="Subscriber events will show up here." />;
 
   return (
-    <Card className="overflow-hidden">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
-          <tr>
-            <th className="px-5 py-3">Event</th>
-            <th className="px-5 py-3">Owner</th>
-            <th className="px-5 py-3">Date</th>
-            <th className="px-5 py-3">Guests</th>
-            <th className="px-5 py-3">Orders</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {data.map((e) => (
-            <tr
-              key={e.id}
-              onClick={() => navigate(`/events/${e.id}/overview`)}
-              className="cursor-pointer hover:bg-slate-50/60"
-            >
-              <td className="px-5 py-3.5">
-                <p className="font-semibold text-slate-900">{e.name}</p>
-                <p className="text-xs text-slate-400">{EVENT_TYPE_LABELS[e.type] ?? e.type}</p>
-              </td>
-              <td className="px-5 py-3.5 text-slate-600">
-                <p>{e.owner.name}</p>
-                <p className="text-xs text-slate-400">{e.owner.email}</p>
-              </td>
-              <td className="px-5 py-3.5 text-slate-600">{formatDate(e.date)}</td>
-              <td className="px-5 py-3.5 text-slate-600">{e.guestCount}</td>
-              <td className="px-5 py-3.5 text-slate-600">{e.orderCount}</td>
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <ExportMenu data={data} columns={eventColumns} filename="events" title="Events" />
+      </div>
+      <Card className="overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Event</th>
+              <th className="px-5 py-3">Owner</th>
+              <th className="px-5 py-3">Date</th>
+              <th className="px-5 py-3">Guests</th>
+              <th className="px-5 py-3">Orders</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {data.map((e) => (
+              <tr
+                key={e.id}
+                onClick={() => navigate(`/events/${e.id}/overview`)}
+                className="cursor-pointer hover:bg-slate-50/60"
+              >
+                <td className="px-5 py-3.5">
+                  <p className="font-semibold text-slate-900">{e.name}</p>
+                  <p className="text-xs text-slate-400">{EVENT_TYPE_LABELS[e.type] ?? e.type}</p>
+                </td>
+                <td className="px-5 py-3.5 text-slate-600">
+                  <p>{e.owner.name}</p>
+                  <p className="text-xs text-slate-400">{e.owner.email}</p>
+                </td>
+                <td className="px-5 py-3.5 text-slate-600">{formatDate(e.date)}</td>
+                <td className="px-5 py-3.5 text-slate-600">{e.guestCount}</td>
+                <td className="px-5 py-3.5 text-slate-600">{e.orderCount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
   );
 }
+
+const auditLogColumns: ExportColumn<AdminAuditLogEntry>[] = [
+  { header: "Admin", value: (e) => e.adminEmail },
+  { header: "Action", value: (e) => e.summary },
+  { header: "Event", value: (e) => e.eventName ?? "—" },
+  { header: "When", value: (e) => formatDate(e.createdAt) },
+];
 
 function AuditLogTab() {
   const { data, isLoading, isError, refetch } = useAdminAuditLog();
@@ -163,28 +207,33 @@ function AuditLogTab() {
   }
 
   return (
-    <Card className="overflow-hidden">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
-          <tr>
-            <th className="px-5 py-3">Admin</th>
-            <th className="px-5 py-3">Action</th>
-            <th className="px-5 py-3">Event</th>
-            <th className="px-5 py-3">When</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {data.map((entry) => (
-            <tr key={entry.id}>
-              <td className="px-5 py-3.5 text-slate-600">{entry.adminEmail}</td>
-              <td className="px-5 py-3.5 font-medium text-slate-900">{entry.summary}</td>
-              <td className="px-5 py-3.5 text-slate-600">{entry.eventName ?? "—"}</td>
-              <td className="px-5 py-3.5 text-slate-500">{formatRelativeTime(entry.createdAt)}</td>
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <ExportMenu data={data} columns={auditLogColumns} filename="audit-log" title="Audit Log" />
+      </div>
+      <Card className="overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Admin</th>
+              <th className="px-5 py-3">Action</th>
+              <th className="px-5 py-3">Event</th>
+              <th className="px-5 py-3">When</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {data.map((entry) => (
+              <tr key={entry.id}>
+                <td className="px-5 py-3.5 text-slate-600">{entry.adminEmail}</td>
+                <td className="px-5 py-3.5 font-medium text-slate-900">{entry.summary}</td>
+                <td className="px-5 py-3.5 text-slate-600">{entry.eventName ?? "—"}</td>
+                <td className="px-5 py-3.5 text-slate-500">{formatRelativeTime(entry.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
   );
 }
 
@@ -194,6 +243,18 @@ const PAYMENT_STATUS_VARIANT: Record<PaymentEventStatus, "success" | "danger" | 
   EXPIRED: "warning",
   INFO: "neutral",
 };
+
+const paymentLogColumns: ExportColumn<PaymentEventEntry>[] = [
+  { header: "Status", value: (p) => p.status },
+  { header: "Event", value: (p) => p.eventName ?? "—" },
+  { header: "Guest", value: (p) => p.guestName ?? "—" },
+  { header: "Guest email", value: (p) => p.guestEmail ?? "—" },
+  { header: "Provider", value: (p) => p.provider ?? "—" },
+  { header: "Type", value: (p) => p.type },
+  { header: "Amount", value: (p) => (p.amount !== null && p.currency ? formatMoney(p.amount, p.currency as CurrencyCode) : "—") },
+  { header: "Message", value: (p) => p.message ?? "—" },
+  { header: "When", value: (p) => formatDate(p.createdAt) },
+];
 
 function PaymentLogsTab() {
   const { data, isLoading, isError, refetch } = useAdminPaymentEvents();
@@ -210,43 +271,48 @@ function PaymentLogsTab() {
   }
 
   return (
-    <Card className="overflow-hidden">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
-          <tr>
-            <th className="px-5 py-3">Status</th>
-            <th className="px-5 py-3">Event</th>
-            <th className="px-5 py-3">Guest</th>
-            <th className="px-5 py-3">Provider</th>
-            <th className="px-5 py-3">Type</th>
-            <th className="px-5 py-3 text-right">Amount</th>
-            <th className="px-5 py-3">When</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {data.map((p) => (
-            <tr key={p.id}>
-              <td className="px-5 py-3.5">
-                <Badge variant={PAYMENT_STATUS_VARIANT[p.status]}>{p.status}</Badge>
-              </td>
-              <td className="px-5 py-3.5 text-slate-600">{p.eventName ?? "—"}</td>
-              <td className="px-5 py-3.5 text-slate-600">
-                {p.guestName ?? "—"}
-                {p.guestEmail && <span className="block text-xs text-slate-400">{p.guestEmail}</span>}
-              </td>
-              <td className="px-5 py-3.5 text-slate-600">{p.provider ?? "—"}</td>
-              <td className="px-5 py-3.5 text-slate-500">
-                {p.type}
-                {p.message && <span className="block text-xs text-danger-600">{p.message}</span>}
-              </td>
-              <td className="px-5 py-3.5 text-right font-semibold text-slate-900">
-                {p.amount !== null && p.currency ? formatMoney(p.amount, p.currency as CurrencyCode) : "—"}
-              </td>
-              <td className="px-5 py-3.5 text-slate-500">{formatRelativeTime(p.createdAt)}</td>
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <ExportMenu data={data} columns={paymentLogColumns} filename="payment-logs" title="Payment Logs" />
+      </div>
+      <Card className="overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3">Event</th>
+              <th className="px-5 py-3">Guest</th>
+              <th className="px-5 py-3">Provider</th>
+              <th className="px-5 py-3">Type</th>
+              <th className="px-5 py-3 text-right">Amount</th>
+              <th className="px-5 py-3">When</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {data.map((p) => (
+              <tr key={p.id}>
+                <td className="px-5 py-3.5">
+                  <Badge variant={PAYMENT_STATUS_VARIANT[p.status]}>{p.status}</Badge>
+                </td>
+                <td className="px-5 py-3.5 text-slate-600">{p.eventName ?? "—"}</td>
+                <td className="px-5 py-3.5 text-slate-600">
+                  {p.guestName ?? "—"}
+                  {p.guestEmail && <span className="block text-xs text-slate-400">{p.guestEmail}</span>}
+                </td>
+                <td className="px-5 py-3.5 text-slate-600">{p.provider ?? "—"}</td>
+                <td className="px-5 py-3.5 text-slate-500">
+                  {p.type}
+                  {p.message && <span className="block text-xs text-danger-600">{p.message}</span>}
+                </td>
+                <td className="px-5 py-3.5 text-right font-semibold text-slate-900">
+                  {p.amount !== null && p.currency ? formatMoney(p.amount, p.currency as CurrencyCode) : "—"}
+                </td>
+                <td className="px-5 py-3.5 text-slate-500">{formatRelativeTime(p.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
   );
 }

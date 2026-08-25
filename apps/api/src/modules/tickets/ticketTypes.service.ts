@@ -121,6 +121,85 @@ export async function deleteTicketType(userId: string, eventId: string, ticketTy
   await prisma.ticketType.delete({ where: { id: ticketTypeId } });
 }
 
+// Atomically reserves capacity for a set of {ticketTypeId, quantity} items --
+// called inside the same transaction that creates a PENDING ticket order
+// (see tickets/checkout.service.ts createTicketCheckoutSession), per the
+// design note on TicketType.quantitySold in schema.prisma. A single
+// UPDATE ... WHERE guard (not a read-then-write) is what makes this
+// race-safe under concurrent checkouts for the same ticket type -- two
+// buyers racing for the last ticket can't both succeed.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function reserveTickets(tx: any, items: { ticketTypeId: string; quantity: number }[]) {
+  for (const item of items) {
+    const affected: number = await tx.$executeRaw`
+      UPDATE ticket_types
+      SET "quantitySold" = "quantitySold" + ${item.quantity}
+      WHERE id = ${item.ticketTypeId}
+        AND "isActive" = true
+        AND ("quantityTotal" IS NULL OR "quantityTotal" - "quantitySold" >= ${item.quantity})
+    `;
+    if (affected === 0) {
+      throw new BadRequestError("Not enough tickets remaining for one of the ticket types in your order");
+    }
+  }
+}
+
+// Reverses reserveTickets -- called when a reserved order is later cancelled
+// or its checkout session/PayPal capture fails, so the capacity goes back
+// on sale instead of leaking away on every abandoned checkout.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function releaseTickets(tx: any, items: { ticketTypeId: string; quantity: number }[]) {
+  for (const item of items) {
+    await tx.$executeRaw`
+      UPDATE ticket_types
+      SET "quantitySold" = GREATEST("quantitySold" - ${item.quantity}, 0)
+      WHERE id = ${item.ticketTypeId}
+    `;
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serializeScannedTicket(ticket: any) {
+  return {
+    id: ticket.id,
+    code: ticket.code,
+    status: ticket.status,
+    attendeeName: ticket.attendeeName,
+    ticketTypeName: ticket.ticketType?.name ?? "Ticket",
+    checkedInAt: ticket.checkedInAt,
+  };
+}
+
+// Door check-in via QR scan of a Ticket's own `code` -- deliberately a
+// separate credential from EventInvitation.token (the private RSVP flow's
+// wristband QR, see guests/invite.service.ts checkInGuestByToken): ticket
+// buyers never go through the guest list at all, so there's no Guest row to
+// key off here. Idempotent like the guest scan flow -- re-scanning an
+// already-checked-in ticket doesn't error, but the `alreadyCheckedIn` flag
+// lets the scan UI flag a possible duplicate/shared ticket to staff.
+export async function checkInTicketByCode(userId: string, eventId: string, code: string, checkedInBy?: string) {
+  await getOwnedEvent(userId, eventId);
+
+  const ticket = await prisma.ticket.findUnique({ where: { code }, include: { ticketType: true } });
+  if (!ticket || ticket.ticketType.eventId !== eventId) {
+    throw new NotFoundError("This QR code doesn't match a ticket for this event");
+  }
+  if (ticket.status === "CANCELLED") {
+    throw new BadRequestError("This ticket has been cancelled and can't be used for entry");
+  }
+
+  const alreadyCheckedIn = ticket.status === "CHECKED_IN";
+  const updated = alreadyCheckedIn
+    ? ticket
+    : await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { status: "CHECKED_IN", checkedInAt: new Date(), checkedInBy: checkedInBy ?? null },
+        include: { ticketType: true },
+      });
+
+  return { ticket: serializeScannedTicket(updated), alreadyCheckedIn };
+}
+
 export async function reorderTicketTypes(userId: string, eventId: string, orderedIds: string[]) {
   await getOwnedEvent(userId, eventId);
 

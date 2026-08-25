@@ -18,6 +18,7 @@ import insightsRoutes from "./modules/insights/insights.routes";
 import analyticsRoutes from "./modules/analytics/analytics.routes";
 import shopRoutes from "./modules/products/shop.routes";
 import webhookRoutes from "./modules/products/webhook.routes";
+import ticketCheckoutRoutes from "./modules/tickets/checkout.routes";
 import adminRoutes from "./modules/admin/admin.routes";
 import articlesAdminRoutes from "./modules/articles/articles.admin.routes";
 import articlesPublicRoutes from "./modules/articles/articles.public.routes";
@@ -77,6 +78,7 @@ export function createApp() {
   app.use("/api/insights", insightsRoutes);
   app.use("/api/analytics", analyticsRoutes);
   app.use("/api/shop", shopRoutes);
+  app.use("/api/tickets", ticketCheckoutRoutes);
   // Mounted before /api/admin so these more specific prefixes get first
   // crack at the request (avoids an extra, harmless-but-wasted pass through
   // adminRoutes' own requireAuth/requireAdmin before falling through).

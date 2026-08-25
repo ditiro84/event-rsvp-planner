@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { created, noContent, ok } from "../../lib/apiResponse";
-import { createTicketTypeSchema, reorderTicketTypesSchema, updateTicketTypeSchema } from "./ticketTypes.schema";
+import { createTicketTypeSchema, reorderTicketTypesSchema, ticketScanSchema, updateTicketTypeSchema } from "./ticketTypes.schema";
 import * as service from "./ticketTypes.service";
 
 export async function list(req: Request, res: Response) {
@@ -29,4 +29,10 @@ export async function reorder(req: Request, res: Response) {
   const input = reorderTicketTypesSchema.parse(req.body);
   const ticketTypes = await service.reorderTicketTypes(req.userId!, req.params.eventId, input.orderedIds);
   return ok(res, { ticketTypes });
+}
+
+export async function scan(req: Request, res: Response) {
+  const input = ticketScanSchema.parse(req.body);
+  const result = await service.checkInTicketByCode(req.userId!, req.params.eventId, input.code, req.userId);
+  return ok(res, result);
 }

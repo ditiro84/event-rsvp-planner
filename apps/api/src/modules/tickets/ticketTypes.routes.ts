@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { validateBody, validateParams } from "../../middleware/validate";
-import { createTicketTypeSchema, ticketTypeIdParamsSchema, updateTicketTypeSchema } from "./ticketTypes.schema";
+import {
+  createTicketTypeSchema,
+  ticketScanSchema,
+  ticketTypeIdParamsSchema,
+  updateTicketTypeSchema,
+} from "./ticketTypes.schema";
 import * as controller from "./ticketTypes.controller";
 
 // Mounted at /api/events/:eventId/ticket-types (mergeParams to access
@@ -10,6 +15,11 @@ const router = Router({ mergeParams: true });
 router.get("/", controller.list);
 router.post("/", validateBody(createTicketTypeSchema), controller.create);
 router.post("/reorder", controller.reorder);
+// Door check-in scan -- looks a ticket up by its own `code` (the QR payload
+// printed/shown to the buyer), separate from the ticket-type CRUD above.
+// Lives here rather than a new router so ticket check-in doesn't need its
+// own mount point for one endpoint.
+router.post("/scan", validateBody(ticketScanSchema), controller.scan);
 router.put(
   "/:ticketTypeId",
   validateParams(ticketTypeIdParamsSchema),

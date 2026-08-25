@@ -16,6 +16,7 @@ const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
 const EventsListPage = lazy(() => import("@/pages/events/EventsListPage"));
 const PublicRsvpPage = lazy(() => import("@/pages/rsvp/PublicRsvpPage"));
+const PublicTicketEventPage = lazy(() => import("@/pages/tickets/PublicTicketEventPage"));
 
 // All five of these live in one module (EventTabPages.tsx); pointing
 // several lazy() calls at the same specifier is safe -- the bundler
@@ -41,6 +42,9 @@ const EventVendorsRoute = lazy(() =>
 const EventMerchandiseRoute = lazy(() =>
   import("@/pages/events/EventTabPages").then((m) => ({ default: m.EventMerchandiseRoute }))
 );
+const EventTicketsRoute = lazy(() =>
+  import("@/pages/events/EventTabPages").then((m) => ({ default: m.EventTicketsRoute }))
+);
 const AnalyticsPage = lazy(() => import("@/pages/analytics/AnalyticsPage"));
 const AdminPage = lazy(() => import("@/pages/admin/AdminPage"));
 
@@ -63,6 +67,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/rsvp/invite/:invitationToken" element={<PublicRsvpPage />} />
         <Route path="/rsvp/:token" element={<PublicRsvpPage />} />
+        <Route path="/tickets/:slug" element={<PublicTicketEventPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
@@ -75,6 +80,7 @@ export default function App() {
             <Route path="/events/:eventId/checkin" element={<EventCheckInRoute />} />
             <Route path="/events/:eventId/vendors" element={<EventVendorsRoute />} />
             <Route path="/events/:eventId/merchandise" element={<EventMerchandiseRoute />} />
+            <Route path="/events/:eventId/tickets" element={<EventTicketsRoute />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<AdminPage />} />

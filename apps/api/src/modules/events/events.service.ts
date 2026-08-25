@@ -1,6 +1,39 @@
 import { prisma } from "../../lib/prisma";
-import { NotFoundError } from "../../lib/errors";
+import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { CreateEventInput, UpdateEventInput } from "./events.schema";
+
+const ALLOWED_COVER_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const MAX_COVER_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+
+export interface UploadedFile {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+}
+
+function slugifyEventName(name: string): string {
+  const base = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return base || "event";
+}
+
+// Appends -2, -3, ... on collision, same pattern as articles.service.ts's
+// ensureUniqueSlug -- names aren't guaranteed unique, but publicSlug must
+// be (it's the public ticket page URL, /tickets/:slug).
+async function ensureUniqueEventSlug(base: string): Promise<string> {
+  let slug = base;
+  let suffix = 2;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const existing = await prisma.event.findUnique({ where: { publicSlug: slug } });
+    if (!existing) return slug;
+    slug = `${base}-${suffix}`;
+    suffix += 1;
+  }
+}
 
 // Loads an event, allowing either the owning planner or an ADMIN (support)
 // account through. Returns NotFound (not Forbidden) either way there's no
@@ -136,10 +169,47 @@ export async function createEvent(userId: string, input: CreateEventInput) {
 }
 
 export async function updateEvent(userId: string, eventId: string, input: UpdateEventInput) {
-  await getOwnedEvent(userId, eventId);
+  const existing = await getOwnedEvent(userId, eventId);
   const data: Record<string, unknown> = { ...input };
   if ("imageUrl" in data && data.imageUrl === "") data.imageUrl = null;
+
+  // Generate publicSlug once, the first time an event goes public -- never
+  // overwritten afterward (immutable, same as Article.slug), so the
+  // /tickets/:slug URL a planner has already shared stays valid forever.
+  if (input.isPublic && !existing.publicSlug) {
+    data.publicSlug = await ensureUniqueEventSlug(slugifyEventName(existing.name));
+  }
+
   return prisma.event.update({ where: { id: eventId }, data });
+}
+
+export async function uploadEventCoverImage(userId: string, eventId: string, file: UploadedFile) {
+  await getOwnedEvent(userId, eventId);
+
+  if (!ALLOWED_COVER_IMAGE_TYPES.has(file.mimetype)) {
+    throw new BadRequestError("Cover image must be a PNG, JPEG, or WEBP file");
+  }
+  if (file.size > MAX_COVER_IMAGE_BYTES) {
+    throw new BadRequestError("Cover image must be 5MB or smaller");
+  }
+
+  return prisma.event.update({
+    where: { id: eventId },
+    data: { coverImageData: file.buffer, coverImageMimeType: file.mimetype },
+  });
+}
+
+// Internal (no auth) -- used by both the authenticated host download route
+// and the public ticket-page cover image route.
+export async function getEventCoverImageBytes(eventId: string) {
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { coverImageData: true, coverImageMimeType: true },
+  });
+  if (!event || !event.coverImageData || !event.coverImageMimeType) {
+    throw new NotFoundError("This event has no cover image");
+  }
+  return { data: event.coverImageData, mimeType: event.coverImageMimeType };
 }
 
 export async function deleteEvent(userId: string, eventId: string) {

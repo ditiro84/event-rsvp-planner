@@ -67,14 +67,17 @@ export async function notifyRsvpChange(eventOwnerId: string, event: { id: string
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function notifyOrderPaid(userId: string, event: { id: string; name: string }, order: any) {
+  const isTicketOrder = order.kind === "TICKET";
   await prisma.notification.create({
     data: {
       userId,
       eventId: event.id,
       type: "ORDER_PAID",
-      title: `New order from ${order.guestName}`,
-      body: `${order.guestName} paid for their order on ${event.name}.`,
-      link: `/events/${event.id}/merchandise`,
+      title: isTicketOrder ? `New ticket sale from ${order.guestName}` : `New order from ${order.guestName}`,
+      body: isTicketOrder
+        ? `${order.guestName} bought tickets for ${event.name}.`
+        : `${order.guestName} paid for their order on ${event.name}.`,
+      link: isTicketOrder ? `/events/${event.id}/tickets` : `/events/${event.id}/merchandise`,
     },
   });
 }

@@ -9,10 +9,11 @@ import { capturePaypalOrder, createPaypalOrder } from "../../lib/paypalClient";
 import { getOwnedEvent } from "../events/events.service";
 import { notifyOrderPaid } from "../notifications/notifications.service";
 import { handleStripeAccountUpdated, isPayoutAccountConnected } from "../payouts/payouts.service";
+import { releaseTickets } from "../tickets/ticketTypes.service";
 import { CreateCheckoutInput } from "./orders.schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeOrder(order: any) {
+export function serializeOrder(order: any) {
   return {
     id: order.id,
     eventId: order.eventId,
@@ -91,7 +92,10 @@ export async function getOrdersSummary(userId: string, eventId: string) {
 // --- Public (guest-facing) checkout ------------------------------------------
 
 // Preferred provider when the guest/frontend doesn't specify one explicitly.
-const DEFAULT_PROVIDER_PREFERENCE = ["STRIPE_CONNECT", "PAYSTACK", "PAYPAL"] as const;
+// Exported for reuse by the public ticket checkout flow (see
+// tickets/checkout.service.ts), which routes through the same
+// EventPayoutAccount infrastructure as merchandise.
+export const DEFAULT_PROVIDER_PREFERENCE = ["STRIPE_CONNECT", "PAYSTACK", "PAYPAL"] as const;
 
 export async function createCheckoutSession(rsvpToken: string, input: CreateCheckoutInput) {
   const event = await prisma.event.findUnique({
@@ -187,12 +191,17 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
 
   try {
     if (payoutAccount.provider === "STRIPE_CONNECT") {
-      return await startStripeCheckout(event, rsvpToken, order, orderItemsData, currency, platformFeeCents, payoutAccount);
+      const successUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=success`;
+      const cancelUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=cancelled`;
+      return await startStripeCheckout(event, successUrl, cancelUrl, order, orderItemsData, currency, platformFeeCents, payoutAccount);
     }
     if (payoutAccount.provider === "PAYSTACK") {
-      return await startPaystackCheckout(event, rsvpToken, order, totalCents, payoutAccount);
+      const successUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=success`;
+      return await startPaystackCheckout(event, successUrl, order, totalCents, payoutAccount);
     }
-    return await startPaypalCheckout(order, rsvpToken, totalCents, currency, platformFeeCents, payoutAccount);
+    const returnUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=paypal_return`;
+    const cancelUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=cancelled`;
+    return await startPaypalCheckout(order, totalCents, currency, platformFeeCents, payoutAccount, returnUrl, cancelUrl);
   } catch (err) {
     // Clean up the pending order if the processor rejected checkout, rather
     // than leaving an orphaned PENDING order with no way to ever complete it.
@@ -201,10 +210,16 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
   }
 }
 
-async function startStripeCheckout(
+// successUrl/cancelUrl are passed in by the caller rather than computed here
+// -- the merchandise checkout (createCheckoutSession above) points back at
+// the RSVP page, the public ticket checkout (tickets/checkout.service.ts)
+// points back at the public ticket page, and this function doesn't need to
+// know which.
+export async function startStripeCheckout(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   event: any,
-  rsvpToken: string,
+  successUrl: string,
+  cancelUrl: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   order: any,
   orderItemsData: { productName: string; unitPriceCents: number; quantity: number }[],
@@ -214,8 +229,6 @@ async function startStripeCheckout(
   payoutAccount: any
 ) {
   const stripe = getStripeClient();
-  const successUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=success`;
-  const cancelUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=cancelled`;
 
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = orderItemsData.map((item) => ({
     quantity: item.quantity,
@@ -252,18 +265,16 @@ async function startStripeCheckout(
   return { checkoutUrl: session.url };
 }
 
-async function startPaystackCheckout(
+export async function startPaystackCheckout(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   event: any,
-  rsvpToken: string,
+  successUrl: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   order: any,
   totalCents: number,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payoutAccount: any
 ) {
-  const successUrl = `${env.publicAppUrl}/rsvp/${rsvpToken}?order=success`;
-
   // Paystack's "amount" is the smallest currency unit (kobo for NGN) --
   // the same convention as our own *Cents fields, so totalCents needs no
   // conversion. percentage_charge was already fixed on the subaccount at
@@ -288,15 +299,16 @@ async function startPaystackCheckout(
   return { checkoutUrl: transaction.authorization_url };
 }
 
-async function startPaypalCheckout(
+export async function startPaypalCheckout(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   order: any,
-  rsvpToken: string,
   totalCents: number,
   currency: string,
   platformFeeCents: number,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payoutAccount: any
+  payoutAccount: any,
+  returnUrl: string,
+  cancelUrl: string
 ) {
   const paypalOrder = await createPaypalOrder({
     amount: totalCents / 100,
@@ -306,10 +318,10 @@ async function startPaypalCheckout(
     orderId: order.id,
     // PayPal appends its own ?token=<paypalOrderId>&PayerID=... to this once
     // the guest approves -- the frontend reads that `token` param (it's the
-    // PayPal order id) and calls capturePaypalCheckout with it (see
-    // orders.controller.ts capturePaypal / ShopSection.tsx).
-    returnUrl: `${env.publicAppUrl}/rsvp/${rsvpToken}?order=paypal_return`,
-    cancelUrl: `${env.publicAppUrl}/rsvp/${rsvpToken}?order=cancelled`,
+    // PayPal order id) and calls capturePaypalCheckout/captureTicketPaypalCheckout
+    // with it (see orders.controller.ts capturePaypal / ShopSection.tsx).
+    returnUrl,
+    cancelUrl,
   });
 
   const approveLink = paypalOrder.links.find((l) => l.rel === "approve" || l.rel === "payer-action");
@@ -326,17 +338,12 @@ async function startPaypalCheckout(
   return { checkoutUrl: approveLink.href };
 }
 
-// Called once the guest approves the PayPal order and is redirected back to
-// our RSVP page (PayPal Orders v2's "capture on return" pattern -- simpler
-// than standing up full webhook subscription infrastructure for this).
-export async function capturePaypalCheckout(rsvpToken: string, paypalOrderId: string) {
-  const order = await prisma.order.findUnique({
-    where: { paypalOrderId },
-    include: { items: true, event: { select: { id: true, name: true, userId: true, rsvpToken: true } } },
-  });
-  // Not found, or belongs to a different event's RSVP link -- treat both as
-  // "not found" rather than confirming a valid paypalOrderId exists elsewhere.
-  if (!order || order.event.rsvpToken !== rsvpToken) throw new NotFoundError("Order not found");
+// Shared by both the RSVP-flow (merchandise) and public ticket-flow capture
+// endpoints -- captures the PayPal order, logs the attempt, and finalizes
+// the order as PAID on success. Callers look up the order and verify it
+// belongs to the right event/link before calling this.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function capturePaypalOrderCore(order: any, paypalOrderId: string) {
   if (order.status !== "PENDING") return serializeOrder(order);
 
   const capture = await capturePaypalOrder(paypalOrderId);
@@ -355,11 +362,30 @@ export async function capturePaypalCheckout(rsvpToken: string, paypalOrderId: st
   });
 
   if (!success) {
+    // Ticket capacity was reserved at PENDING-order creation (unlike
+    // merchandise stock, which is never decremented until PAID) -- if the
+    // payment didn't actually go through, give that capacity back instead
+    // of leaking it away on every declined/abandoned PayPal attempt.
+    await releasePendingTicketOrder(order);
     throw new BadRequestError("PayPal hasn't confirmed this payment yet");
   }
 
   await finalizeOrderPaid(order);
   return serializeOrder(order);
+}
+
+// Called once the guest approves the PayPal order and is redirected back to
+// our RSVP page (PayPal Orders v2's "capture on return" pattern -- simpler
+// than standing up full webhook subscription infrastructure for this).
+export async function capturePaypalCheckout(rsvpToken: string, paypalOrderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { paypalOrderId },
+    include: { items: true, event: { select: { id: true, name: true, userId: true, rsvpToken: true } } },
+  });
+  // Not found, or belongs to a different event's RSVP link -- treat both as
+  // "not found" rather than confirming a valid paypalOrderId exists elsewhere.
+  if (!order || order.event.rsvpToken !== rsvpToken) throw new NotFoundError("Order not found");
+  return capturePaypalOrderCore(order, paypalOrderId);
 }
 
 // --- Payment event log (dispute evidence) ---------------------------------
@@ -464,6 +490,11 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string | u
       currency: session.currency ?? undefined,
       rawPayload: session,
     });
+    const pendingOrder = await prisma.order.findUnique({
+      where: { stripeCheckoutSessionId: session.id },
+      include: { items: true },
+    });
+    if (pendingOrder) await releasePendingTicketOrder(pendingOrder);
   } else if (event.type === "payment_intent.payment_failed") {
     // A declined card, insufficient funds, etc. -- the checkout session
     // itself may still be open for retry, but this is the actual decline
@@ -546,6 +577,11 @@ export async function handlePaystackWebhook(rawBody: Buffer, signature: string |
       message: event.data.gateway_response ?? null,
       rawPayload: event.data,
     });
+    const pendingOrder = await prisma.order.findUnique({
+      where: { paystackReference: event.data.reference },
+      include: { items: true },
+    });
+    if (pendingOrder) await releasePendingTicketOrder(pendingOrder);
   }
 
   return { received: true };
@@ -561,31 +597,71 @@ async function markPaystackOrderPaid(paystackReference: string) {
   await finalizeOrderPaid(order);
 }
 
-// Shared PAID transition for all three processors: flips status, decrements
-// stock, and fires the planner notification -- never trusted from a
+// Shared PAID transition for all three processors: flips status, then does
+// the kind-specific fulfillment (decrement merchandise stock, or issue
+// ticket rows), and fires the planner notification -- never trusted from a
 // client-supplied call, only from a verified webhook/capture confirmation.
-async function finalizeOrderPaid(
+export async function finalizeOrderPaid(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   order: any,
   extra: { stripePaymentIntentId?: string | null } = {}
 ) {
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: order.id },
-      data: { status: "PAID", ...extra },
-    }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...order.items
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await prisma.$transaction(async (tx: any) => {
+    await tx.order.update({ where: { id: order.id }, data: { status: "PAID", ...extra } });
+
+    if (order.kind === "TICKET") {
+      // Capacity was already reserved atomically at PENDING-order creation
+      // (see ticketTypes.service.ts reserveTickets, called from
+      // tickets/checkout.service.ts) -- paying just issues the actual
+      // admission credentials, one Ticket row per unit purchased, each with
+      // its own unique `code` (the QR payload for door check-in).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((i: any) => i.productId)
+      for (const item of order.items) {
+        if (!item.ticketTypeId) continue;
+        const ticketsData = Array.from({ length: item.quantity }, () => ({
+          ticketTypeId: item.ticketTypeId as string,
+          orderId: order.id,
+          code: crypto.randomUUID(),
+          attendeeName: order.guestName,
+          attendeeEmail: order.guestEmail,
+        }));
+        await tx.ticket.createMany({ data: ticketsData });
+      }
+    } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((i: any) =>
-        prisma.product.updateMany({
-          where: { id: i.productId, stockQuantity: { not: null } },
-          data: { stockQuantity: { decrement: i.quantity } },
-        })
-      ),
-  ]);
+      for (const item of order.items) {
+        if (!item.productId) continue;
+        await tx.product.updateMany({
+          where: { id: item.productId, stockQuantity: { not: null } },
+          data: { stockQuantity: { decrement: item.quantity } },
+        });
+      }
+    }
+  });
 
   await notifyOrderPaid(order.event.userId, order.event, order);
+}
+
+// Releases reserved ticket capacity and marks a still-PENDING ticket order
+// CANCELLED -- called whenever we hear (via webhook or a failed PayPal
+// capture) that a checkout attempt didn't end in payment, so an abandoned
+// or declined ticket order doesn't permanently hold capacity hostage. A
+// no-op for merchandise orders (nothing was ever reserved) or orders that
+// already resolved to PAID/CANCELLED.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function releasePendingTicketOrder(order: any) {
+  if (order.status !== "PENDING" || order.kind !== "TICKET") return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await prisma.$transaction(async (tx: any) => {
+    await releaseTickets(
+      tx,
+      order.items
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((i: any) => i.ticketTypeId)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((i: any) => ({ ticketTypeId: i.ticketTypeId as string, quantity: i.quantity }))
+    );
+    await tx.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
+  });
 }

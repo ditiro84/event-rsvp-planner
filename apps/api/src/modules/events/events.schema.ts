@@ -13,6 +13,16 @@ export const eventTypeEnum = z.enum([
   "OTHER",
 ]);
 
+export const publicEventCategoryEnum = z.enum([
+  "NIGHTLIFE",
+  "BOAT_CRUISE",
+  "CONCERT",
+  "FESTIVAL",
+  "COMEDY_SHOW",
+  "PRIVATE_PARTY",
+  "OTHER",
+]);
+
 export const createEventSchema = z.object({
   name: z.string().trim().min(1, "Event name is required").max(200),
   type: eventTypeEnum.default("OTHER"),
@@ -38,6 +48,14 @@ export type CreateEventInput = z.infer<typeof createEventSchema>;
 export const updateEventSchema = createEventSchema.partial().extend({
   rsvpOpen: z.boolean().optional(),
   merchandiseEnabled: z.boolean().optional(),
+  // Public ticketing listing fields. publicSlug is deliberately NOT
+  // accepted here -- it's server-generated once from the name (see
+  // ensureUniqueEventSlug in events.service.ts) and immutable after,
+  // same pattern as Article.slug.
+  isPublic: z.boolean().optional(),
+  publicCategory: publicEventCategoryEnum.optional().nullable(),
+  publicDescription: z.string().trim().max(5000).optional().nullable(),
+  minAge: z.coerce.number().int().min(0).max(100).optional().nullable(),
 });
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 

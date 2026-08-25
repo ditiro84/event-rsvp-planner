@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   Sparkles,
   Store,
+  Ticket,
   Trash2,
   Users,
   X,
@@ -33,6 +34,7 @@ const EVENT_SECTIONS = [
   { to: "rsvp", label: "RSVP", icon: Mail },
   { to: "vendors", label: "Vendors", icon: Store },
   { to: "merchandise", label: "Merchandise", icon: ShoppingBag },
+  { to: "tickets", label: "Tickets", icon: Ticket },
   { to: "seating", label: "Seating", icon: Armchair },
   { to: "checkin", label: "Check-in", icon: ClipboardCheck },
 ];

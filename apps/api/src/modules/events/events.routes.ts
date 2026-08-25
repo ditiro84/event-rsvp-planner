@@ -43,6 +43,16 @@ router.post(
 );
 router.delete("/:eventId/invitation-card", validateParams(eventIdParamsSchema), controller.deleteInvitationCard);
 
+// Public ticket listing cover image (bytes-in-postgres, same pattern as
+// invitation cards above and Product/Article images).
+router.get("/:eventId/cover-image", validateParams(eventIdParamsSchema), controller.downloadCoverImage);
+router.post(
+  "/:eventId/cover-image",
+  validateParams(eventIdParamsSchema),
+  upload.single("file"),
+  controller.uploadCoverImage
+);
+
 // Nested guest routes: /api/events/:eventId/guests
 router.use("/:eventId/guests", validateParams(eventIdParamsSchema), guestsRouter);
 

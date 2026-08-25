@@ -73,6 +73,16 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
+export const PUBLIC_EVENT_CATEGORY_LABELS: Record<string, string> = {
+  NIGHTLIFE: "Nightlife / Club Night",
+  BOAT_CRUISE: "Boat Cruise",
+  CONCERT: "Concert",
+  FESTIVAL: "Festival",
+  COMEDY_SHOW: "Comedy Show",
+  PRIVATE_PARTY: "Private Party",
+  OTHER: "Other",
+};
+
 // Compact "time ago" label for notifications/alerts (e.g. "10 minutes ago",
 // "2 hours ago", falling back to a short date once it's more than a week).
 export function formatRelativeTime(value: string | null | undefined) {

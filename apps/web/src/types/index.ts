@@ -12,6 +12,15 @@ export type EventType =
 
 export type RsvpStatus = "PENDING" | "CONFIRMED" | "DECLINED" | "MAYBE";
 
+export type PublicEventCategory =
+  | "NIGHTLIFE"
+  | "BOAT_CRUISE"
+  | "CONCERT"
+  | "FESTIVAL"
+  | "COMEDY_SHOW"
+  | "PRIVATE_PARTY"
+  | "OTHER";
+
 export type CurrencyCode = "USD" | "GBP" | "NGN";
 
 export type UserRole = "PLANNER" | "ADMIN";
@@ -48,6 +57,13 @@ export interface EventRecord {
   allowAccessibilityInfo: boolean;
   allowSpecialRequests: boolean;
   merchandiseEnabled: boolean;
+  // Public ticketing listing (separate from the private RSVP flow above).
+  isPublic: boolean;
+  publicCategory: PublicEventCategory | null;
+  publicSlug: string | null;
+  publicDescription: string | null;
+  minAge: number | null;
+  hasCoverImage: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -67,6 +83,79 @@ export interface EventGuestSummary {
 // GET /events/:id (single) still returns a plain EventRecord.
 export interface EventListItem extends EventRecord {
   guestSummary: EventGuestSummary;
+}
+
+export interface TicketTypeRecord {
+  id: string;
+  eventId: string;
+  name: string;
+  description: string | null;
+  price: number;
+  currency: CurrencyCode;
+  quantityTotal: number | null;
+  quantitySold: number;
+  quantityRemaining: number | null;
+  salesStartAt: string | null;
+  salesEndAt: string | null;
+  minPerOrder: number;
+  maxPerOrder: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// --- Public ticket page (guest-facing, /tickets/:slug) --------------------
+
+export interface PublicTicketType {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  currency: CurrencyCode;
+  quantityRemaining: number | null;
+  minPerOrder: number;
+  maxPerOrder: number;
+  onSale: boolean;
+}
+
+export interface PublicTicketEventInfo {
+  id: string;
+  name: string;
+  publicSlug: string;
+  publicCategory: PublicEventCategory | null;
+  publicDescription: string | null;
+  minAge: number | null;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  venueName: string | null;
+  venueAddress: string | null;
+  hasCoverImage: boolean;
+}
+
+export interface PublicTicketEventListing {
+  event: PublicTicketEventInfo;
+  ticketTypes: PublicTicketType[];
+  paymentOptionsByCurrency: Record<string, PayoutProvider[]>;
+}
+
+export interface PublicTicketOrderTicket {
+  id: string;
+  code: string;
+  status: "VALID" | "CHECKED_IN" | "CANCELLED";
+  ticketTypeName: string;
+  attendeeName: string | null;
+}
+
+export interface PublicTicketOrder {
+  id: string;
+  status: "PENDING" | "PAID" | "CANCELLED";
+  guestName: string;
+  guestEmail: string;
+  total: number;
+  currency: CurrencyCode;
+  tickets: PublicTicketOrderTicket[];
 }
 
 export interface EventDashboardStats {

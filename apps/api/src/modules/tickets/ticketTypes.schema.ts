@@ -28,3 +28,8 @@ export const reorderTicketTypesSchema = z.object({
   orderedIds: z.array(z.string().min(1)).min(1),
 });
 export type ReorderTicketTypesInput = z.infer<typeof reorderTicketTypesSchema>;
+
+export const ticketScanSchema = z.object({
+  code: z.string().trim().min(1, "Missing ticket code"),
+});
+export type TicketScanInput = z.infer<typeof ticketScanSchema>;

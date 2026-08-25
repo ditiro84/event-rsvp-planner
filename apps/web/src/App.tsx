@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/Spinner";
 // visit to that route -- the seating planner in particular gets its own,
 // further split (see EventTabPages.tsx) since it alone pulls in the Konva
 // canvas library, which accounts for a large share of total bundle size.
+const LandingPage = lazy(() => import("@/pages/marketing/LandingPage"));
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
 const EventsListPage = lazy(() => import("@/pages/events/EventsListPage"));
@@ -53,7 +54,7 @@ export default function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/events" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/rsvp/invite/:invitationToken" element={<PublicRsvpPage />} />

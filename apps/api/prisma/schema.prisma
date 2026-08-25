@@ -33,6 +33,7 @@ model User {
 
   events        Event[]
   notifications Notification[]
+  articles      Article[]
 
   @@map("users")
 }
@@ -736,5 +737,69 @@ model OrderItem {
 
   @@index([orderId])
   @@map("order_items")
+}
+
+// ---------------------------------------------------------------------------
+// PUBLIC CONTENT (landing page)
+// ---------------------------------------------------------------------------
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// Admin-authored posts shown on the public /articles blog and teased on the
+// landing page. Body is plain text with a small set of markdown-style
+// conventions (headings, bold, links, ![alt](url) images) rendered by a
+// lightweight parser on the frontend -- not a full rich-text/WYSIWYG editor,
+// per the agreed scope. Cover image stored as bytes in Postgres, same
+// pattern as Product/EventInvitationCard, so no separate storage
+// credentials are needed.
+model Article {
+  id       String @id @default(cuid())
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  title   String
+  // Generated from the title at creation time and immutable after that, so
+  // a later title edit never breaks an already-shared /articles/:slug link.
+  slug    String @unique
+  excerpt String
+  body    String
+
+  coverImageData     Bytes?
+  coverImageMimeType String?
+
+  status      ArticleStatus @default(DRAFT)
+  // Set (or refreshed) whenever an article transitions to PUBLISHED --
+  // public listings order by this, not createdAt, so republishing an old
+  // draft brings it back to the top rather than leaving it buried.
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, publishedAt])
+  @@map("articles")
+}
+
+// Admin-editable "what we offer" cards on the landing page -- lets a new
+// service be added (or an old one hidden) without a code deploy. `icon` is
+// a key into a fixed icon set on the frontend (not free-text/SVG upload,
+// to keep this from becoming an XSS vector) -- see ICON_OPTIONS in the
+// admin Services tab.
+model LandingService {
+  id          String  @id @default(cuid())
+  title       String
+  description String
+  icon        String
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("landing_services")
 }
 

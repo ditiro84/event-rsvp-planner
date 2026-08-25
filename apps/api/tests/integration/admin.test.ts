@@ -195,3 +195,72 @@ describe("Admin payment event logs", () => {
     expect(failedOnly.body.data.entries[0].eventName).toBe("Paid Event");
   });
 });
+
+describe("Admin platform analytics", () => {
+  it("rejects a regular planner", async () => {
+    const { token } = await registerAndLogin(app);
+    const res = await request(app).get("/api/admin/analytics").set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("rolls up totals, RSVP confirmation rate, and revenue by currency/provider", async () => {
+    const { token: adminToken } = await registerAndLoginAsAdmin(app);
+    const { token: plannerToken } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(plannerToken, "Rollup Event");
+
+    await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set("Authorization", `Bearer ${plannerToken}`)
+      .send({ firstName: "Confirmed", lastName: "Guest", rsvpStatus: "CONFIRMED" });
+    await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set("Authorization", `Bearer ${plannerToken}`)
+      .send({ firstName: "Pending", lastName: "Guest" });
+
+    await prisma.order.create({
+      data: {
+        eventId,
+        guestName: "Buyer One",
+        guestEmail: "buyer1@example.com",
+        status: "PAID",
+        currency: "USD",
+        provider: "STRIPE_CONNECT",
+        totalCents: 5000,
+        platformFeeCents: 250,
+      },
+    });
+    await prisma.order.create({
+      data: {
+        eventId,
+        guestName: "Buyer Two",
+        guestEmail: "buyer2@example.com",
+        status: "PENDING", // not paid -- should be excluded from the rollup
+        currency: "USD",
+        provider: "STRIPE_CONNECT",
+        totalCents: 9999,
+        platformFeeCents: 500,
+      },
+    });
+
+    const res = await request(app).get("/api/admin/analytics").set("Authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.totalSubscribers).toBeGreaterThanOrEqual(2); // admin + planner
+    expect(res.body.data.totalEvents).toBe(1);
+    expect(res.body.data.totalGuests).toBe(2);
+    expect(res.body.data.rsvpConfirmed).toBe(1);
+    expect(res.body.data.confirmationRate).toBe(0.5);
+    expect(res.body.data.totalOrdersPaid).toBe(1);
+
+    const usdStripe = res.body.data.revenueByCurrencyAndProvider.find(
+      (r: { currency: string; provider: string }) => r.currency === "USD" && r.provider === "STRIPE_CONNECT"
+    );
+    expect(usdStripe.orderCount).toBe(1);
+    expect(usdStripe.totalRevenue).toBe(50);
+    expect(usdStripe.platformFee).toBe(2.5);
+
+    expect(Array.isArray(res.body.data.trend)).toBe(true);
+    expect(res.body.data.trend).toHaveLength(30);
+    const today = res.body.data.trend[res.body.data.trend.length - 1];
+    expect(today.events).toBeGreaterThanOrEqual(1);
+  });
+});

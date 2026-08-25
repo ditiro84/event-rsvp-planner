@@ -100,3 +100,86 @@ export async function getPaymentEvents(query: PaymentEventsQuery) {
     createdAt: e.createdAt,
   }));
 }
+
+// --- Platform-wide analytics ------------------------------------------------
+//
+// Unlike getAuditLog/getPaymentEvents above (per-event, filterable), this is
+// a single cross-subscriber rollup for the Admin > Analytics tab: platform
+// totals plus a 30-day trend of signups and events created. Revenue is kept
+// as a currency/provider breakdown rather than one blended total -- summing
+// cents across USD/GBP/NGN would be meaningless (they're not the same unit
+// of value), so there is deliberately no single "total revenue" number.
+
+interface TrendRow {
+  day: Date;
+  signups: number;
+  events: number;
+}
+
+async function getSignupsAndEventsTrend(days: number): Promise<{ date: string; signups: number; events: number }[]> {
+  // Postgres generate_series backfills every day in the window (including
+  // zero-activity days) so the chart has no gaps -- LEFT JOIN counts per day
+  // from users/events, defaulting to 0 where there's no match.
+  // make_interval(days => n) rather than string-concatenating an interval
+  // literal -- avoids any ambiguity in how Postgres resolves `int || text`.
+  const rows = await prisma.$queryRaw<TrendRow[]>`
+    SELECT
+      gs::date AS day,
+      COALESCE(u.count, 0)::int AS signups,
+      COALESCE(e.count, 0)::int AS events
+    FROM generate_series((CURRENT_DATE - make_interval(days => ${days - 1})), CURRENT_DATE, '1 day') AS gs
+    LEFT JOIN (
+      SELECT date_trunc('day', "createdAt")::date AS day, COUNT(*) AS count
+      FROM "users"
+      WHERE "createdAt" >= CURRENT_DATE - make_interval(days => ${days - 1})
+      GROUP BY 1
+    ) u ON u.day = gs::date
+    LEFT JOIN (
+      SELECT date_trunc('day', "createdAt")::date AS day, COUNT(*) AS count
+      FROM "events"
+      WHERE "createdAt" >= CURRENT_DATE - make_interval(days => ${days - 1})
+      GROUP BY 1
+    ) e ON e.day = gs::date
+    ORDER BY gs;
+  `;
+  return rows.map((r) => ({ date: new Date(r.day).toISOString().slice(0, 10), signups: r.signups, events: r.events }));
+}
+
+export async function getPlatformAnalytics() {
+  const [totalSubscribers, totalEvents, totalGuests, rsvpConfirmed, totalOrdersPaid, revenueGroups, trend] =
+    await Promise.all([
+      prisma.user.count(),
+      prisma.event.count(),
+      prisma.guest.count(),
+      prisma.guest.count({ where: { rsvpStatus: "CONFIRMED" } }),
+      prisma.order.count({ where: { status: "PAID" } }),
+      prisma.order.groupBy({
+        by: ["currency", "provider"],
+        where: { status: "PAID" },
+        _sum: { totalCents: true, platformFeeCents: true },
+        _count: { _all: true },
+      }),
+      getSignupsAndEventsTrend(30),
+    ]);
+
+  const revenueByCurrencyAndProvider = revenueGroups
+    .map((g) => ({
+      currency: g.currency,
+      provider: g.provider,
+      orderCount: g._count._all,
+      totalRevenue: (g._sum.totalCents ?? 0) / 100,
+      platformFee: (g._sum.platformFeeCents ?? 0) / 100,
+    }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+
+  return {
+    totalSubscribers,
+    totalEvents,
+    totalGuests,
+    rsvpConfirmed,
+    confirmationRate: totalGuests > 0 ? rsvpConfirmed / totalGuests : 0,
+    totalOrdersPaid,
+    revenueByCurrencyAndProvider,
+    trend,
+  };
+}

@@ -19,6 +19,10 @@ import analyticsRoutes from "./modules/analytics/analytics.routes";
 import shopRoutes from "./modules/products/shop.routes";
 import webhookRoutes from "./modules/products/webhook.routes";
 import adminRoutes from "./modules/admin/admin.routes";
+import articlesAdminRoutes from "./modules/articles/articles.admin.routes";
+import articlesPublicRoutes from "./modules/articles/articles.public.routes";
+import landingAdminRoutes from "./modules/landing/landing.admin.routes";
+import landingPublicRoutes from "./modules/landing/landing.public.routes";
 
 export function createApp() {
   const app = express();
@@ -73,7 +77,14 @@ export function createApp() {
   app.use("/api/insights", insightsRoutes);
   app.use("/api/analytics", analyticsRoutes);
   app.use("/api/shop", shopRoutes);
+  // Mounted before /api/admin so these more specific prefixes get first
+  // crack at the request (avoids an extra, harmless-but-wasted pass through
+  // adminRoutes' own requireAuth/requireAdmin before falling through).
+  app.use("/api/admin/articles", articlesAdminRoutes);
+  app.use("/api/admin/services", landingAdminRoutes);
   app.use("/api/admin", adminRoutes);
+  app.use("/api/articles", articlesPublicRoutes);
+  app.use("/api/landing", landingPublicRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

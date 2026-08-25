@@ -1,58 +1,22 @@
 import { Link } from "react-router-dom";
-import {
-  Armchair,
-  ArrowRight,
-  CheckCircle2,
-  ClipboardCheck,
-  CreditCard,
-  Mail,
-  Sparkles,
-  Store,
-  Users,
-} from "lucide-react";
+import * as Icons from "lucide-react";
+import { ArrowRight, CheckCircle2, CreditCard, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Spinner } from "@/components/ui/Spinner";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { usePublicServices } from "@/hooks/useLandingServices";
+import { publicArticleCoverImageUrl, usePublicArticles } from "@/hooks/useArticles";
+import { formatDate } from "@/lib/format";
 
 // Public marketing page at "/" -- the app used to redirect straight to
 // /login here, which meant a visitor had nowhere to land except a bare sign-
-// in form. Everything below describes features that actually exist in the
-// product (guests, RSVP/invites, seating, check-in, vendors, merchandise +
-// multi-currency payouts) -- no invented stats or testimonials, since we
-// don't have real ones yet.
-
-const FEATURES = [
-  {
-    icon: Users,
-    title: "Guest management",
-    description: "Import your guest list, track RSVPs, and manage plus-ones and named companions in one view.",
-  },
-  {
-    icon: Mail,
-    title: "RSVP & invitations",
-    description: "Send personalized invites by email, WhatsApp, or QR code, and collect RSVPs on a branded page.",
-  },
-  {
-    icon: Armchair,
-    title: "Visual seating planner",
-    description: "Design your own table layout and drag guests into seats -- no spreadsheet math required.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Day-of check-in",
-    description: "A kiosk-ready check-in view with live arrival stats, so your door team always knows who's in.",
-  },
-  {
-    icon: Store,
-    title: "Vendor tracking",
-    description: "Keep every vendor's contact info, cost, and booking status in one place instead of scattered notes.",
-  },
-  {
-    icon: CreditCard,
-    title: "Merchandise & payments",
-    description: "Sell tickets or merchandise at checkout, with payouts in USD, GBP, or NGN via Stripe, PayPal, or Paystack.",
-  },
-];
+// in form. The Services grid below is admin-editable (Admin > Services) so
+// a new offering can be added without a code deploy; everything else
+// describes features that actually exist in the product -- no invented
+// stats or testimonials.
 
 const STEPS = [
   {
@@ -73,37 +37,12 @@ export default function LandingPage() {
   const { user, isLoading } = useAuth();
   const primaryHref = !isLoading && user ? "/events" : "/register";
   const primaryLabel = !isLoading && user ? "Go to my events" : "Get Started Free";
+  const { data: services, isLoading: servicesLoading } = usePublicServices();
+  const { data: articles } = usePublicArticles(3);
 
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-              <Sparkles className="h-4 w-4 text-white" />
-            </span>
-            <span className="font-display text-xl font-bold text-slate-950">EventFlow</span>
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
-            {!isLoading && user ? (
-              <Link to="/events">
-                <Button size="md">Go to my events</Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="ghost" size="md">
-                    Log In
-                  </Button>
-                </Link>
-                <Link to="/register">
-                  <Button size="md">Get Started Free</Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main>
         {/* Hero */}
@@ -136,7 +75,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Feature grid */}
+        {/* Services grid -- admin-editable, see Admin > Services */}
         <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">
@@ -144,17 +83,27 @@ export default function LandingPage() {
             </h2>
             <p className="mt-3 text-slate-600">No juggling five different apps to get one event out the door.</p>
           </div>
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((feature) => (
-              <Card key={feature.title} className="p-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                  <feature.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mt-4 font-display text-lg font-semibold text-slate-950">{feature.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{feature.description}</p>
-              </Card>
-            ))}
-          </div>
+          {servicesLoading ? (
+            <div className="mt-12 flex justify-center">
+              <Spinner />
+            </div>
+          ) : (
+            <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {(services ?? []).map((service) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const Icon = (Icons as any)[service.icon] ?? Icons.Sparkles;
+                return (
+                  <Card key={service.id} className="p-6">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="mt-4 font-display text-lg font-semibold text-slate-950">{service.title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{service.description}</p>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* How it works */}
@@ -209,8 +158,47 @@ export default function LandingPage() {
           </Card>
         </section>
 
+        {/* Articles teaser */}
+        {articles && articles.length > 0 && (
+          <section className="border-y border-slate-100 bg-white">
+            <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+              <div className="flex items-end justify-between">
+                <div>
+                  <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">From the blog</h2>
+                  <p className="mt-3 text-slate-600">Updates and tips from the EventFlow team.</p>
+                </div>
+                <Link to="/articles" className="hidden shrink-0 text-sm font-semibold text-brand-600 hover:text-brand-700 sm:inline-block">
+                  View all articles
+                </Link>
+              </div>
+              <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
+                {articles.map((article) => (
+                  <Link key={article.id} to={`/articles/${article.slug}`}>
+                    <Card className="h-full overflow-hidden transition-shadow hover:shadow-elevated">
+                      {article.hasCoverImage && (
+                        <img
+                          src={publicArticleCoverImageUrl(article.slug)}
+                          alt=""
+                          className="h-40 w-full object-cover"
+                        />
+                      )}
+                      <div className="p-5">
+                        <h3 className="font-display text-lg font-semibold text-slate-950">{article.title}</h3>
+                        <p className="mt-1.5 line-clamp-2 text-sm text-slate-600">{article.excerpt}</p>
+                        {article.publishedAt && (
+                          <p className="mt-3 text-xs text-slate-400">{formatDate(article.publishedAt)}</p>
+                        )}
+                      </div>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* CTA banner */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 lg:px-8">
           <div className="rounded-xl2 bg-brand-600 px-6 py-12 text-center sm:px-12 sm:py-16">
             <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">Ready to plan your next event?</h2>
             <p className="mx-auto mt-3 max-w-xl text-brand-100">
@@ -226,25 +214,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-slate-100 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600">
-              <Sparkles className="h-3.5 w-3.5 text-white" />
-            </span>
-            <span className="font-display text-sm font-bold text-slate-950">EventFlow</span>
-          </div>
-          <div className="flex items-center gap-6 text-sm text-slate-600">
-            <Link to="/login" className="hover:text-brand-600">
-              Log In
-            </Link>
-            <Link to="/register" className="hover:text-brand-600">
-              Sign Up
-            </Link>
-          </div>
-          <p className="text-xs text-slate-400">&copy; {new Date().getFullYear()} EventFlow. All rights reserved.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

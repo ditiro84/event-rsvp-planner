@@ -550,3 +550,71 @@ export interface PaymentEventEntry {
   rawPayload?: string;
   createdAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Public content (blog articles + landing page Services)
+// ---------------------------------------------------------------------------
+
+export type ArticleStatus = "DRAFT" | "PUBLISHED";
+
+export interface Article {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  body: string;
+  hasCoverImage: boolean;
+  status: ArticleStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  author?: { id: string; name: string; email: string };
+}
+
+// Matches SERVICE_ICONS in apps/api/src/modules/landing/landing.schema.ts --
+// keep in sync.
+export const SERVICE_ICON_OPTIONS = [
+  "Sparkles",
+  "Users",
+  "Calendar",
+  "CreditCard",
+  "Shield",
+  "Globe",
+  "Camera",
+  "Gift",
+  "Headphones",
+  "Star",
+  "Store",
+  "Mail",
+  "Armchair",
+  "ClipboardCheck",
+] as const;
+export type ServiceIcon = (typeof SERVICE_ICON_OPTIONS)[number];
+
+export interface LandingService {
+  id: string;
+  title: string;
+  description: string;
+  icon: ServiceIcon;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlatformAnalytics {
+  totalSubscribers: number;
+  totalEvents: number;
+  totalGuests: number;
+  rsvpConfirmed: number;
+  confirmationRate: number;
+  totalOrdersPaid: number;
+  revenueByCurrencyAndProvider: {
+    currency: CurrencyCode;
+    provider: PayoutProvider | null;
+    orderCount: number;
+    totalRevenue: number;
+    platformFee: number;
+  }[];
+  trend: { date: string; signups: number; events: number }[];
+}

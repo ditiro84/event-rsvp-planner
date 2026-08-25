@@ -9,6 +9,8 @@ export function buildTestApp() {
 export async function resetDatabase() {
   await prisma.paymentEvent.deleteMany();
   await prisma.adminAuditLog.deleteMany();
+  await prisma.article.deleteMany(); // must precede user.deleteMany() -- authorId has no ON DELETE
+  await prisma.landingService.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();

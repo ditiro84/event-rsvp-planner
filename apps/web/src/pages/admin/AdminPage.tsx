@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, CreditCard, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, ClipboardList, CreditCard, Newspaper, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { useAdminAuditLog, useAdminEvents, useAdminPaymentEvents, useAdminUsers } from "@/hooks/useAdmin";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -9,14 +9,20 @@ import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/cn";
 import { EVENT_TYPE_LABELS, formatDate, formatMoney, formatRelativeTime } from "@/lib/format";
 import type { CurrencyCode, PaymentEventStatus } from "@/types";
+import { ArticlesTab } from "./ArticlesTab";
+import { ServicesTab } from "./ServicesTab";
+import { PlatformAnalyticsTab } from "./PlatformAnalyticsTab";
 
-type Tab = "subscribers" | "events" | "audit" | "payments";
+type Tab = "subscribers" | "events" | "audit" | "payments" | "analytics" | "articles" | "services";
 
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: "subscribers", label: "Subscribers", icon: Users },
   { id: "events", label: "Events", icon: ShieldCheck },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "audit", label: "Audit Log", icon: ClipboardList },
   { id: "payments", label: "Payment Logs", icon: CreditCard },
+  { id: "articles", label: "Articles", icon: Newspaper },
+  { id: "services", label: "Services", icon: Sparkles },
 ];
 
 export default function AdminPage() {
@@ -50,8 +56,11 @@ export default function AdminPage() {
 
       {tab === "subscribers" && <SubscribersTab />}
       {tab === "events" && <EventsTab />}
+      {tab === "analytics" && <PlatformAnalyticsTab />}
       {tab === "audit" && <AuditLogTab />}
       {tab === "payments" && <PaymentLogsTab />}
+      {tab === "articles" && <ArticlesTab />}
+      {tab === "services" && <ServicesTab />}
     </div>
   );
 }

@@ -24,3 +24,8 @@ export async function paymentEvents(req: Request, res: Response) {
   const entries = await service.getPaymentEvents(query);
   return ok(res, { entries });
 }
+
+export async function analytics(_req: Request, res: Response) {
+  const data = await service.getPlatformAnalytics();
+  return ok(res, data);
+}

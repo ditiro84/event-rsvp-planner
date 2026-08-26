@@ -64,31 +64,32 @@ const STEPS = [
   {
     title: "Create your event",
     description: "Set the date, type, and details -- your event dashboard is ready in seconds.",
-    image: "https://images.unsplash.com/photo-1754039984995-a91721ce1870?auto=format&fit=crop&w=800&q=80",
+    image: "https://images.unsplash.com/photo-1754039984995-a91721ce1870?auto=format&fit=crop&w=1000&q=80",
   },
   {
     title: "Invite your guests",
     description: "Share by email, WhatsApp, or a link, and watch RSVPs, plus-ones, and companions roll in.",
-    image: "https://images.unsplash.com/photo-1757062768062-ad29deec7df4?auto=format&fit=crop&w=800&q=80",
+    image: "https://images.unsplash.com/photo-1746933195672-34075502e5bb?auto=format&fit=crop&w=1000&q=80",
   },
   {
     title: "Run the day",
     description: "Check guests in, manage seating, and track vendors, all from the same dashboard.",
-    image: "https://images.unsplash.com/photo-1687757660317-63fb2621b197?auto=format&fit=crop&w=800&q=80",
+    image: "https://images.unsplash.com/photo-1498429152472-9a433d9ddf3b?auto=format&fit=crop&w=1000&q=80",
   },
 ];
 
 // Real photography for the Services grid below, matched to each service by
 // keyword so admin-added services (Admin > Services) still get a sensible
-// photo instead of a blank tile. All Unsplash License (free, no attribution
-// required).
+// photo instead of a blank tile. Each photo is used exactly once on this
+// page -- no two sections repeat the same shot. All Unsplash License (free,
+// no attribution required).
 const SERVICE_PHOTOS = [
-  { match: /guest/i, url: "https://images.unsplash.com/photo-1757062768062-ad29deec7df4?auto=format&fit=crop&w=800&q=80" },
-  { match: /rsvp|invit/i, url: "https://images.unsplash.com/photo-1754039984995-a91721ce1870?auto=format&fit=crop&w=800&q=80" },
-  { match: /seat/i, url: "https://images.unsplash.com/photo-1746933195672-34075502e5bb?auto=format&fit=crop&w=800&q=80" },
-  { match: /check-?in/i, url: "https://images.unsplash.com/photo-1687757660317-63fb2621b197?auto=format&fit=crop&w=800&q=80" },
-  { match: /vendor/i, url: "https://images.unsplash.com/photo-1672826979217-7156a305acf5?auto=format&fit=crop&w=800&q=80" },
-  { match: /merch|payment/i, url: "https://images.unsplash.com/photo-1742836531239-1fe146bf7e3f?auto=format&fit=crop&w=800&q=80" },
+  { match: /guest/i, url: "https://images.unsplash.com/photo-1757062768062-ad29deec7df4?auto=format&fit=crop&w=1000&q=80" },
+  { match: /rsvp|invit/i, url: "https://images.unsplash.com/photo-1741893043659-ca8b82a8b637?auto=format&fit=crop&w=1000&q=80" },
+  { match: /seat/i, url: "https://images.unsplash.com/photo-1763429338698-439aa108e7fb?auto=format&fit=crop&w=1000&q=80" },
+  { match: /check-?in/i, url: "https://images.unsplash.com/photo-1687757660317-63fb2621b197?auto=format&fit=crop&w=1000&q=80" },
+  { match: /vendor/i, url: "https://images.unsplash.com/photo-1672826979217-7156a305acf5?auto=format&fit=crop&w=1000&q=80" },
+  { match: /merch|payment/i, url: "https://images.unsplash.com/photo-1635274605638-d44babc08a4f?auto=format&fit=crop&w=1000&q=80" },
 ];
 
 function serviceImage(title: string, index: number) {
@@ -159,20 +160,24 @@ export default function LandingPage() {
               {(services ?? []).map((service, serviceIndex) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const Icon = (Icons as any)[service.icon] ?? Icons.Sparkles;
-                const tileClasses = serviceIndex % 2 === 0 ? "bg-brand-50 text-brand-600" : "bg-coral-50 text-coral-600";
+                const tileClasses = serviceIndex % 2 === 0 ? "bg-brand-600 text-white" : "bg-coral-500 text-white";
                 return (
                   <Card key={service.id} className="overflow-hidden">
-                    <img
-                      src={serviceImage(service.title, serviceIndex)}
-                      alt=""
-                      className="h-32 w-full object-cover"
-                    />
-                    <div className="p-6">
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tileClasses}`}>
+                    <div className="relative">
+                      <img
+                        src={serviceImage(service.title, serviceIndex)}
+                        alt=""
+                        className="h-64 w-full object-cover"
+                      />
+                      <div
+                        className={`absolute left-4 top-4 flex h-11 w-11 items-center justify-center rounded-lg shadow-elevated ${tileClasses}`}
+                      >
                         <Icon className="h-5 w-5" />
                       </div>
-                      <h3 className="mt-4 font-display text-lg font-semibold text-slate-950">{service.title}</h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{service.description}</p>
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-display text-lg font-semibold text-slate-950">{service.title}</h3>
+                      <p className="mt-1 line-clamp-1 text-sm text-slate-600">{service.description}</p>
                     </div>
                   </Card>
                 );
@@ -194,62 +199,20 @@ export default function LandingPage() {
                   <img
                     src={step.image}
                     alt=""
-                    className="h-36 w-full rounded-xl2 object-cover shadow-card"
+                    className="h-56 w-full rounded-xl2 object-cover shadow-card"
                   />
                   <span
-                    className={`-mt-5 flex h-10 w-10 items-center justify-center rounded-full font-display text-base font-bold text-white shadow-card ${
+                    className={`-mt-5 flex h-10 w-10 items-center justify-center rounded-full font-display text-base font-bold text-white shadow-elevated ${
                       index % 2 === 0 ? "bg-brand-600" : "bg-coral-500"
                     }`}
                   >
                     {index + 1}
                   </span>
                   <h3 className="mt-4 font-display text-lg font-semibold text-slate-950">{step.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{step.description}</p>
+                  <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-slate-600">{step.description}</p>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* Photo showcase -- real photography, unlike the icon-based Services
-            grid above, to give visitors a feel for what an event on Gadaova
-            actually looks like. */}
-        <section className="mx-auto max-w-[90rem] px-4 py-20 sm:px-8 sm:py-28 lg:px-12 xl:px-16">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-4xl font-bold text-slate-950 sm:text-5xl">Built for real events</h2>
-            <p className="mt-4 text-lg text-slate-600">From the first invite to the last guest checked in.</p>
-          </div>
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                image: "https://images.unsplash.com/photo-1757062768062-ad29deec7df4?auto=format&fit=crop&w=800&q=80",
-                title: "RSVPs & Guest Lists",
-                description: "Send invites by email, WhatsApp, or link, and watch RSVPs and plus-ones roll in.",
-              },
-              {
-                image: "https://images.unsplash.com/photo-1746933195672-34075502e5bb?auto=format&fit=crop&w=800&q=80",
-                title: "Seating & Tables",
-                description: "Drag and drop guests onto a visual floor plan and export a printable seating chart.",
-              },
-              {
-                image: "https://images.unsplash.com/photo-1687757660317-63fb2621b197?auto=format&fit=crop&w=800&q=80",
-                title: "Door Check-in & Tickets",
-                description: "Scan QR wristbands and tickets at the door, with live check-in stats as guests arrive.",
-              },
-              {
-                image: "https://images.unsplash.com/photo-1742836531239-1fe146bf7e3f?auto=format&fit=crop&w=800&q=80",
-                title: "Payments & Merchandise",
-                description: "Sell tickets and merchandise with checkout in your guest's local currency.",
-              },
-            ].map((item) => (
-              <Card key={item.title} className="h-full overflow-hidden">
-                <img src={item.image} alt="" className="h-40 w-full object-cover" />
-                <div className="p-5">
-                  <h3 className="font-display text-base font-semibold text-slate-950">{item.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{item.description}</p>
-                </div>
-              </Card>
-            ))}
           </div>
         </section>
 

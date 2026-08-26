@@ -60,6 +60,25 @@ export function formatMoneyBreakdown(totals: CurrencyTotal[]) {
   return totals.map((t) => formatMoney(t.total, t.currency)).join(" + ");
 }
 
+// The actual symbols present in a breakdown, e.g. "£₦" when costs are split
+// across GBP and NGN -- used in place of a fixed "$" icon on stat cards that
+// total a multi-currency breakdown, since a hardcoded dollar sign is
+// misleading (or flat wrong) once a planner has any non-USD records. Returns
+// "" when there's nothing to show yet, so callers can fall back to a
+// currency-neutral icon.
+export function formatMoneyBreakdownSymbols(totals: CurrencyTotal[]) {
+  return totals.map((t) => CURRENCY_SYMBOLS[t.currency] ?? "").join("");
+}
+
+// Same totals as formatMoneyBreakdown, but as separate per-currency strings
+// (e.g. ["£6,000.00", "₦200,000.00"]) instead of one "+"-joined line -- for
+// stat cards that stack each currency on its own line rather than running
+// them together, which reads better once a planner has costs split across
+// more than one currency.
+export function formatMoneyBreakdownParts(totals: CurrencyTotal[]) {
+  return totals.map((t) => formatMoney(t.total, t.currency));
+}
+
 export const EVENT_TYPE_LABELS: Record<string, string> = {
   WEDDING: "Wedding",
   BIRTHDAY: "Birthday",

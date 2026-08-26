@@ -3,7 +3,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { StatCard } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
-import { formatDate, formatMoneyBreakdown } from "@/lib/format";
+import { formatDate, formatMoneyBreakdownParts, formatMoneyBreakdownSymbols } from "@/lib/format";
 
 function pct(value: number) {
   return `${Math.round(value * 100)}%`;
@@ -14,6 +14,9 @@ export default function AnalyticsPage() {
 
   if (isError) return <ErrorState title="We couldn't load analytics" onRetry={() => refetch()} />;
   if (isLoading || !data) return <Spinner />;
+
+  const vendorSpendParts = formatMoneyBreakdownParts(data.vendorSpendByCurrency);
+  const vendorSpendSymbols = formatMoneyBreakdownSymbols(data.vendorSpendByCurrency);
 
   return (
     <div className="space-y-8">
@@ -53,8 +56,28 @@ export default function AnalyticsPage() {
             <StatCard label="Vendors" value={data.totalVendors} hint={`${data.vendorsBooked} booked or confirmed`} icon={<Store className="h-4 w-4" />} />
             <StatCard
               label="Vendor Spend"
-              value={formatMoneyBreakdown(data.vendorSpendByCurrency)}
-              icon={<DollarSign className="h-4 w-4" />}
+              value={
+                vendorSpendParts.length === 0 ? (
+                  "—"
+                ) : vendorSpendParts.length === 1 ? (
+                  vendorSpendParts[0]
+                ) : (
+                  <div className="flex flex-col gap-0.5">
+                    {vendorSpendParts.map((part) => (
+                      <span key={part}>{part}</span>
+                    ))}
+                  </div>
+                )
+              }
+              icon={
+                vendorSpendSymbols ? (
+                  <span className="text-sm font-bold leading-none" aria-hidden="true">
+                    {vendorSpendSymbols}
+                  </span>
+                ) : (
+                  <DollarSign className="h-4 w-4" />
+                )
+              }
             />
             <StatCard label="Response Rate" value={pct(data.responseRate)} hint="Confirmed, declined, or maybe" />
           </div>

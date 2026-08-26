@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { getApiErrorMessage } from "@/lib/api";
-import { formatMoney, formatMoneyBreakdown } from "@/lib/format";
+import { formatMoney, formatMoneyBreakdownParts, formatMoneyBreakdownSymbols } from "@/lib/format";
 import { VendorFormModal } from "./VendorFormModal";
 import type { VendorRecord, VendorStatus } from "@/types";
 
@@ -34,6 +34,15 @@ export function VendorsTab({ eventId }: { eventId: string }) {
   const deleteVendor = useDeleteVendor(eventId);
   const [showForm, setShowForm] = useState(false);
   const [editingVendor, setEditingVendor] = useState<VendorRecord | undefined>();
+  // The actual currency symbols in use (e.g. "£₦" once vendors are paid in
+  // more than one currency) -- a fixed "$" icon was misleading whenever a
+  // planner's costs were entirely in GBP/NGN, or flat wrong once costs
+  // spanned more than one currency at a time.
+  const costSymbols = formatMoneyBreakdownSymbols(summary?.costsByCurrency ?? []);
+  // Each currency's total (vendors in the same currency already summed
+  // together server-side) on its own line, e.g. "£6,000.00" then
+  // "₦200,000.00" -- easier to scan than joining them with "+" on one line.
+  const costParts = formatMoneyBreakdownParts(summary?.costsByCurrency ?? []);
 
   async function handleDelete(vendor: VendorRecord) {
     if (!confirm(`Remove "${vendor.name}" from vendors?`)) return;
@@ -76,9 +85,29 @@ export function VendorsTab({ eventId }: { eventId: string }) {
         />
         <StatCard
           label="Total Cost"
-          value={formatMoneyBreakdown(summary?.costsByCurrency ?? [])}
+          value={
+            costParts.length === 0 ? (
+              "—"
+            ) : costParts.length === 1 ? (
+              costParts[0]
+            ) : (
+              <div className="flex flex-col gap-0.5">
+                {costParts.map((part) => (
+                  <span key={part}>{part}</span>
+                ))}
+              </div>
+            )
+          }
           accent="purple"
-          icon={<DollarSign className="h-4 w-4" />}
+          icon={
+            costSymbols ? (
+              <span className="text-sm font-bold leading-none" aria-hidden="true">
+                {costSymbols}
+              </span>
+            ) : (
+              <DollarSign className="h-4 w-4" />
+            )
+          }
         />
       </div>
 

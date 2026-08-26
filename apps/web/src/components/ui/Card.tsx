@@ -15,7 +15,10 @@ export function CardBody({ className, ...props }: HTMLAttributes<HTMLDivElement>
 
 interface StatCardProps {
   label: string;
-  value: string | number;
+  // Usually a string/number, but a caller can pass richer content (e.g. a
+  // stacked per-currency breakdown) when a single line isn't enough -- see
+  // the Vendors "Total Cost" and Analytics "Vendor Spend" cards.
+  value: React.ReactNode;
   hint?: string;
   accent?: "default" | "green" | "amber" | "red" | "purple" | "coral";
   icon?: React.ReactNode;
@@ -45,7 +48,7 @@ export function StatCard({ label, value, hint, accent = "default", icon }: StatC
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-slate-500">{label}</p>
-          <p className={cn("mt-1.5 text-2xl font-semibold tracking-tight", accentClasses[accent])}>{value}</p>
+          <div className={cn("mt-1.5 text-2xl font-semibold tracking-tight", accentClasses[accent])}>{value}</div>
           {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
         </div>
         {icon && (

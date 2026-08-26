@@ -7,6 +7,7 @@ import { Card, StatCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -162,13 +163,15 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
                         <Pencil className="h-3.5 w-3.5" />
                         Edit
                       </button>
-                      <button
-                        onClick={() => handleDelete(product)}
-                        aria-label={`Remove ${product.name}`}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <Tooltip label="Remove product">
+                        <button
+                          onClick={() => handleDelete(product)}
+                          aria-label={`Remove ${product.name}`}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                 </div>

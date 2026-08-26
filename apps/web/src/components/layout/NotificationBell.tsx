@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Bell, CheckCheck } from "lucide-react";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications } from "@/hooks/useNotifications";
 import { formatRelativeTime } from "@/lib/format";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import type { NotificationRecord } from "@/types";
 
@@ -24,16 +25,18 @@ export function NotificationBell() {
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
-        className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-      >
-        <Bell className="h-[18px] w-[18px]" />
-        {unreadCount > 0 && (
-          <span className="absolute right-1.5 top-1.5 flex h-2 w-2 rounded-full bg-danger-500" />
-        )}
-      </button>
+      <Tooltip label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+          className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+        >
+          <Bell className="h-[18px] w-[18px]" />
+          {unreadCount > 0 && (
+            <span className="absolute right-1.5 top-1.5 flex h-2 w-2 rounded-full bg-danger-500" />
+          )}
+        </button>
+      </Tooltip>
 
       {open && (
         <>

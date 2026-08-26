@@ -5,6 +5,7 @@ import { useDeleteVendor, useVendors, useVendorSummary } from "@/hooks/useVendor
 import { StatCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { getApiErrorMessage } from "@/lib/api";
@@ -160,23 +161,27 @@ export function VendorsTab({ eventId }: { eventId: string }) {
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex justify-end gap-1.5">
-                      <button
-                        onClick={() => {
-                          setEditingVendor(vendor);
-                          setShowForm(true);
-                        }}
-                        aria-label={`Edit ${vendor.name}`}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(vendor)}
-                        aria-label={`Remove ${vendor.name}`}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <Tooltip label="Edit vendor">
+                        <button
+                          onClick={() => {
+                            setEditingVendor(vendor);
+                            setShowForm(true);
+                          }}
+                          aria-label={`Edit ${vendor.name}`}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip label="Remove vendor">
+                        <button
+                          onClick={() => handleDelete(vendor)}
+                          aria-label={`Remove ${vendor.name}`}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>

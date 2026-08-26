@@ -21,6 +21,7 @@ import {
 import { useDeleteEvent, useEvent } from "@/hooks/useEvents";
 import { useAuth } from "@/lib/AuthContext";
 import { Badge } from "@/components/ui/Badge";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { getApiErrorMessage } from "@/lib/api";
@@ -29,14 +30,14 @@ import { cn } from "@/lib/cn";
 import { EventFormModal } from "@/pages/events/EventFormModal";
 
 const EVENT_SECTIONS = [
-  { to: "overview", label: "Overview", icon: LayoutDashboard },
-  { to: "guests", label: "Guests", icon: Users },
-  { to: "rsvp", label: "RSVP", icon: Mail },
-  { to: "vendors", label: "Vendors", icon: Store },
-  { to: "merchandise", label: "Merchandise", icon: ShoppingBag },
-  { to: "tickets", label: "Tickets", icon: Ticket },
-  { to: "seating", label: "Seating", icon: Armchair },
-  { to: "checkin", label: "Check-in", icon: ClipboardCheck },
+  { to: "overview", label: "Overview", icon: LayoutDashboard, hint: "Readiness at a glance and quick links to every section" },
+  { to: "guests", label: "Guests", icon: Users, hint: "Manage your private guest list and import from a CSV" },
+  { to: "rsvp", label: "RSVP", icon: Mail, hint: "Send invites and track confirmed, pending, and declined replies" },
+  { to: "vendors", label: "Vendors", icon: Store, hint: "Track caterers, venues, and every other vendor for this event" },
+  { to: "merchandise", label: "Merchandise", icon: ShoppingBag, hint: "Sell branded merch straight from your event page" },
+  { to: "tickets", label: "Tickets", icon: Ticket, hint: "Set up paid ticket types and publish a public event page" },
+  { to: "seating", label: "Seating", icon: Armchair, hint: "Drag guests onto tables with the visual seating planner" },
+  { to: "checkin", label: "Check-in", icon: ClipboardCheck, hint: "Scan guests and tickets in at the door" },
 ];
 
 const GLOBAL_SECTIONS = [
@@ -119,26 +120,27 @@ export function DashboardLayout() {
 
               {inEvent &&
                 EVENT_SECTIONS.map((section) => (
-                  <NavLink
-                    key={section.to}
-                    to={`/events/${eventId}/${section.to}`}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex h-full flex-col items-center justify-center gap-0 px-4 text-[15px] font-medium text-slate-600 hover:text-slate-900",
-                        isActive && "font-semibold text-brand-600"
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <span className="flex flex-1 items-center gap-2">
-                          <section.icon className="h-4 w-4" />
-                          {section.label}
-                        </span>
-                        <span className={cn("h-[3px] w-full rounded-t-[3px]", isActive ? "bg-brand-600" : "bg-transparent")} />
-                      </>
-                    )}
-                  </NavLink>
+                  <Tooltip key={section.to} label={section.hint}>
+                    <NavLink
+                      to={`/events/${eventId}/${section.to}`}
+                      className={({ isActive }) =>
+                        cn(
+                          "flex h-full flex-col items-center justify-center gap-0 px-4 text-[15px] font-medium text-slate-600 hover:text-slate-900",
+                          isActive && "font-semibold text-brand-600"
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <span className="flex flex-1 items-center gap-2">
+                            <section.icon className="h-4 w-4" />
+                            {section.label}
+                          </span>
+                          <span className={cn("h-[3px] w-full rounded-t-[3px]", isActive ? "bg-brand-600" : "bg-transparent")} />
+                        </>
+                      )}
+                    </NavLink>
+                  </Tooltip>
                 ))}
             </nav>
           </div>

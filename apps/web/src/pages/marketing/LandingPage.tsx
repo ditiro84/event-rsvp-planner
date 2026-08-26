@@ -162,7 +162,11 @@ export default function LandingPage() {
                 const Icon = (Icons as any)[service.icon] ?? Icons.Sparkles;
                 const tileClasses = serviceIndex % 2 === 0 ? "bg-brand-600 text-white" : "bg-coral-500 text-white";
                 return (
-                  <Card key={service.id} className="overflow-hidden">
+                  <Card
+                    key={service.id}
+                    tabIndex={0}
+                    className="cursor-pointer overflow-hidden outline-none transition-all duration-300 ease-out hover:z-10 hover:scale-110 hover:shadow-elevated hover:ring-2 hover:ring-brand-500 focus-visible:z-10 focus-visible:scale-110 focus-visible:shadow-elevated focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
                     <div className="relative">
                       <img
                         src={serviceImage(service.title, serviceIndex)}
@@ -177,7 +181,7 @@ export default function LandingPage() {
                     </div>
                     <div className="p-5">
                       <h3 className="font-display text-lg font-semibold text-slate-950">{service.title}</h3>
-                      <p className="mt-1 line-clamp-1 text-sm text-slate-600">{service.description}</p>
+                      <p className="mt-1 whitespace-normal break-words text-sm text-slate-600">{service.description}</p>
                     </div>
                   </Card>
                 );

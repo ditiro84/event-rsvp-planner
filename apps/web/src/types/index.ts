@@ -364,20 +364,6 @@ export interface InviteLink {
   hasInvitationCard: boolean;
 }
 
-export type EmailEventStatus = "SENT" | "FAILED";
-
-export interface EmailEvent {
-  id: string;
-  eventId: string | null;
-  guestId: string | null;
-  recipientEmail: string;
-  recipientName: string | null;
-  subject: string;
-  status: EmailEventStatus;
-  errorMessage: string | null;
-  createdAt: string;
-}
-
 export interface GuestPrefill {
   firstName: string;
   lastName: string;
@@ -635,6 +621,21 @@ export interface AdminAuditLogEntry {
 }
 
 export type PaymentEventStatus = "SUCCESS" | "FAILED" | "EXPIRED" | "INFO";
+
+export type EmailEventStatus = "SENT" | "FAILED";
+
+export interface EmailEventEntry {
+  id: string;
+  eventId: string | null;
+  eventName: string | null;
+  guestId: string | null;
+  recipientEmail: string;
+  recipientName: string | null;
+  subject: string;
+  status: EmailEventStatus;
+  errorMessage: string | null;
+  createdAt: string;
+}
 
 export interface PaymentEventEntry {
   id: string;

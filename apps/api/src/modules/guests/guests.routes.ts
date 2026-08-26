@@ -15,9 +15,6 @@ router.post("/import", upload.single("file"), controller.importCsv);
 router.get("/export", controller.exportCsv);
 router.get("/export/pdf", controller.exportPdf);
 router.get("/wristbands/pdf", controller.exportWristbandsPdf);
-// Must stay before "/:guestId" below -- Express matches route registration
-// order, and "/:guestId" would otherwise swallow this literal path first.
-router.get("/email-events", controller.listEmailEvents);
 router.get("/:guestId", validateParams(guestIdParamsSchema), controller.getOne);
 router.put("/:guestId", validateParams(guestIdParamsSchema), validateBody(updateGuestSchema), controller.update);
 router.delete("/:guestId", validateParams(guestIdParamsSchema), controller.remove);

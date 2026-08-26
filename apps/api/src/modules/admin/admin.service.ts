@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { AuditLogQuery, PaymentEventsQuery } from "./admin.schema";
+import { AuditLogQuery, EmailEventsQuery, PaymentEventsQuery } from "./admin.schema";
 
 // Cross-subscriber views for support -- unlike everything under
 // /api/events/:eventId (which reuses the exact same planner-facing
@@ -97,6 +97,32 @@ export async function getPaymentEvents(query: PaymentEventsQuery) {
     currency: e.currency,
     message: e.message,
     rawPayload: e.rawPayload,
+    createdAt: e.createdAt,
+  }));
+}
+
+export async function getEmailEvents(query: EmailEventsQuery) {
+  const events = await prisma.emailEvent.findMany({
+    where: {
+      eventId: query.eventId,
+      status: query.status,
+    },
+    orderBy: { createdAt: "desc" },
+    take: query.limit,
+    include: {
+      event: { select: { name: true } },
+    },
+  });
+  return events.map((e) => ({
+    id: e.id,
+    eventId: e.eventId,
+    eventName: e.event?.name ?? null,
+    guestId: e.guestId,
+    recipientEmail: e.recipientEmail,
+    recipientName: e.recipientName,
+    subject: e.subject,
+    status: e.status,
+    errorMessage: e.errorMessage,
     createdAt: e.createdAt,
   }));
 }

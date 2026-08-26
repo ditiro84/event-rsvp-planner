@@ -227,18 +227,6 @@ export async function sendInviteEmail(userId: string, guestId: string) {
   return { sent: true };
 }
 
-// Most recent email send attempts for an event (invites + reminders share
-// this log -- see sendInviteEmail above), newest first. Capped at 200 --
-// this is a diagnostic/visibility log, not a durable export.
-export async function listEmailEvents(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
-  return prisma.emailEvent.findMany({
-    where: { eventId },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
-}
-
 export async function bulkSendInviteEmails(userId: string, eventId: string, guestIds?: string[]) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { eventId, email: { not: null } };

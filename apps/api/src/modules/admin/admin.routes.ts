@@ -16,6 +16,7 @@ router.get("/users", controller.listUsers);
 router.get("/events", controller.listEvents);
 router.get("/audit-log", controller.auditLog);
 router.get("/payment-events", controller.paymentEvents);
+router.get("/email-events", controller.emailEvents);
 router.get("/analytics", controller.analytics);
 
 export default router;

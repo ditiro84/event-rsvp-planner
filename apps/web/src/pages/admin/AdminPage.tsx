@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, ClipboardList, CreditCard, Newspaper, ShieldCheck, Sparkles, Users } from "lucide-react";
-import { useAdminAuditLog, useAdminEvents, useAdminPaymentEvents, useAdminUsers } from "@/hooks/useAdmin";
+import { BarChart3, ClipboardList, CreditCard, Mail, Newspaper, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { useAdminAuditLog, useAdminEmailEvents, useAdminEvents, useAdminPaymentEvents, useAdminUsers } from "@/hooks/useAdmin";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
@@ -15,6 +15,7 @@ import type {
   AdminEventSummary,
   AdminUserSummary,
   CurrencyCode,
+  EmailEventEntry,
   PaymentEventEntry,
   PaymentEventStatus,
 } from "@/types";
@@ -22,7 +23,7 @@ import { ArticlesTab } from "./ArticlesTab";
 import { ServicesTab } from "./ServicesTab";
 import { PlatformAnalyticsTab } from "./PlatformAnalyticsTab";
 
-type Tab = "subscribers" | "events" | "audit" | "payments" | "analytics" | "articles" | "services";
+type Tab = "subscribers" | "events" | "audit" | "payments" | "emails" | "analytics" | "articles" | "services";
 
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: "subscribers", label: "Subscribers", icon: Users },
@@ -30,6 +31,7 @@ const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: "analytics", label: "Platform Analytics", icon: BarChart3 },
   { id: "audit", label: "Audit Log", icon: ClipboardList },
   { id: "payments", label: "Payment Logs", icon: CreditCard },
+  { id: "emails", label: "Email Logs", icon: Mail },
   { id: "articles", label: "Articles", icon: Newspaper },
   { id: "services", label: "Services", icon: Sparkles },
 ];
@@ -68,6 +70,7 @@ export default function AdminPage() {
       {tab === "analytics" && <PlatformAnalyticsTab />}
       {tab === "audit" && <AuditLogTab />}
       {tab === "payments" && <PaymentLogsTab />}
+      {tab === "emails" && <EmailLogsTab />}
       {tab === "articles" && <ArticlesTab />}
       {tab === "services" && <ServicesTab />}
     </div>
@@ -308,6 +311,86 @@ function PaymentLogsTab() {
                   {p.amount !== null && p.currency ? formatMoney(p.amount, p.currency as CurrencyCode) : "—"}
                 </td>
                 <td className="px-5 py-3.5 text-slate-500">{formatRelativeTime(p.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
+const EMAIL_STATUS_VARIANT: Record<"SENT" | "FAILED", "success" | "danger"> = {
+  SENT: "success",
+  FAILED: "danger",
+};
+
+const emailLogColumns: ExportColumn<EmailEventEntry>[] = [
+  { header: "Status", value: (e) => e.status },
+  { header: "Event", value: (e) => e.eventName ?? "—" },
+  { header: "Recipient", value: (e) => e.recipientName ?? "—" },
+  { header: "Recipient email", value: (e) => e.recipientEmail },
+  { header: "Subject", value: (e) => e.subject },
+  { header: "Error", value: (e) => e.errorMessage ?? "—" },
+  { header: "When", value: (e) => formatDate(e.createdAt) },
+];
+
+// Every invite/reminder email attempt across all subscribers -- invite sends
+// and bulk reminder sends share the same backend code path, so this one log
+// covers both. Admin-only (not shown to planners) since it's a support/ops
+// diagnostic tool: it's what confirms a failure is a Resend domain
+// verification issue, a bad address, etc. rather than the app being broken.
+function EmailLogsTab() {
+  const { data, isLoading, isError, refetch } = useAdminEmailEvents();
+
+  if (isError) return <ErrorState title="We couldn't load email logs" onRetry={() => refetch()} />;
+  if (isLoading || !data) return <Spinner />;
+  if (data.length === 0) {
+    return (
+      <EmptyState
+        title="No email activity yet"
+        description="Every invite and RSVP reminder email attempt -- successful or not -- will show up here."
+      />
+    );
+  }
+
+  const failedCount = data.filter((e) => e.status === "FAILED").length;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        {failedCount > 0 ? <Badge variant="danger">{failedCount} failed</Badge> : <span />}
+        <ExportMenu data={data} columns={emailLogColumns} filename="email-logs" title="Email Logs" />
+      </div>
+      <Card className="overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3">Event</th>
+              <th className="px-5 py-3">Recipient</th>
+              <th className="px-5 py-3">Subject</th>
+              <th className="px-5 py-3">When</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {data.map((e) => (
+              <tr key={e.id}>
+                <td className="px-5 py-3.5">
+                  <Badge variant={EMAIL_STATUS_VARIANT[e.status]}>{e.status === "SENT" ? "Sent" : "Failed"}</Badge>
+                </td>
+                <td className="px-5 py-3.5 text-slate-600">{e.eventName ?? "—"}</td>
+                <td className="px-5 py-3.5 text-slate-600">
+                  {e.recipientName || "—"}
+                  <span className="block text-xs text-slate-400">{e.recipientEmail}</span>
+                </td>
+                <td className="px-5 py-3.5 text-slate-500">
+                  {e.subject}
+                  {e.status === "FAILED" && e.errorMessage && (
+                    <span className="block text-xs text-danger-600">{e.errorMessage}</span>
+                  )}
+                </td>
+                <td className="px-5 py-3.5 text-slate-500">{formatRelativeTime(e.createdAt)}</td>
               </tr>
             ))}
           </tbody>

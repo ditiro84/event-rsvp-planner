@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { AdminAuditLogEntry, AdminEventSummary, AdminUserSummary, PaymentEventEntry, PlatformAnalytics } from "@/types";
+import type {
+  AdminAuditLogEntry,
+  AdminEventSummary,
+  AdminUserSummary,
+  EmailEventEntry,
+  PaymentEventEntry,
+  PlatformAnalytics,
+} from "@/types";
 
 export function useAdminUsers() {
   return useQuery({
@@ -38,6 +45,16 @@ export function useAdminPaymentEvents(filters: { eventId?: string; status?: stri
     queryFn: async () => {
       const res = await api.get("/admin/payment-events", { params: filters });
       return res.data.data.entries as PaymentEventEntry[];
+    },
+  });
+}
+
+export function useAdminEmailEvents(filters: { eventId?: string; status?: string } = {}) {
+  return useQuery({
+    queryKey: ["admin", "email-events", filters],
+    queryFn: async () => {
+      const res = await api.get("/admin/email-events", { params: filters });
+      return res.data.data.entries as EmailEventEntry[];
     },
   });
 }

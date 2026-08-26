@@ -19,3 +19,10 @@ export const paymentEventsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
 export type PaymentEventsQuery = z.infer<typeof paymentEventsQuerySchema>;
+
+export const emailEventsQuerySchema = z.object({
+  eventId: z.string().optional(),
+  status: z.enum(["SENT", "FAILED"]).optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+export type EmailEventsQuery = z.infer<typeof emailEventsQuerySchema>;

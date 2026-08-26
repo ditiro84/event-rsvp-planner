@@ -33,7 +33,7 @@ describe("Articles: admin CRUD + publish lifecycle", () => {
     const res = await request(app)
       .post("/api/admin/articles")
       .set(auth)
-      .send({ title: "Hello, World!", excerpt: "An intro post.", body: "Welcome to EventFlow." });
+      .send({ title: "Hello, World!", excerpt: "An intro post.", body: "Welcome to Gadaova." });
 
     expect(res.status).toBe(201);
     expect(res.body.data.article.slug).toBe("hello-world");

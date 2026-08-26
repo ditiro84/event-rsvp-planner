@@ -1,10 +1,10 @@
-// Minimal app-shell service worker -- lets EventFlow be installed to a
+// Minimal app-shell service worker -- lets Gadaova be installed to a
 // phone's home screen and keeps opening it snappy on repeat visits. It only
 // ever touches same-origin GET requests (HTML/JS/CSS/images from this
 // Vercel deployment), so it never intercepts calls to the Railway API,
 // Stripe/Paystack/PayPal, or any cross-origin request -- ticket
 // availability, checkout, and door-scan data always stay live.
-const CACHE_NAME = "eventflow-shell-v1";
+const CACHE_NAME = "gadaova-shell-v1";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

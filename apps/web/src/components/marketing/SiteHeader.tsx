@@ -15,7 +15,7 @@ export function SiteHeader() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
             <Sparkles className="h-4 w-4 text-white" />
           </span>
-          <span className="font-display text-xl font-bold text-slate-950">EventFlow</span>
+          <span className="font-display text-xl font-bold text-slate-950">Gadaova</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
           <Link to="/articles" className="hidden px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand-600 sm:inline-block">

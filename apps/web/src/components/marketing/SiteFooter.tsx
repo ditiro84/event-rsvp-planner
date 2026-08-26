@@ -9,7 +9,7 @@ export function SiteFooter() {
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600">
             <Sparkles className="h-3.5 w-3.5 text-white" />
           </span>
-          <span className="font-display text-sm font-bold text-slate-950">EventFlow</span>
+          <span className="font-display text-sm font-bold text-slate-950">Gadaova</span>
         </div>
         <div className="flex items-center gap-6 text-sm text-slate-600">
           <Link to="/articles" className="hover:text-brand-600">
@@ -22,7 +22,7 @@ export function SiteFooter() {
             Sign Up
           </Link>
         </div>
-        <p className="text-xs text-slate-400">&copy; {new Date().getFullYear()} EventFlow. All rights reserved.</p>
+        <p className="text-xs text-slate-400">&copy; {new Date().getFullYear()} Gadaova. All rights reserved.</p>
       </div>
     </footer>
   );

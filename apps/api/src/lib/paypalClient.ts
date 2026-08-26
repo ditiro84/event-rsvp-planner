@@ -102,7 +102,7 @@ export async function createPaypalOrder(params: CreatePaypalOrderParams) {
           cancel_url: params.cancelUrl,
           shipping_preference: "NO_SHIPPING",
           user_action: "PAY_NOW",
-          brand_name: "EventFlow",
+          brand_name: "Gadaova",
         },
       },
     });

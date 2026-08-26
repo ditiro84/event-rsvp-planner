@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
-const DISMISS_KEY = "eventflow_install_dismissed_at";
+const DISMISS_KEY = "gadaova_install_dismissed_at";
 const DISMISS_SNOOZE_DAYS = 14;
 
 interface BeforeInstallPromptEvent extends Event {
@@ -97,14 +97,14 @@ export function InstallPrompt() {
     <div
       className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       role="dialog"
-      aria-label="Install EventFlow"
+      aria-label="Install Gadaova"
     >
       <div className="flex w-full max-w-md items-center gap-3 rounded-xl2 border border-slate-200 bg-white p-4 shadow-elevated">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-coral-50 text-coral-600">
           <Download className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900">Install EventFlow</p>
+          <p className="text-sm font-semibold text-slate-900">Install Gadaova</p>
           {deferredPrompt ? (
             <p className="text-xs text-slate-500">Add it to your home screen for quick access.</p>
           ) : (

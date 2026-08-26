@@ -14,7 +14,7 @@ datasource db {
 // USERS / AUTH
 // ---------------------------------------------------------------------------
 
-// PLANNER is every normal subscriber account. ADMIN is internal EventFlow
+// PLANNER is every normal subscriber account. ADMIN is internal Gadaova
 // staff (support) -- see getOwnedEvent's admin bypass in events.service.ts
 // and the /api/admin/* module for what that unlocks.
 enum UserRole {
@@ -827,7 +827,7 @@ model Order {
   payoutAccountId String?
   payoutAccount   EventPayoutAccount? @relation(fields: [payoutAccountId], references: [id], onDelete: SetNull)
   totalCents    Int
-  // EventFlow's cut of totalCents -- per PLATFORM_FEE_PERCENT for
+  // Gadaova's cut of totalCents -- per PLATFORM_FEE_PERCENT for
   // merchandise orders or TICKET_FEE_PERCENT for ticket orders (see
   // env.ts), at the time of checkout. Kept on the order itself (not
   // recomputed later) so a later change to either percentage doesn't

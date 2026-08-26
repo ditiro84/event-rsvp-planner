@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers local setup and production deployment for EventFlow: **Vercel** (frontend) + **Railway or Render** (backend API) + **Neon or Railway Postgres** (database), wired together with **GitHub Actions** CI.
+This guide covers local setup and production deployment for Gadaova: **Vercel** (frontend) + **Railway or Render** (backend API) + **Neon or Railway Postgres** (database), wired together with **GitHub Actions** CI.
 
 ---
 
@@ -30,7 +30,7 @@ This guide covers local setup and production deployment for EventFlow: **Vercel*
 | `PUBLIC_APP_URL` | The deployed frontend URL (used to build personalized invite/RSVP links and QR codes) |
 | `RSVP_RATE_LIMIT_MAX` / `RSVP_RATE_LIMIT_WINDOW_MS` | Rate limiting on the public RSVP endpoint |
 | `RESEND_API_KEY` | Optional. API key from [resend.com](https://resend.com) -- enables the "Email invite" button and bulk invite emails. Without it, those endpoints return a clear 400 error instead of sending. |
-| `RESEND_FROM_EMAIL` | Optional. The "from" address for invite emails, e.g. `EventFlow <invites@yourdomain.com>`. Must be on a domain you've verified with Resend. |
+| `RESEND_FROM_EMAIL` | Optional. The "from" address for invite emails, e.g. `Gadaova <invites@gadaova.com>`. Must be on a domain you've verified with Resend. |
 
 ### Frontend (`apps/web/.env`, see `apps/web/.env.example`)
 

@@ -16,7 +16,7 @@ export default function ArticlesListPage() {
       <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="font-display text-4xl font-bold text-slate-950 sm:text-5xl">Articles</h1>
-          <p className="mt-3 text-lg text-slate-600">Updates and tips from the EventFlow team.</p>
+          <p className="mt-3 text-lg text-slate-600">Updates and tips from the Gadaova team.</p>
         </div>
 
         <div className="mt-12">

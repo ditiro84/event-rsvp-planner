@@ -198,7 +198,7 @@ export async function createTicketCheckoutSession(slug: string, input: CreateTic
     }
   }
 
-  // EventFlow's cut of a ticket sale is TICKET_FEE_PERCENT, not
+  // Gadaova's cut of a ticket sale is TICKET_FEE_PERCENT, not
   // PLATFORM_FEE_PERCENT -- ticketing is priced separately from merchandise
   // (see env.ts).
   const platformFeeCents = Math.round(totalCents * (env.ticketFeePercent / 100));

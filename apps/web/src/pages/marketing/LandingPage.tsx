@@ -24,7 +24,7 @@ import { formatDate } from "@/lib/format";
 // capabilities.
 const FAQS = [
   {
-    question: "Is EventFlow free to use?",
+    question: "Is Gadaova free to use?",
     answer:
       "Creating events, managing your guest list, sending RSVP invites, seating, and check-in are all free. We only take a small fee when you sell tickets or merchandise through the platform -- nothing upfront, no monthly subscription.",
   },
@@ -36,7 +36,7 @@ const FAQS = [
   {
     question: "What payment methods can I accept?",
     answer:
-      "Connect Stripe, Paystack, or PayPal and accept payments in USD, GBP, or NGN. Payouts land directly in your own account -- EventFlow never holds your funds.",
+      "Connect Stripe, Paystack, or PayPal and accept payments in USD, GBP, or NGN. Payouts land directly in your own account -- Gadaova never holds your funds.",
   },
   {
     question: "Can I check guests in at the door?",
@@ -44,7 +44,7 @@ const FAQS = [
       "Yes -- scan QR codes for both RSVP'd guests and paid ticket holders from any phone or tablet browser, with live check-in stats as people arrive.",
   },
   {
-    question: "Does EventFlow help with seating?",
+    question: "Does Gadaova help with seating?",
     answer:
       "Yes, there's a visual drag-and-drop seating planner where you assign confirmed guests (and their plus-ones) to tables and export a seating chart as a PDF.",
   },
@@ -56,7 +56,7 @@ const FAQS = [
   {
     question: "Is there a mobile app?",
     answer:
-      "EventFlow works on any phone's browser, and you can install it to your home screen for an app-like experience with one tap -- no App Store download needed.",
+      "Gadaova works on any phone's browser, and you can install it to your home screen for an app-like experience with one tap -- no App Store download needed.",
   },
 ];
 
@@ -222,7 +222,7 @@ export default function LandingPage() {
               <div className="flex items-end justify-between">
                 <div>
                   <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">From the blog</h2>
-                  <p className="mt-3 text-slate-600">Updates and tips from the EventFlow team.</p>
+                  <p className="mt-3 text-slate-600">Updates and tips from the Gadaova team.</p>
                 </div>
                 <Link to="/articles" className="hidden shrink-0 text-sm font-semibold text-brand-600 hover:text-brand-700 sm:inline-block">
                   View all articles

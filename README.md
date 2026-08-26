@@ -1,4 +1,4 @@
-# EventFlow — Event RSVP & Visual Seating Planner
+# Gadaova — Event RSVP & Visual Seating Planner
 
 A SaaS platform for event planners to create events, invite guests, collect RSVPs, and (in a future phase) design venue floor plans and assign guests to tables and seats.
 

@@ -15,7 +15,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500 shadow-[0_4px_6px_rgba(124,92,255,0.5)]">
             <Share2 className="h-[18px] w-[18px] text-white" />
           </div>
-          <span className="font-display text-[22px] font-extrabold text-white">EventFlow</span>
+          <span className="font-display text-[22px] font-extrabold text-white">Gadaova</span>
         </div>
 
         <div className="flex h-[440px] items-center justify-center">
@@ -38,7 +38,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500">
             <Share2 className="h-[18px] w-[18px] text-white" />
           </div>
-          <span className="font-display text-xl font-extrabold text-slate-950">EventFlow</span>
+          <span className="font-display text-xl font-extrabold text-slate-950">Gadaova</span>
         </div>
         <div className="w-full max-w-[448px]">{children}</div>
       </div>

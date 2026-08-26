@@ -93,7 +93,7 @@ export function DashboardLayout() {
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
                 <Sparkles className="h-4 w-4 text-white" />
               </span>
-              <span className="font-display text-xl font-bold text-slate-950">EventFlow</span>
+              <span className="font-display text-xl font-bold text-slate-950">Gadaova</span>
             </NavLink>
 
             <nav className="hidden h-full items-center gap-1 md:flex">

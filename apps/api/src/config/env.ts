@@ -72,7 +72,7 @@ export const env = {
   paypalClientSecret: process.env.PAYPAL_CLIENT_SECRET,
   paypalMode: (process.env.PAYPAL_MODE ?? "sandbox") as "sandbox" | "live",
 
-  // EventFlow's cut of each merchandise sale, taken via each processor's
+  // Gadaova's cut of each merchandise sale, taken via each processor's
   // own fee mechanism (Stripe application_fee_amount, Paystack subaccount
   // split, PayPal platform_fees) so the rest lands directly with the
   // planner. A plain number (e.g. 5 = 5%), adjustable any time from the
@@ -82,7 +82,7 @@ export const env = {
   // different rates depending on what they're selling.
   platformFeePercent: Number(process.env.PLATFORM_FEE_PERCENT ?? 5),
 
-  // EventFlow's cut of each public ticket sale. Applied the same way as
+  // Gadaova's cut of each public ticket sale. Applied the same way as
   // platformFeePercent (see orders.service.ts) -- kept as a separate env
   // var (rather than reusing platformFeePercent) so the two can still be
   // tuned independently later without a code change, even though they

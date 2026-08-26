@@ -38,7 +38,7 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>
 );
 
-// Registers the app-shell service worker so EventFlow can be installed to
+// Registers the app-shell service worker so Gadaova can be installed to
 // a home screen and opens instantly on repeat visits. Wrapped in a load
 // listener (not fired inline) so it never competes with the initial page
 // render for the main thread, and skipped entirely in dev to avoid caching

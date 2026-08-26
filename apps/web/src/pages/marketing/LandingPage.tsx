@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
-import { HeroIllustration, PaymentsIllustration } from "@/components/marketing/HeroIllustration";
+import { HeroIllustration } from "@/components/marketing/HeroIllustration";
 import { usePublicServices } from "@/hooks/useLandingServices";
 import { publicArticleCoverImageUrl, usePublicArticles } from "@/hooks/useArticles";
 import { formatDate } from "@/lib/format";
@@ -64,16 +64,36 @@ const STEPS = [
   {
     title: "Create your event",
     description: "Set the date, type, and details -- your event dashboard is ready in seconds.",
+    image: "https://images.unsplash.com/photo-1754039984995-a91721ce1870?auto=format&fit=crop&w=800&q=80",
   },
   {
     title: "Invite your guests",
     description: "Share by email, WhatsApp, or a link, and watch RSVPs, plus-ones, and companions roll in.",
+    image: "https://images.unsplash.com/photo-1757062768062-ad29deec7df4?auto=format&fit=crop&w=800&q=80",
   },
   {
     title: "Run the day",
     description: "Check guests in, manage seating, and track vendors, all from the same dashboard.",
+    image: "https://images.unsplash.com/photo-1687757660317-63fb2621b197?auto=format&fit=crop&w=800&q=80",
   },
 ];
+
+// Real photography for the Services grid below, matched to each service by
+// keyword so admin-added services (Admin > Services) still get a sensible
+// photo instead of a blank tile. All Unsplash License (free, no attribution
+// required).
+const SERVICE_PHOTOS = [
+  { match: /guest/i, url: "https://images.unsplash.com/photo-1757062768062-ad29deec7df4?auto=format&fit=crop&w=800&q=80" },
+  { match: /rsvp|invit/i, url: "https://images.unsplash.com/photo-1754039984995-a91721ce1870?auto=format&fit=crop&w=800&q=80" },
+  { match: /seat/i, url: "https://images.unsplash.com/photo-1746933195672-34075502e5bb?auto=format&fit=crop&w=800&q=80" },
+  { match: /check-?in/i, url: "https://images.unsplash.com/photo-1687757660317-63fb2621b197?auto=format&fit=crop&w=800&q=80" },
+  { match: /vendor/i, url: "https://images.unsplash.com/photo-1672826979217-7156a305acf5?auto=format&fit=crop&w=800&q=80" },
+  { match: /merch|payment/i, url: "https://images.unsplash.com/photo-1742836531239-1fe146bf7e3f?auto=format&fit=crop&w=800&q=80" },
+];
+
+function serviceImage(title: string, index: number) {
+  return (SERVICE_PHOTOS.find((p) => p.match.test(title)) ?? SERVICE_PHOTOS[index % SERVICE_PHOTOS.length]).url;
+}
 
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
@@ -88,47 +108,47 @@ export default function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 pb-16 pt-16 sm:px-6 sm:pb-24 sm:pt-24 lg:grid-cols-2 lg:gap-8 lg:px-8">
+        <section className="mx-auto grid max-w-[90rem] grid-cols-1 items-center gap-12 px-4 pb-20 pt-20 sm:px-8 sm:pb-28 sm:pt-28 lg:grid-cols-2 lg:gap-12 lg:px-12 xl:px-16">
           <div className="text-center lg:text-left">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-50 px-3 py-1 text-xs font-semibold text-coral-700">
-              <Sparkles className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-50 px-3 py-1 text-sm font-semibold text-coral-700">
+              <Sparkles className="h-4 w-4" />
               Everything for your event, in one place
             </span>
-            <h1 className="mx-auto mt-6 max-w-xl font-display text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl lg:mx-0 lg:text-6xl">
+            <h1 className="mx-auto mt-7 max-w-2xl font-display text-5xl font-bold tracking-tight text-slate-950 sm:text-6xl lg:mx-0 lg:text-7xl">
               Plan events guests will remember
             </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600 lg:mx-0">
+            <p className="mx-auto mt-6 max-w-2xl text-xl text-slate-600 lg:mx-0">
               Guest management, RSVP, seating, check-in, vendors, and payments -- all in one dashboard, so you spend
               less time on logistics and more time on the event itself.
             </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start">
               <Link to={primaryHref}>
-                <Button size="lg" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full px-8 py-4 text-lg sm:w-auto">
                   {primaryLabel}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
               {(isLoading || !user) && (
                 <Link to="/login">
-                  <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+                  <Button variant="secondary" size="lg" className="w-full px-8 py-4 text-lg sm:w-auto">
                     Log In
                   </Button>
                 </Link>
               )}
             </div>
           </div>
-          <div className="mx-auto w-full max-w-md lg:mx-0">
+          <div className="mx-auto w-full max-w-lg lg:mx-0 lg:max-w-none">
             <HeroIllustration />
           </div>
         </section>
 
         {/* Services grid -- admin-editable, see Admin > Services */}
-        <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24 lg:px-8">
+        <section className="mx-auto max-w-[90rem] px-4 pb-20 sm:px-8 sm:pb-28 lg:px-12 xl:px-16">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">
+            <h2 className="font-display text-4xl font-bold text-slate-950 sm:text-5xl">
               All the tools event planners need
             </h2>
-            <p className="mt-3 text-slate-600">No juggling five different apps to get one event out the door.</p>
+            <p className="mt-4 text-lg text-slate-600">No juggling five different apps to get one event out the door.</p>
           </div>
           {servicesLoading ? (
             <div className="mt-12 flex justify-center">
@@ -141,12 +161,19 @@ export default function LandingPage() {
                 const Icon = (Icons as any)[service.icon] ?? Icons.Sparkles;
                 const tileClasses = serviceIndex % 2 === 0 ? "bg-brand-50 text-brand-600" : "bg-coral-50 text-coral-600";
                 return (
-                  <Card key={service.id} className="p-6">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tileClasses}`}>
-                      <Icon className="h-5 w-5" />
+                  <Card key={service.id} className="overflow-hidden">
+                    <img
+                      src={serviceImage(service.title, serviceIndex)}
+                      alt=""
+                      className="h-32 w-full object-cover"
+                    />
+                    <div className="p-6">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tileClasses}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <h3 className="mt-4 font-display text-lg font-semibold text-slate-950">{service.title}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{service.description}</p>
                     </div>
-                    <h3 className="mt-4 font-display text-lg font-semibold text-slate-950">{service.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{service.description}</p>
                   </Card>
                 );
               })}
@@ -156,16 +183,21 @@ export default function LandingPage() {
 
         {/* How it works */}
         <section className="border-y border-slate-100 bg-white">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <div className="mx-auto max-w-[90rem] px-4 py-20 sm:px-8 sm:py-28 lg:px-12 xl:px-16">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">How it works</h2>
-              <p className="mt-3 text-slate-600">From first invite to the last guest checked in.</p>
+              <h2 className="font-display text-4xl font-bold text-slate-950 sm:text-5xl">How it works</h2>
+              <p className="mt-4 text-lg text-slate-600">From first invite to the last guest checked in.</p>
             </div>
             <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-3">
               {STEPS.map((step, index) => (
                 <div key={step.title} className="flex flex-col items-center text-center sm:items-start sm:text-left">
+                  <img
+                    src={step.image}
+                    alt=""
+                    className="h-36 w-full rounded-xl2 object-cover shadow-card"
+                  />
                   <span
-                    className={`flex h-10 w-10 items-center justify-center rounded-full font-display text-base font-bold text-white ${
+                    className={`-mt-5 flex h-10 w-10 items-center justify-center rounded-full font-display text-base font-bold text-white shadow-card ${
                       index % 2 === 0 ? "bg-brand-600" : "bg-coral-500"
                     }`}
                   >
@@ -182,10 +214,10 @@ export default function LandingPage() {
         {/* Photo showcase -- real photography, unlike the icon-based Services
             grid above, to give visitors a feel for what an event on Gadaova
             actually looks like. */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <section className="mx-auto max-w-[90rem] px-4 py-20 sm:px-8 sm:py-28 lg:px-12 xl:px-16">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">Built for real events</h2>
-            <p className="mt-3 text-slate-600">From the first invite to the last guest checked in.</p>
+            <h2 className="font-display text-4xl font-bold text-slate-950 sm:text-5xl">Built for real events</h2>
+            <p className="mt-4 text-lg text-slate-600">From the first invite to the last guest checked in.</p>
           </div>
           <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -222,17 +254,17 @@ export default function LandingPage() {
         </section>
 
         {/* Payments callout */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <section className="mx-auto max-w-[90rem] px-4 py-20 sm:px-8 sm:py-28 lg:px-12 xl:px-16">
           <Card className="grid grid-cols-1 gap-8 p-8 sm:p-12 lg:grid-cols-2 lg:items-center">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-50 px-3 py-1 text-xs font-semibold text-coral-700">
                 <CreditCard className="h-3.5 w-3.5" />
                 Built-in payments
               </span>
-              <h2 className="mt-4 font-display text-2xl font-bold text-slate-950 sm:text-3xl">
+              <h2 className="mt-4 font-display text-3xl font-bold text-slate-950 sm:text-4xl">
                 Get paid in USD, GBP, or NGN
               </h2>
-              <p className="mt-3 text-slate-600">
+              <p className="mt-4 text-lg text-slate-600">
                 Sell merchandise or collect payments straight from your event page. Connect Stripe, PayPal, or
                 Paystack and payouts land in your own account -- we never hold your funds.
               </p>
@@ -250,8 +282,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <div className="shrink-0">
-                <PaymentsIllustration />
+              <div className="w-full shrink-0 sm:w-56 lg:w-full xl:w-56">
+                <img
+                  src="https://images.unsplash.com/photo-1742836531239-1fe146bf7e3f?auto=format&fit=crop&w=600&q=80"
+                  alt=""
+                  className="h-48 w-full rounded-xl2 object-cover shadow-card sm:h-56"
+                />
               </div>
             </div>
           </Card>
@@ -260,11 +296,11 @@ export default function LandingPage() {
         {/* Articles teaser */}
         {articles && articles.length > 0 && (
           <section className="border-y border-slate-100 bg-white">
-            <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+            <div className="mx-auto max-w-[90rem] px-4 py-20 sm:px-8 sm:py-28 lg:px-12 xl:px-16">
               <div className="flex items-end justify-between">
                 <div>
-                  <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">From the blog</h2>
-                  <p className="mt-3 text-slate-600">Updates and tips from the Gadaova team.</p>
+                  <h2 className="font-display text-4xl font-bold text-slate-950 sm:text-5xl">From the blog</h2>
+                  <p className="mt-4 text-lg text-slate-600">Updates and tips from the Gadaova team.</p>
                 </div>
                 <Link to="/articles" className="hidden shrink-0 text-sm font-semibold text-brand-600 hover:text-brand-700 sm:inline-block">
                   View all articles
@@ -297,10 +333,10 @@ export default function LandingPage() {
         )}
 
         {/* FAQ */}
-        <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <section className="mx-auto max-w-4xl px-4 py-20 sm:px-8 sm:py-28 lg:px-12 xl:px-16">
           <div className="text-center">
-            <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">Frequently asked questions</h2>
-            <p className="mt-3 text-slate-600">Everything you need to know before you start planning.</p>
+            <h2 className="font-display text-4xl font-bold text-slate-950 sm:text-5xl">Frequently asked questions</h2>
+            <p className="mt-4 text-lg text-slate-600">Everything you need to know before you start planning.</p>
           </div>
           <div className="mt-10 divide-y divide-slate-100 rounded-xl2 border border-slate-200/80 bg-white shadow-card">
             {FAQS.map((faq) => (
@@ -316,16 +352,16 @@ export default function LandingPage() {
         </section>
 
         {/* CTA banner */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 lg:px-8">
-          <div className="rounded-xl2 bg-brand-600 px-6 py-12 text-center sm:px-12 sm:py-16">
-            <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">Ready to plan your next event?</h2>
-            <p className="mx-auto mt-3 max-w-xl text-brand-100">
+        <section className="mx-auto max-w-[90rem] px-4 pb-24 pt-20 sm:px-8 lg:px-12 xl:px-16">
+          <div className="rounded-xl2 bg-brand-600 px-6 py-16 text-center sm:px-12 sm:py-20">
+            <h2 className="font-display text-4xl font-bold text-white sm:text-5xl">Ready to plan your next event?</h2>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-brand-100">
               Create your first event free -- no credit card required.
             </p>
-            <Link to={primaryHref} className="mt-8 inline-block">
-              <Button size="lg" className="bg-white text-brand-700 shadow-elevated hover:bg-brand-50">
+            <Link to={primaryHref} className="mt-10 inline-block">
+              <Button size="lg" className="bg-white px-8 py-4 text-lg text-brand-700 shadow-elevated hover:bg-brand-50">
                 {primaryLabel}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
           </div>

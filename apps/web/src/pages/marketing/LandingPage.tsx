@@ -47,7 +47,7 @@ export default function LandingPage() {
       <main>
         {/* Hero */}
         <section className="mx-auto max-w-6xl px-4 pb-16 pt-16 text-center sm:px-6 sm:pb-24 sm:pt-24 lg:px-8">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-50 px-3 py-1 text-xs font-semibold text-coral-700">
             <Sparkles className="h-3.5 w-3.5" />
             Everything for your event, in one place
           </span>
@@ -89,12 +89,13 @@ export default function LandingPage() {
             </div>
           ) : (
             <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {(services ?? []).map((service) => {
+              {(services ?? []).map((service, serviceIndex) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const Icon = (Icons as any)[service.icon] ?? Icons.Sparkles;
+                const tileClasses = serviceIndex % 2 === 0 ? "bg-brand-50 text-brand-600" : "bg-coral-50 text-coral-600";
                 return (
                   <Card key={service.id} className="p-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tileClasses}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <h3 className="mt-4 font-display text-lg font-semibold text-slate-950">{service.title}</h3>
@@ -116,7 +117,11 @@ export default function LandingPage() {
             <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-3">
               {STEPS.map((step, index) => (
                 <div key={step.title} className="flex flex-col items-center text-center sm:items-start sm:text-left">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 font-display text-base font-bold text-white">
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center rounded-full font-display text-base font-bold text-white ${
+                      index % 2 === 0 ? "bg-brand-600" : "bg-coral-500"
+                    }`}
+                  >
                     {index + 1}
                   </span>
                   <h3 className="mt-4 font-display text-lg font-semibold text-slate-950">{step.title}</h3>
@@ -131,7 +136,7 @@ export default function LandingPage() {
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
           <Card className="grid grid-cols-1 gap-8 p-8 sm:p-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-50 px-3 py-1 text-xs font-semibold text-coral-700">
                 <CreditCard className="h-3.5 w-3.5" />
                 Built-in payments
               </span>

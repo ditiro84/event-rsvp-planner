@@ -3,19 +3,23 @@ import { cn } from "@/lib/cn";
 import { Loader2 } from "lucide-react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "accent";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
 }
 
 // Variant/state colors match the Figma design system's "Buttons Component
-// Stack" states matrix (Default / Hover / Disabled per variant).
+// Stack" states matrix (Default / Hover / Disabled per variant). "accent"
+// is the newer coral voice, reserved for money-moment CTAs (buy ticket,
+// pay, checkout) so those specific actions pop against the otherwise
+// brand-purple UI instead of blending into every other primary button.
 const variants = {
   primary: "bg-brand-600 text-white shadow-soft hover:bg-brand-800 focus-visible:outline-brand-600",
   secondary:
     "bg-white text-slate-900 border border-slate-300 shadow-soft hover:border-brand-600 hover:bg-brand-50 hover:text-brand-600 focus-visible:outline-slate-400",
   ghost: "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-brand-600 focus-visible:outline-slate-400",
   danger: "bg-danger-500 text-white shadow-soft hover:bg-danger-800 focus-visible:outline-danger-600",
+  accent: "bg-coral-500 text-white shadow-soft hover:bg-coral-600 focus-visible:outline-coral-500",
 };
 
 // Heights match the Figma spec exactly (Large 48px / Medium 40px / Small

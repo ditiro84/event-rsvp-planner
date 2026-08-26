@@ -53,7 +53,9 @@ function TicketTypeRow({
         <p className="mt-1 text-sm font-medium text-brand-700">{formatMoney(ticketType.price, ticketType.currency)}</p>
         {!ticketType.onSale && <p className="mt-1 text-xs text-slate-400">Not currently on sale</p>}
         {ticketType.onSale && ticketType.quantityRemaining !== null && ticketType.quantityRemaining <= 10 && (
-          <p className="mt-1 text-xs text-warning-700">Only {ticketType.quantityRemaining} left</p>
+          <span className="mt-1 inline-flex items-center rounded-full bg-coral-50 px-2 py-0.5 text-xs font-semibold text-coral-700">
+            Only {ticketType.quantityRemaining} left
+          </span>
         )}
       </div>
       {ticketType.onSale && (
@@ -396,7 +398,7 @@ export default function PublicTicketEventPage() {
                   <Button variant="secondary" size="sm" onClick={clearCart} type="button">
                     Clear cart
                   </Button>
-                  <Button size="sm" onClick={() => setShowForm(true)} type="button">
+                  <Button variant="accent" size="sm" onClick={() => setShowForm(true)} type="button">
                     Checkout
                   </Button>
                 </div>
@@ -430,7 +432,7 @@ export default function PublicTicketEventPage() {
                     <Button type="button" variant="secondary" size="sm" onClick={() => setShowForm(false)}>
                       Back
                     </Button>
-                    <Button type="submit" size="sm" isLoading={checkout.isPending} className="flex-1">
+                    <Button type="submit" variant="accent" size="sm" isLoading={checkout.isPending} className="flex-1">
                       Pay {formatMoney(cartTotal, cartCurrency ?? "USD")}
                     </Button>
                   </div>

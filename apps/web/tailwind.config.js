@@ -45,6 +45,23 @@ export default {
           DEFAULT: "#f8f7fa",
           surface: "#ffffff",
         },
+        // Secondary accent -- warm coral, paired with the brand violet so
+        // the app has two voices instead of one ("duotone" direction):
+        // brand stays primary (nav, primary actions), coral calls out
+        // money-moment CTAs (buy ticket, checkout) and category/highlight
+        // tags so the UI reads as more than a single-color surface.
+        coral: {
+          50: "#fdf3ee",
+          100: "#faece7",
+          200: "#f5c4b3",
+          300: "#f0997b",
+          400: "#e87a50",
+          500: "#d85a30",
+          600: "#b8481f",
+          700: "#993c1d",
+          800: "#712b13",
+          900: "#4a1b0c",
+        },
         success: {
           50: "#ecfdf5",
           100: "#d1fae5",

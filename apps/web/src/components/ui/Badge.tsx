@@ -34,7 +34,7 @@ export function Badge({
 }: {
   children: React.ReactNode;
   className?: string;
-  variant?: "neutral" | "brand" | "success" | "warning" | "danger" | "info" | "unassigned";
+  variant?: "neutral" | "brand" | "success" | "warning" | "danger" | "info" | "unassigned" | "coral";
 }) {
   const variants: Record<NonNullable<typeof variant>, string> = {
     neutral: "bg-slate-100 text-slate-700",
@@ -47,6 +47,10 @@ export function Badge({
     // system that isn't part of the core brand/semantic scale (stock
     // Tailwind purple, distinct from the indigo brand color).
     unassigned: "bg-purple-50 text-purple-800 border border-purple-400",
+    // Coral -- the second voice in the duotone palette, for callouts that
+    // want more energy than the neutral/brand tints (selling-fast tickets,
+    // featured/trending tags).
+    coral: "bg-coral-50 text-coral-800 border border-coral-400",
   };
   return (
     <span className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold", variants[variant], className)}>

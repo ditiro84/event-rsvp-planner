@@ -37,3 +37,17 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </StrictMode>
 );
+
+// Registers the app-shell service worker so EventFlow can be installed to
+// a home screen and opens instantly on repeat visits. Wrapped in a load
+// listener (not fired inline) so it never competes with the initial page
+// render for the main thread, and skipped entirely in dev to avoid caching
+// interfering with Vite's HMR.
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Non-fatal -- the app works fine without the service worker, it
+      // just won't be installable/offline-capable.
+    });
+  });
+}

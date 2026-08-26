@@ -17,7 +17,7 @@ interface StatCardProps {
   label: string;
   value: string | number;
   hint?: string;
-  accent?: "default" | "green" | "amber" | "red" | "purple";
+  accent?: "default" | "green" | "amber" | "red" | "purple" | "coral";
   icon?: React.ReactNode;
 }
 
@@ -27,6 +27,7 @@ const accentClasses: Record<NonNullable<StatCardProps["accent"]>, string> = {
   amber: "text-warning-600",
   red: "text-danger-600",
   purple: "text-brand-600",
+  coral: "text-coral-600",
 };
 
 const iconAccentClasses: Record<NonNullable<StatCardProps["accent"]>, string> = {
@@ -35,6 +36,7 @@ const iconAccentClasses: Record<NonNullable<StatCardProps["accent"]>, string> = 
   amber: "bg-warning-50 text-warning-600",
   red: "bg-danger-50 text-danger-600",
   purple: "bg-brand-50 text-brand-600",
+  coral: "bg-coral-50 text-coral-600",
 };
 
 export function StatCard({ label, value, hint, accent = "default", icon }: StatCardProps) {

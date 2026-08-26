@@ -179,6 +179,48 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Photo showcase -- real photography, unlike the icon-based Services
+            grid above, to give visitors a feel for what an event on Gadaova
+            actually looks like. */}
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="font-display text-3xl font-bold text-slate-950 sm:text-4xl">Built for real events</h2>
+            <p className="mt-3 text-slate-600">From the first invite to the last guest checked in.</p>
+          </div>
+          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                image: "https://images.unsplash.com/photo-1757062768062-ad29deec7df4?auto=format&fit=crop&w=800&q=80",
+                title: "RSVPs & Guest Lists",
+                description: "Send invites by email, WhatsApp, or link, and watch RSVPs and plus-ones roll in.",
+              },
+              {
+                image: "https://images.unsplash.com/photo-1746933195672-34075502e5bb?auto=format&fit=crop&w=800&q=80",
+                title: "Seating & Tables",
+                description: "Drag and drop guests onto a visual floor plan and export a printable seating chart.",
+              },
+              {
+                image: "https://images.unsplash.com/photo-1687757660317-63fb2621b197?auto=format&fit=crop&w=800&q=80",
+                title: "Door Check-in & Tickets",
+                description: "Scan QR wristbands and tickets at the door, with live check-in stats as guests arrive.",
+              },
+              {
+                image: "https://images.unsplash.com/photo-1742836531239-1fe146bf7e3f?auto=format&fit=crop&w=800&q=80",
+                title: "Payments & Merchandise",
+                description: "Sell tickets and merchandise with checkout in your guest's local currency.",
+              },
+            ].map((item) => (
+              <Card key={item.title} className="h-full overflow-hidden">
+                <img src={item.image} alt="" className="h-40 w-full object-cover" />
+                <div className="p-5">
+                  <h3 className="font-display text-base font-semibold text-slate-950">{item.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{item.description}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+
         {/* Payments callout */}
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
           <Card className="grid grid-cols-1 gap-8 p-8 sm:p-12 lg:grid-cols-2 lg:items-center">

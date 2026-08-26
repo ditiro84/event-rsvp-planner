@@ -156,12 +156,16 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
       <div>
         <h2 className="mb-4 text-lg font-bold text-slate-900">Quick Access Command Panels</h2>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {quickCards.map((qc) => (
+          {quickCards.map((qc, qcIndex) => (
             <Card key={qc.label} className="flex flex-col gap-4 p-6">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-500">{qc.label}</span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
-                  <qc.icon className="h-4 w-4 text-brand-600" />
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                    qcIndex % 2 === 0 ? "bg-brand-50" : "bg-coral-50"
+                  }`}
+                >
+                  <qc.icon className={`h-4 w-4 ${qcIndex % 2 === 0 ? "text-brand-600" : "text-coral-600"}`} />
                 </span>
               </div>
               <div>
@@ -184,8 +188,8 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
       <div>
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Dietary &amp; accessibility</h3>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard label="Vegetarian" value={stats.vegetarian} />
-          <StatCard label="Vegan" value={stats.vegan} />
+          <StatCard label="Vegetarian" value={stats.vegetarian} accent="coral" />
+          <StatCard label="Vegan" value={stats.vegan} accent="coral" />
           <StatCard label="Dietary requirements" value={stats.withDietaryRequirements} />
           <StatCard label="Accessibility needs" value={stats.withAccessibilityRequirements} />
         </div>

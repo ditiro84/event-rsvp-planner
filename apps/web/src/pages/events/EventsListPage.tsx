@@ -84,7 +84,7 @@ export default function EventsListPage() {
       {!isLoading && !isError && events && events.length > 0 && (
         <div className="mb-8 grid grid-cols-2 gap-6 lg:grid-cols-4">
           <StatCard label="Upcoming Events" value={upcoming.length} icon={<CalendarHeart className="h-4 w-4" />} />
-          <StatCard label="Total Guests" value={summary.totalGuests} icon={<Users className="h-4 w-4" />} />
+          <StatCard label="Total Guests" value={summary.totalGuests} accent="coral" icon={<Users className="h-4 w-4" />} />
           <StatCard
             label="Pending RSVPs"
             value={summary.pendingRsvps}
@@ -113,8 +113,8 @@ export default function EventsListPage() {
         <div className="mb-8">
           <h2 className="mb-4 font-display text-xl font-bold text-slate-950">Active Projects</h2>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {upcoming.map((event) => (
-              <EventCard key={event.id} event={event} needsAttention={actionRequiredByEvent.has(event.id)} />
+            {upcoming.map((event, index) => (
+              <EventCard key={event.id} event={event} index={index} needsAttention={actionRequiredByEvent.has(event.id)} />
             ))}
           </div>
         </div>
@@ -142,8 +142,8 @@ export default function EventsListPage() {
           </button>
           {showPast && (
             <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {past.map((event) => (
-                <EventCard key={event.id} event={event} muted needsAttention={false} />
+              {past.map((event, index) => (
+                <EventCard key={event.id} event={event} index={index} muted needsAttention={false} />
               ))}
             </div>
           )}
@@ -196,14 +196,21 @@ function NeedsAttentionSection({ insights }: { insights: InsightRecord[] }) {
 
 function EventCard({
   event,
+  index,
   muted = false,
   needsAttention,
 }: {
   event: EventListItem;
+  index: number;
   muted?: boolean;
   needsAttention: boolean;
 }) {
   const { guestSummary: g } = event;
+  // Alternate the icon tile between brand and coral -- without an event
+  // category to color-code by (unlike the public ticket page), index
+  // alternation is the simplest way to keep a grid of cards from reading
+  // as one repeated purple square.
+  const tileClasses = index % 2 === 0 ? "bg-brand-100 text-brand-500" : "bg-coral-100 text-coral-500";
   return (
     <Card className={`p-6 sm:p-8 ${muted ? "opacity-70" : ""}`}>
       <div className="flex items-start justify-between gap-3">
@@ -219,11 +226,11 @@ function EventCard({
           )}
           <h3 className="mt-2 truncate text-2xl font-bold text-slate-950">{event.name}</h3>
         </div>
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl2 bg-brand-100">
+        <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl2 ${tileClasses}`}>
           {event.imageUrl ? (
             <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <Sparkles className="h-6 w-6 text-brand-500" />
+            <Sparkles className="h-6 w-6" />
           )}
         </div>
       </div>

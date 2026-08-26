@@ -50,7 +50,7 @@ export function PlatformAnalyticsTab() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Subscribers" value={data.totalSubscribers} icon={<Users className="h-4 w-4" />} />
+        <StatCard label="Subscribers" value={data.totalSubscribers} accent="coral" icon={<Users className="h-4 w-4" />} />
         <StatCard label="Total Events" value={data.totalEvents} icon={<CalendarHeart className="h-4 w-4" />} />
         <StatCard
           label="RSVP Confirmation Rate"

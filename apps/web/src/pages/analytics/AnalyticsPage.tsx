@@ -32,7 +32,7 @@ export default function AnalyticsPage() {
         <>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Total Events" value={data.totalEvents} hint={`${data.upcomingEvents} upcoming`} icon={<CalendarHeart className="h-4 w-4" />} />
-            <StatCard label="Total Guests" value={data.totalGuests} icon={<Users className="h-4 w-4" />} />
+            <StatCard label="Total Guests" value={data.totalGuests} accent="coral" icon={<Users className="h-4 w-4" />} />
             <StatCard
               label="Confirmation Rate"
               value={pct(data.confirmationRate)}

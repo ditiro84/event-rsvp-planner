@@ -364,6 +364,20 @@ export interface InviteLink {
   hasInvitationCard: boolean;
 }
 
+export type EmailEventStatus = "SENT" | "FAILED";
+
+export interface EmailEvent {
+  id: string;
+  eventId: string | null;
+  guestId: string | null;
+  recipientEmail: string;
+  recipientName: string | null;
+  subject: string;
+  status: EmailEventStatus;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
 export interface GuestPrefill {
   firstName: string;
   lastName: string;

@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InviteLink } from "@/types";
+import type { EmailEvent, InviteLink } from "@/types";
 
 // These read the invite link via a mutation (not a query) because the
 // endpoint is a get-or-create: it's only fetched on demand when the host
@@ -22,7 +22,10 @@ export function useSendInviteEmail(eventId: string) {
       const res = await api.post(`/events/${eventId}/guests/${guestId}/invite/email`, {});
       return res.data.data as { sent: boolean };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", eventId, "guests"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events", eventId, "guests"] });
+      qc.invalidateQueries({ queryKey: ["events", eventId, "guests", "email-events"] });
+    },
   });
 }
 
@@ -44,6 +47,23 @@ export function useBulkSendInviteEmails(eventId: string) {
       const res = await api.post(`/events/${eventId}/guests/invites/send-email`, { guestIds });
       return res.data.data as { total: number; sent: number; failed: number };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", eventId, "guests"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events", eventId, "guests"] });
+      qc.invalidateQueries({ queryKey: ["events", eventId, "guests", "email-events"] });
+    },
+  });
+}
+
+// Log of every invite/reminder email attempt for this event, newest first --
+// lets a planner see exactly which sends succeeded/failed and why (e.g. an
+// unverified Resend sending domain) without needing server log access.
+export function useEmailEvents(eventId: string) {
+  return useQuery({
+    queryKey: ["events", eventId, "guests", "email-events"],
+    queryFn: async () => {
+      const res = await api.get(`/events/${eventId}/guests/email-events`);
+      return res.data.data.emailEvents as EmailEvent[];
+    },
+    enabled: !!eventId,
   });
 }

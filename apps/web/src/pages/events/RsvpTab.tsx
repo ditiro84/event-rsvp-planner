@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Copy, FileText, Search, Send, Trash2, Upload } from "lucide-react";
+import { Clock, Copy, FileText, Mail, Search, Send, Trash2, Upload } from "lucide-react";
 import { usePlannerRsvpDashboard, useToggleRsvpOpen } from "@/hooks/useRsvp";
 import { useGuests, type GuestFilters } from "@/hooks/useGuests";
-import { useBulkSendInviteEmails } from "@/hooks/useInvites";
+import { useBulkSendInviteEmails, useEmailEvents } from "@/hooks/useInvites";
 import {
   useDeleteInvitationCard,
   useInvitationCardMeta,
@@ -194,6 +194,8 @@ export function RsvpTab({ event }: { event: EventRecord }) {
 
       <InvitationCardSection eventId={event.id} />
 
+      <EmailLogSection eventId={event.id} />
+
       <Card className="p-6">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
@@ -378,6 +380,75 @@ function InvitationCardSection({ eventId }: { eventId: string }) {
             </Button>
           }
         />
+      )}
+    </Card>
+  );
+}
+
+// Every invite/reminder send attempt for this event, newest first -- invite
+// sends and bulk reminder sends share the same backend code path, so this
+// one log covers both buttons above. Exists so a failure ("Sent 0/12
+// reminders") is immediately explainable (bad address, unverified sending
+// domain, provider rejection) without needing server log access.
+function EmailLogSection({ eventId }: { eventId: string }) {
+  const { data: emailEvents, isLoading, isError, refetch } = useEmailEvents(eventId);
+  const failedCount = emailEvents?.filter((e) => e.status === "FAILED").length ?? 0;
+
+  return (
+    <Card className="p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">Email Log</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            The last 200 invite and reminder emails sent for this event, and why any failed.
+          </p>
+        </div>
+        {failedCount > 0 && <Badge variant="danger">{failedCount} failed</Badge>}
+      </div>
+
+      {isLoading ? (
+        <Spinner />
+      ) : isError ? (
+        <ErrorState title="Couldn't load the email log" onRetry={() => refetch()} />
+      ) : !emailEvents || emailEvents.length === 0 ? (
+        <EmptyState
+          icon={<Mail className="h-8 w-8" />}
+          title="No emails sent yet"
+          description="Invite and reminder emails you send from this event will show up here, along with any delivery failures."
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-2.5 text-left font-semibold text-slate-500">Recipient</th>
+                <th className="px-4 py-2.5 text-left font-semibold text-slate-500">Subject</th>
+                <th className="px-4 py-2.5 text-left font-semibold text-slate-500">Status</th>
+                <th className="px-4 py-2.5 text-left font-semibold text-slate-500">Sent</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {emailEvents.map((entry) => (
+                <tr key={entry.id}>
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-slate-900">{entry.recipientName || "—"}</p>
+                    <p className="text-xs text-slate-500">{entry.recipientEmail}</p>
+                  </td>
+                  <td className="max-w-xs truncate px-4 py-3 text-slate-600">{entry.subject}</td>
+                  <td className="px-4 py-3">
+                    <Badge variant={entry.status === "SENT" ? "success" : "danger"}>
+                      {entry.status === "SENT" ? "Sent" : "Failed"}
+                    </Badge>
+                    {entry.status === "FAILED" && entry.errorMessage && (
+                      <p className="mt-1 max-w-xs text-xs text-danger-600">{entry.errorMessage}</p>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">{formatRelativeTime(entry.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );

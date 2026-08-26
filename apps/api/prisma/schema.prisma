@@ -134,6 +134,7 @@ model Event {
   payoutAccounts  EventPayoutAccount[]
   paymentEvents   PaymentEvent[]
   ticketTypes     TicketType[]
+  emailEvents     EmailEvent[]
 
   // "Shop Enabled" toggle on the Merchandise dashboard -- guests only see
   // the purchase flow on their RSVP page once this is on, so a planner can
@@ -187,6 +188,7 @@ model Guest {
   seatAssignment   SeatingAssignment?
   checkIn          CheckIn?
   orders           Order[]
+  emailEvents      EmailEvent[]
 
   @@index([eventId])
   @@index([eventId, rsvpStatus])
@@ -252,6 +254,40 @@ model EventInvitation {
 
   @@index([eventId])
   @@map("event_invitations")
+}
+
+enum EmailEventStatus {
+  SENT
+  FAILED
+}
+
+// Every outbound transactional email attempt -- guest invite sends and RSVP
+// reminder sends share the same code path (see sendInviteEmail in
+// invite.service.ts), so one log covers both. Exists so a planner can see
+// *why* a send failed (missing/unverified sending domain, Resend account
+// restriction, provider rejection, etc.) without needing server log access
+// -- see GET /api/events/:eventId/guests/email-events. recipientEmail/Name
+// are snapshotted rather than joined-only so a log entry still reads
+// sensibly after the guest is deleted (guestId goes null via SetNull below).
+model EmailEvent {
+  id      String  @id @default(cuid())
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  guestId String?
+  guest   Guest?  @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  recipientEmail String
+  recipientName  String?
+  subject        String
+
+  status       EmailEventStatus
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([guestId])
+  @@map("email_events")
 }
 
 // Configurable custom RSVP questions (future extension beyond the built-in fields)

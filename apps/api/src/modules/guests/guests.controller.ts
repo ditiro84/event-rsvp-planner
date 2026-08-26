@@ -76,6 +76,11 @@ export async function bulkSendInviteEmails(req: Request, res: Response) {
   return ok(res, result);
 }
 
+export async function listEmailEvents(req: Request, res: Response) {
+  const emailEvents = await inviteService.listEmailEvents(req.userId!, req.params.eventId);
+  return ok(res, { emailEvents });
+}
+
 export async function importCsv(req: Request, res: Response) {
   if (!req.file) {
     throw new BadRequestError("No CSV file uploaded (field name: file)");

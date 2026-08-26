@@ -185,15 +185,34 @@ export async function sendInviteEmail(userId: string, guestId: string) {
     });
   }
 
+  const subject = `You're invited to ${event.name}`;
+  const recipientName = `${guest.firstName} ${guest.lastName}`.trim();
+
   const { error } = await client.emails.send({
     from: formatFromHeader(event.name, from),
     to: guest.email,
     replyTo: event.user.email,
-    subject: `You're invited to ${event.name}`,
+    subject,
     // The QR is embedded directly as a data URI (works in the large majority
     // of email clients) and also attached as a PNG so it's easy to save.
     html: inviteEmailHtml(event.name, guest.firstName, url, eventDetails || "We'd love for you to join us.", qrDataUrl),
     attachments,
+  });
+
+  // Logged here (not in bulkSendInviteEmails) so a single "Send Invite"
+  // click from the Guests tab is covered too, not just bulk reminders --
+  // this is the one place every outbound invite/reminder email passes
+  // through. See GET /guests/email-events for where this surfaces.
+  await prisma.emailEvent.create({
+    data: {
+      eventId: guest.eventId,
+      guestId: guest.id,
+      recipientEmail: guest.email,
+      recipientName,
+      subject,
+      status: error ? "FAILED" : "SENT",
+      errorMessage: error?.message ?? null,
+    },
   });
 
   if (error) {
@@ -206,6 +225,18 @@ export async function sendInviteEmail(userId: string, guestId: string) {
   });
 
   return { sent: true };
+}
+
+// Most recent email send attempts for an event (invites + reminders share
+// this log -- see sendInviteEmail above), newest first. Capped at 200 --
+// this is a diagnostic/visibility log, not a durable export.
+export async function listEmailEvents(userId: string, eventId: string) {
+  await getOwnedEvent(userId, eventId);
+  return prisma.emailEvent.findMany({
+    where: { eventId },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
 }
 
 export async function bulkSendInviteEmails(userId: string, eventId: string, guestIds?: string[]) {

@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminRoute, ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { Spinner } from "@/components/ui/Spinner";
 
 // Route-level code splitting: the initial bundle only needs enough to show
@@ -58,38 +59,41 @@ function RouteFallback() {
 
 export default function App() {
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/articles" element={<ArticlesListPage />} />
-        <Route path="/articles/:slug" element={<ArticleDetailPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/rsvp/invite/:invitationToken" element={<PublicRsvpPage />} />
-        <Route path="/rsvp/:token" element={<PublicRsvpPage />} />
-        <Route path="/tickets/:slug" element={<PublicTicketEventPage />} />
+    <>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/articles" element={<ArticlesListPage />} />
+          <Route path="/articles/:slug" element={<ArticleDetailPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/rsvp/invite/:invitationToken" element={<PublicRsvpPage />} />
+          <Route path="/rsvp/:token" element={<PublicRsvpPage />} />
+          <Route path="/tickets/:slug" element={<PublicTicketEventPage />} />
 
-        <Route element={<ProtectedRoute />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/events" element={<EventsListPage />} />
-            <Route path="/events/:eventId" element={<Navigate to="overview" replace />} />
-            <Route path="/events/:eventId/overview" element={<EventOverviewRoute />} />
-            <Route path="/events/:eventId/guests" element={<EventGuestsRoute />} />
-            <Route path="/events/:eventId/rsvp" element={<EventRsvpRoute />} />
-            <Route path="/events/:eventId/seating" element={<EventSeatingRoute />} />
-            <Route path="/events/:eventId/checkin" element={<EventCheckInRoute />} />
-            <Route path="/events/:eventId/vendors" element={<EventVendorsRoute />} />
-            <Route path="/events/:eventId/merchandise" element={<EventMerchandiseRoute />} />
-            <Route path="/events/:eventId/tickets" element={<EventTicketsRoute />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route element={<AdminRoute />}>
-              <Route path="/admin" element={<AdminPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/events" element={<EventsListPage />} />
+              <Route path="/events/:eventId" element={<Navigate to="overview" replace />} />
+              <Route path="/events/:eventId/overview" element={<EventOverviewRoute />} />
+              <Route path="/events/:eventId/guests" element={<EventGuestsRoute />} />
+              <Route path="/events/:eventId/rsvp" element={<EventRsvpRoute />} />
+              <Route path="/events/:eventId/seating" element={<EventSeatingRoute />} />
+              <Route path="/events/:eventId/checkin" element={<EventCheckInRoute />} />
+              <Route path="/events/:eventId/vendors" element={<EventVendorsRoute />} />
+              <Route path="/events/:eventId/merchandise" element={<EventMerchandiseRoute />} />
+              <Route path="/events/:eventId/tickets" element={<EventTicketsRoute />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminPage />} />
+              </Route>
             </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to="/events" replace />} />
-      </Routes>
-    </Suspense>
+          <Route path="*" element={<Navigate to="/events" replace />} />
+        </Routes>
+      </Suspense>
+      <InstallPrompt />
+    </>
   );
 }

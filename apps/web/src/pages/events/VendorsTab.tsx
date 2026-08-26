@@ -67,7 +67,7 @@ export function VendorsTab({ eventId }: { eventId: string }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total Vendors" value={summary?.totalVendors ?? vendors.length} icon={<Store className="h-4 w-4" />} />
+        <StatCard label="Total Vendors" value={summary?.totalVendors ?? vendors.length} accent="coral" icon={<Store className="h-4 w-4" />} />
         <StatCard
           label="Booked / Confirmed"
           value={summary?.bookedCount ?? 0}

@@ -95,7 +95,7 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
           icon={<ShoppingCart className="h-4 w-4" />}
         />
         <StatCard label="Orders" value={summary?.orderCount ?? 0} icon={<ShoppingCart className="h-4 w-4" />} />
-        <StatCard label="Items Sold" value={summary?.itemsSold ?? 0} icon={<Package className="h-4 w-4" />} />
+        <StatCard label="Items Sold" value={summary?.itemsSold ?? 0} accent="coral" icon={<Package className="h-4 w-4" />} />
       </div>
 
       <div>

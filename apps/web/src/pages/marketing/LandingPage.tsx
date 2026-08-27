@@ -7,7 +7,6 @@ import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
-import { HeroIllustration } from "@/components/marketing/HeroIllustration";
 import { usePublicServices } from "@/hooks/useLandingServices";
 import { publicArticleCoverImageUrl, usePublicArticles } from "@/hooks/useArticles";
 import { formatDate } from "@/lib/format";
@@ -138,8 +137,17 @@ export default function LandingPage() {
               )}
             </div>
           </div>
-          <div className="mx-auto w-full max-w-lg lg:mx-0 lg:max-w-none">
-            <HeroIllustration />
+          <div className="relative mx-auto w-full max-w-lg pb-10 pl-6 sm:pb-14 sm:pl-10 lg:mx-0 lg:max-w-none">
+            <img
+              src="https://images.unsplash.com/photo-1661332517932-2d441bfb2994?fm=jpg&q=80&w=1200&auto=format&fit=crop"
+              alt="A couple in traditional Nigerian wedding attire"
+              className="h-[340px] w-full rounded-xl2 object-cover shadow-elevated sm:h-[440px]"
+            />
+            <img
+              src="https://images.unsplash.com/photo-1766650551665-45f1998bd671?fm=jpg&q=80&w=1200&auto=format&fit=crop"
+              alt="A crowd dancing at a nightclub event"
+              className="absolute bottom-0 left-0 h-32 w-44 rounded-xl2 object-cover shadow-elevated ring-4 ring-white sm:h-44 sm:w-64"
+            />
           </div>
         </section>
 

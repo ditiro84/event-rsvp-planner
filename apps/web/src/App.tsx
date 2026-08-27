@@ -46,6 +46,10 @@ const EventMerchandiseRoute = lazy(() =>
 const EventTicketsRoute = lazy(() =>
   import("@/pages/events/EventTabPages").then((m) => ({ default: m.EventTicketsRoute }))
 );
+const EventTeamRoute = lazy(() =>
+  import("@/pages/events/EventTabPages").then((m) => ({ default: m.EventTeamRoute }))
+);
+const StaffCheckInPage = lazy(() => import("@/pages/staff/StaffCheckInPage"));
 const AnalyticsPage = lazy(() => import("@/pages/analytics/AnalyticsPage"));
 const AdminPage = lazy(() => import("@/pages/admin/AdminPage"));
 
@@ -70,6 +74,7 @@ export default function App() {
           <Route path="/rsvp/invite/:invitationToken" element={<PublicRsvpPage />} />
           <Route path="/rsvp/:token" element={<PublicRsvpPage />} />
           <Route path="/tickets/:slug" element={<PublicTicketEventPage />} />
+          <Route path="/staff/:passToken" element={<StaffCheckInPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
@@ -83,6 +88,7 @@ export default function App() {
               <Route path="/events/:eventId/vendors" element={<EventVendorsRoute />} />
               <Route path="/events/:eventId/merchandise" element={<EventMerchandiseRoute />} />
               <Route path="/events/:eventId/tickets" element={<EventTicketsRoute />} />
+              <Route path="/events/:eventId/team" element={<EventTeamRoute />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<AdminPage />} />

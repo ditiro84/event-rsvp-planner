@@ -69,6 +69,49 @@ export async function getOwnedEventStrict(userId: string, eventId: string) {
   return event;
 }
 
+// Same as getOwnedEvent, but also lets in a registered EventCollaborator
+// (staff added to this one event -- see EventCollaborator in schema.prisma).
+// Swapped in for getOwnedEvent across the modules staff should be able to
+// use day-to-day: guests, RSVP, seating, check-in, vendors, merchandise,
+// tickets, insights. Deliberately NOT used by payouts.service.ts (financial
+// account access), deleteEvent, or the collaborators/staff-passes module
+// itself -- those stay on getOwnedEvent/getOwnedEventStrict so a
+// collaborator can never manage money or manage other staff. Collaborator
+// access is re-checked from the DB on every call (no caching), so removing
+// a collaborator revokes access on their very next request.
+export async function getOwnedEventOrCollaborator(userId: string, eventId: string) {
+  try {
+    return await getOwnedEvent(userId, eventId);
+  } catch {
+    const collaborator = await prisma.eventCollaborator.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+    if (!collaborator) throw new NotFoundError("Event not found");
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) throw new NotFoundError("Event not found");
+    return event;
+  }
+}
+
+// Whether this specific user has EventCollaborator (staff) access to this
+// event -- deliberately NOT the same thing as "isn't the owner": an admin
+// using the support-mode bypass in getOwnedEvent above also isn't the
+// owner, but they aren't a collaborator either, and the two need different
+// UI treatment (see the "Support view" vs "Staff access" badges in
+// DashboardLayout.tsx). Callers that already have a batch of eventIds
+// (listEvents below) should check membership in that set instead of calling
+// this per-event.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function isUserEventCollaborator(userId: string, eventId: string) {
+  // NOTE: typed as `any` -- this sandbox can't run `prisma generate` (see
+  // DEPLOYMENT.md), so the locally stubbed PrismaClient type doesn't know
+  // about EventCollaborator yet; tightens back up once generated in CI.
+  const collaborator = await (prisma as any).eventCollaborator.findUnique({
+    where: { eventId_userId: { eventId, userId } },
+  });
+  return !!collaborator;
+}
+
 export interface EventGuestSummary {
   totalGuests: number;
   confirmed: number;
@@ -85,8 +128,23 @@ export interface EventGuestSummary {
 // as three grouped queries total, regardless of how many events the user
 // has).
 export async function listEvents(userId: string) {
-  const events = await prisma.event.findMany({
+  // Events this user owns, plus events they've been added to as staff (see
+  // EventCollaborator) -- collaboratorEventIds is a second query rather
+  // than a single OR'd findMany so the "isCollaborator" flag below can be
+  // computed cheaply per event without re-deriving it from a join.
+  // NOTE: typed as `any` -- this sandbox can't run `prisma generate` (see
+  // DEPLOYMENT.md), so the locally stubbed PrismaClient type doesn't know
+  // about EventCollaborator yet; tightens back up once generated in CI.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const collaborations = await (prisma as any).eventCollaborator.findMany({
     where: { userId },
+    select: { eventId: true },
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const collaboratorEventIds = collaborations.map((c: any) => c.eventId as string);
+
+  const events = await prisma.event.findMany({
+    where: collaboratorEventIds.length > 0 ? { OR: [{ userId }, { id: { in: collaboratorEventIds } }] } : { userId },
     orderBy: { date: "asc" },
   });
   if (events.length === 0) return [];
@@ -135,9 +193,16 @@ export async function listEvents(userId: string) {
     if (guest.seatAssignment) summary.assignedGuests += 1;
   }
 
+  // isCollaborator reflects real EventCollaborator membership, not just
+  // "userId !== event.userId" -- that broader check would also be true for
+  // an admin viewing another subscriber's event via the support-mode bypass
+  // in getOwnedEvent, which is a different thing (see isUserEventCollaborator
+  // above).
+  const collaboratorEventIdSet = new Set(collaboratorEventIds);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return events.map((event: any) => ({
     ...event,
+    isCollaborator: collaboratorEventIdSet.has(event.id),
     guestSummary: summaryByEvent.get(event.id)!,
   }));
 }
@@ -169,7 +234,7 @@ export async function createEvent(userId: string, input: CreateEventInput) {
 }
 
 export async function updateEvent(userId: string, eventId: string, input: UpdateEventInput) {
-  const existing = await getOwnedEvent(userId, eventId);
+  const existing = await getOwnedEventOrCollaborator(userId, eventId);
   const data: Record<string, unknown> = { ...input };
   if ("imageUrl" in data && data.imageUrl === "") data.imageUrl = null;
 
@@ -184,7 +249,7 @@ export async function updateEvent(userId: string, eventId: string, input: Update
 }
 
 export async function uploadEventCoverImage(userId: string, eventId: string, file: UploadedFile) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   if (!ALLOWED_COVER_IMAGE_TYPES.has(file.mimetype)) {
     throw new BadRequestError("Cover image must be a PNG, JPEG, or WEBP file");
@@ -218,7 +283,7 @@ export async function deleteEvent(userId: string, eventId: string) {
 }
 
 export async function getEventDashboard(userId: string, eventId: string) {
-  const event = await getOwnedEvent(userId, eventId);
+  const event = await getOwnedEventOrCollaborator(userId, eventId);
 
   const [
     totalGuests,

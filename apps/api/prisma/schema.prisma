@@ -35,6 +35,14 @@ model User {
   notifications Notification[]
   articles      Article[]
 
+  // Events this user has been added to as staff (not owned by them) -- see
+  // EventCollaborator below. Named relations because a User shows up on
+  // both sides of that model (the collaborator themself, and whichever
+  // owner invited them).
+  eventCollaborations  EventCollaborator[] @relation("EventCollaboratorUser")
+  collaboratorsInvited EventCollaborator[] @relation("EventCollaboratorInvitedBy")
+  collaboratorInvitesSent EventCollaboratorInvite[]
+
   @@map("users")
 }
 
@@ -135,6 +143,9 @@ model Event {
   paymentEvents   PaymentEvent[]
   ticketTypes     TicketType[]
   emailEvents     EmailEvent[]
+  collaborators   EventCollaborator[]
+  collaboratorInvites EventCollaboratorInvite[]
+  staffPasses     EventStaffPass[]
 
   // "Shop Enabled" toggle on the Merchandise dashboard -- guests only see
   // the purchase flow on their RSVP page once this is on, so a planner can
@@ -143,6 +154,100 @@ model Event {
 
   @@index([userId])
   @@map("events")
+}
+
+// ---------------------------------------------------------------------------
+// EVENT STAFF / COLLABORATORS
+// ---------------------------------------------------------------------------
+//
+// Two tiers, deliberately separate models rather than one flexible one:
+//
+// 1. EventCollaborator -- a real (registered) account added to a single
+//    event by its owner. Gets working access to that one event (guests,
+//    RSVP, seating, check-in, vendors, merchandise, tickets) through
+//    getOwnedEventOrCollaborator in events.service.ts, the same choke point
+//    getOwnedEvent already is for owners/admins. Deliberately excluded even
+//    as a collaborator: deleting the event, connecting/viewing the payout
+//    account (still getOwnedEventStrict-only, see payouts.service.ts), and
+//    managing other collaborators/staff passes (owner-only, see
+//    collaborators.service.ts) -- a collaborator can't invite or remove
+//    other staff. Removing this row revokes access immediately (every
+//    request re-checks the DB, same as the admin role check already does).
+//
+// 2. EventStaffPass -- no account at all, just a named, revocable link/PIN
+//    for a single day-of role (door check-in only). Named per person
+//    (not one shared link per event) specifically so a dismissed staff
+//    member can be cut off mid-event without touching anyone else's
+//    access -- see revokeStaffPass. token is a mutable field (unlike
+//    Event.rsvpToken, which is intentionally permanent) so "revoke" can
+//    also mean "rotate the token", invalidating the old link instantly via
+//    a lookup that simply no longer matches.
+
+enum EventCollaboratorRole {
+  STAFF
+}
+
+model EventCollaborator {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation("EventCollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  role EventCollaboratorRole @default(STAFF)
+
+  invitedByUserId String
+  invitedBy       User   @relation("EventCollaboratorInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("event_collaborators")
+}
+
+// A staff invite sent to an email address that doesn't have an account
+// yet. Resolved into an EventCollaborator automatically the moment that
+// email registers or logs in (see resolvePendingCollaboratorInvites in
+// auth.service.ts) -- the planner doesn't have to re-invite after the
+// staff member signs up.
+model EventCollaboratorInvite {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  email String
+  token String @unique @default(cuid())
+
+  invitedByUserId String
+  invitedBy       User   @relation(fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, email])
+  @@index([eventId])
+  @@index([email])
+  @@map("event_collaborator_invites")
+}
+
+model EventStaffPass {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Who this pass is for -- shown to the planner in the Team tab so they
+  // know which link to hand out, and which one to revoke.
+  name  String
+  token String @unique @default(cuid())
+
+  active    Boolean   @default(true)
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@map("event_staff_passes")
 }
 
 // ---------------------------------------------------------------------------

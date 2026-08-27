@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { prisma } from "../../lib/prisma";
 import { env } from "../../config/env";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { checkInGuest, getOwnedGuest } from "./guests.service";
 import { eventHasInvitationCard, getInvitationCardBytesForEvent } from "../events/invitationCard.service";
 import { formatFromHeader } from "../../utils/email";
@@ -48,7 +48,7 @@ export async function getInviteLink(userId: string, guestId: string) {
 // sequentially rather than Promise.all since eventInvitation.create needs a
 // per-guest existence check first; fine for a print job's guest-list size.
 export async function getGuestsWithInviteLinks(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const guests = await prisma.guest.findMany({
     where: { eventId },
@@ -80,7 +80,7 @@ export async function getGuestsWithInviteLinks(userId: string, eventId: string) 
 // upserts) rather than erroring, since staff will often scan the same
 // wristband twice by accident.
 export async function checkInGuestByToken(userId: string, eventId: string, token: string, checkedInBy?: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const invitation = await prisma.eventInvitation.findUnique({ where: { token } });
   if (!invitation || invitation.eventId !== eventId || !invitation.guestId) {

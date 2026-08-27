@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { NotFoundError } from "../../lib/errors";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { notifyVendorStatusChanged } from "../notifications/notifications.service";
 import { CreateVendorInput, ListVendorsQuery, UpdateVendorInput } from "./vendors.schema";
 
@@ -40,7 +40,7 @@ function groupCostsByCurrency(vendors: any[]) {
 }
 
 export async function getOwnedVendor(userId: string, eventId: string, vendorId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
   if (!vendor || vendor.eventId !== eventId) {
     throw new NotFoundError("Vendor not found");
@@ -49,7 +49,7 @@ export async function getOwnedVendor(userId: string, eventId: string, vendorId: 
 }
 
 export async function listVendors(userId: string, eventId: string, query: ListVendorsQuery) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { eventId };
@@ -64,7 +64,7 @@ export async function listVendors(userId: string, eventId: string, query: ListVe
 }
 
 export async function createVendor(userId: string, eventId: string, input: CreateVendorInput) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const vendor = await prisma.vendor.create({
     data: {
@@ -117,7 +117,7 @@ export async function deleteVendor(userId: string, eventId: string, vendorId: st
 
 // Rolled up per-event vendor totals, used on the Vendors tab summary strip.
 export async function getVendorSummary(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const vendors = await prisma.vendor.findMany({ where: { eventId } });
   const totalCostCents = vendors.reduce((sum: number, v: { costCents: number | null }) => sum + (v.costCents ?? 0), 0);

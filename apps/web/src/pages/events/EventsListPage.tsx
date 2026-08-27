@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarHeart, ChevronDown, MailQuestion, MapPin, Plus, Settings, Sparkles, UserMinus, Users } from "lucide-react";
+import { ArrowRight, CalendarHeart, ChevronDown, MailQuestion, MapPin, Plus, Settings, Sparkles, UserCog, UserMinus, Users } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useEvents } from "@/hooks/useEvents";
 import { useInsights } from "@/hooks/useInsights";
@@ -215,15 +215,26 @@ function EventCard({
     <Card className={`p-6 sm:p-8 ${muted ? "opacity-70" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {needsAttention ? (
-            <Badge variant="warning" className="rounded-full uppercase">
-              Needs Attention
-            </Badge>
-          ) : (
-            <Badge variant="success" className="rounded-full uppercase">
-              On Track
-            </Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {needsAttention ? (
+              <Badge variant="warning" className="rounded-full uppercase">
+                Needs Attention
+              </Badge>
+            ) : (
+              <Badge variant="success" className="rounded-full uppercase">
+                On Track
+              </Badge>
+            )}
+            {/* Shown when this event belongs to someone else and the
+                current user only has EventCollaborator (staff) access to
+                it -- see isCollaborator in events.service.ts. */}
+            {event.isCollaborator && (
+              <Badge variant="coral" className="flex items-center gap-1 rounded-full uppercase">
+                <UserCog className="h-3 w-3" />
+                Staff
+              </Badge>
+            )}
+          </div>
           <h3 className="mt-2 truncate text-2xl font-bold text-slate-950">{event.name}</h3>
         </div>
         <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl2 ${tileClasses}`}>

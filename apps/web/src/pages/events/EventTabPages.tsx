@@ -10,6 +10,7 @@ import { CheckInTab } from "./CheckInTab";
 import { VendorsTab } from "./VendorsTab";
 import { MerchandiseTab } from "./MerchandiseTab";
 import { TicketsTab } from "./TicketsTab";
+import { TeamTab } from "./TeamTab";
 import type { EventRecord } from "@/types";
 
 // Split out on its own: the seating planner is the only screen that needs
@@ -81,4 +82,14 @@ export function EventMerchandiseRoute() {
 
 export function EventTicketsRoute() {
   return <EventRouteGuard>{(event) => <TicketsTab event={event} />}</EventRouteGuard>;
+}
+
+// Owner-only in practice -- a collaborator who somehow lands here gets a
+// 404 from every endpoint this tab calls (see collaborators.service.ts /
+// staffPasses.service.ts, both use getOwnedEvent, not the collaborator-
+// inclusive variant). The nav item itself is hidden for collaborators too
+// (see DashboardLayout's EVENT_SECTIONS filter), this route guard is the
+// defense-in-depth backstop for a direct URL visit.
+export function EventTeamRoute() {
+  return <EventRouteGuard>{(event) => <TeamTab eventId={event.id} />}</EventRouteGuard>;
 }

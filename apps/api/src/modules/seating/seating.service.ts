@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { canAssignGuest } from "../../utils/capacity";
 import {
   AssignGuestInput,
@@ -16,7 +16,7 @@ import {
 // ---------------------------------------------------------------------------
 
 export async function getOrCreateLayout(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   let layout = await prisma.venueLayout.findUnique({
     where: { eventId },
@@ -50,7 +50,7 @@ export async function createLayoutObject(userId: string, eventId: string, input:
 }
 
 async function getOwnedLayoutObject(userId: string, eventId: string, objectId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const object = await prisma.layoutObject.findUnique({
     where: { id: objectId },
     include: { venueLayout: true },
@@ -114,7 +114,7 @@ const tableInclude = {
 };
 
 export async function listTables(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   return prisma.table.findMany({
     where: { eventId },
     include: tableInclude,
@@ -123,7 +123,7 @@ export async function listTables(userId: string, eventId: string) {
 }
 
 export async function getOwnedTable(userId: string, eventId: string, tableId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const table = await prisma.table.findUnique({ where: { id: tableId }, include: tableInclude });
   if (!table || table.eventId !== eventId) {
     throw new NotFoundError("Table not found");
@@ -132,7 +132,7 @@ export async function getOwnedTable(userId: string, eventId: string, tableId: st
 }
 
 export async function createTable(userId: string, eventId: string, input: CreateTableInput) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   return prisma.table.create({
     data: {
       eventId,
@@ -239,7 +239,7 @@ export async function deleteTable(userId: string, eventId: string, tableId: stri
 // ---------------------------------------------------------------------------
 
 export async function getSeatingMap(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const [layout, tables, unassignedGuests] = await Promise.all([
     getOrCreateLayout(userId, eventId),
@@ -267,7 +267,7 @@ export async function getSeatingMap(userId: string, eventId: string) {
 // ---------------------------------------------------------------------------
 
 export async function assignGuest(userId: string, eventId: string, input: AssignGuestInput) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const guest = await prisma.guest.findUnique({
     where: { id: input.guestId },
@@ -409,7 +409,7 @@ export async function assignGuest(userId: string, eventId: string, input: Assign
 // Unassigns a guest AND every named party member that came with them --
 // they were seated together as a unit, so they're freed together too.
 export async function unassignGuest(userId: string, eventId: string, guestId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const guest = await prisma.guest.findUnique({ where: { id: guestId }, include: { party: true } });
   if (!guest || guest.eventId !== eventId) {
@@ -438,7 +438,7 @@ export async function unassignGuest(userId: string, eventId: string, guestId: st
 // Unassigns a single named party member's seat, leaving the primary guest
 // and any other party members seated where they are.
 export async function unassignPartyMember(userId: string, eventId: string, partyMemberId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const member = await prisma.guestParty.findUnique({
     where: { id: partyMemberId },

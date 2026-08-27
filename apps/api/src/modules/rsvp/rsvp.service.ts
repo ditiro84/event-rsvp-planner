@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { notifyRsvpChange } from "../notifications/notifications.service";
 import { SubmitRsvpInput } from "./rsvp.schema";
 
@@ -181,7 +181,7 @@ export async function submitRsvpViaInvitation(invitationToken: string, input: Su
 }
 
 export async function getRsvpDashboard(userId: string, eventId: string) {
-  const event = await getOwnedEvent(userId, eventId);
+  const event = await getOwnedEventOrCollaborator(userId, eventId);
 
   const [confirmed, declined, pending, maybe] = await Promise.all([
     prisma.guest.count({ where: { eventId, rsvpStatus: "CONFIRMED" } }),

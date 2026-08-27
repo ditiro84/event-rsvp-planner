@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { NotFoundError } from "../../lib/errors";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { shouldReleaseSeatOnStatusChange } from "../../utils/rsvpMath";
 import { CreateGuestInput, ListGuestsQuery, UpdateGuestInput } from "./guests.schema";
 
@@ -20,7 +20,7 @@ export async function getOwnedGuest(userId: string, guestId: string) {
 }
 
 export async function listGuests(userId: string, eventId: string, query: ListGuestsQuery) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   // NOTE: typed as `any` here because this sandbox could not run `prisma generate`
   // (see DEPLOYMENT.md); once generated, this can be tightened back to Prisma.GuestWhereInput.
@@ -69,7 +69,7 @@ export async function listGuests(userId: string, eventId: string, query: ListGue
 }
 
 export async function createGuest(userId: string, eventId: string, input: CreateGuestInput) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const names = input.additionalGuestNames;
   return prisma.guest.create({
     data: {
@@ -182,7 +182,7 @@ export async function bulkCreateGuests(
   eventId: string,
   rows: CreateGuestInput[]
 ) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const result = await prisma.$transaction(
     rows.map((row) =>
       prisma.guest.create({
@@ -208,7 +208,7 @@ export async function bulkCreateGuests(
 }
 
 export async function getGuestsForExport(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   return prisma.guest.findMany({
     where: { eventId },
     include: {

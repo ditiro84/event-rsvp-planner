@@ -24,6 +24,7 @@ import articlesAdminRoutes from "./modules/articles/articles.admin.routes";
 import articlesPublicRoutes from "./modules/articles/articles.public.routes";
 import landingAdminRoutes from "./modules/landing/landing.admin.routes";
 import landingPublicRoutes from "./modules/landing/landing.public.routes";
+import staffPassesPublicRoutes from "./modules/collaborators/staffPasses.public.routes";
 
 export function createApp() {
   const app = express();
@@ -73,6 +74,7 @@ export function createApp() {
   app.use("/api/auth", authRoutes);
   app.use("/api/events", eventsRoutes);
   app.use("/api/rsvp", rsvpRoutes);
+  app.use("/api/staff", staffPassesPublicRoutes);
   app.use("/api/guests", guestByIdRoutes);
   app.use("/api/notifications", notificationsRoutes);
   app.use("/api/insights", insightsRoutes);

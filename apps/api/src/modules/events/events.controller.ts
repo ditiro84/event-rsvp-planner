@@ -28,8 +28,14 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function getOne(req: Request, res: Response) {
-  const event = await service.getOwnedEvent(req.userId!, req.params.eventId);
-  return ok(res, { event: sanitizeEvent(event) });
+  const event = await service.getOwnedEventOrCollaborator(req.userId!, req.params.eventId);
+  // Real EventCollaborator membership, not just "isn't the owner" -- an
+  // admin viewing this event via the support-mode bypass isn't the owner
+  // either, but shouldn't be labeled a collaborator (see
+  // isUserEventCollaborator's note in events.service.ts).
+  const isCollaborator =
+    event.userId !== req.userId ? await service.isUserEventCollaborator(req.userId!, event.id) : false;
+  return ok(res, { event: { ...sanitizeEvent(event), isCollaborator } });
 }
 
 export async function update(req: Request, res: Response) {
@@ -45,7 +51,7 @@ export async function uploadCoverImage(req: Request, res: Response) {
 }
 
 export async function downloadCoverImage(req: Request, res: Response) {
-  await service.getOwnedEvent(req.userId!, req.params.eventId);
+  await service.getOwnedEventOrCollaborator(req.userId!, req.params.eventId);
   const { data, mimeType } = await service.getEventCoverImageBytes(req.params.eventId);
   res.setHeader("Content-Type", mimeType);
   res.setHeader("Cache-Control", "private, max-age=300");

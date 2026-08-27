@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { CreateTicketTypeInput, UpdateTicketTypeInput } from "./ticketTypes.schema";
 
 function toCents(amount: number | null | undefined): number | null | undefined {
@@ -35,7 +35,7 @@ function serializeTicketType(ticketType: any) {
 }
 
 export async function getOwnedTicketType(userId: string, eventId: string, ticketTypeId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const ticketType = await prisma.ticketType.findUnique({ where: { id: ticketTypeId } });
   if (!ticketType || ticketType.eventId !== eventId) {
     throw new NotFoundError("Ticket type not found");
@@ -44,7 +44,7 @@ export async function getOwnedTicketType(userId: string, eventId: string, ticket
 }
 
 export async function listTicketTypes(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const ticketTypes = await prisma.ticketType.findMany({ where: { eventId }, orderBy: { sortOrder: "asc" } });
   return ticketTypes.map(serializeTicketType);
 }
@@ -56,7 +56,7 @@ function validateOrderBounds(input: { minPerOrder?: number; maxPerOrder?: number
 }
 
 export async function createTicketType(userId: string, eventId: string, input: CreateTicketTypeInput) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   validateOrderBounds(input);
 
   // New ticket types are appended to the end of the display order, same
@@ -178,7 +178,7 @@ function serializeScannedTicket(ticket: any) {
 // already-checked-in ticket doesn't error, but the `alreadyCheckedIn` flag
 // lets the scan UI flag a possible duplicate/shared ticket to staff.
 export async function checkInTicketByCode(userId: string, eventId: string, code: string, checkedInBy?: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   const ticket = await prisma.ticket.findUnique({ where: { code }, include: { ticketType: true } });
   if (!ticket || ticket.ticketType.eventId !== eventId) {
@@ -201,7 +201,7 @@ export async function checkInTicketByCode(userId: string, eventId: string, code:
 }
 
 export async function reorderTicketTypes(userId: string, eventId: string, orderedIds: string[]) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   // Unlike LandingService (a global, admin-only list), ticket types are
   // scoped per-event -- verify every id in the requested order actually

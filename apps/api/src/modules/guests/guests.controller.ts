@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { created, noContent, ok } from "../../lib/apiResponse";
 import { BadRequestError } from "../../lib/errors";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { createGuestSchema, listGuestsQuerySchema, updateGuestSchema } from "./guests.schema";
 import { bulkSendInviteEmailsSchema, checkInScanSchema, markInviteSentSchema } from "./invite.schema";
 import * as service from "./guests.service";
@@ -95,7 +95,7 @@ export async function exportCsv(req: Request, res: Response) {
 
 export async function exportPdf(req: Request, res: Response) {
   const [event, guests] = await Promise.all([
-    getOwnedEvent(req.userId!, req.params.eventId),
+    getOwnedEventOrCollaborator(req.userId!, req.params.eventId),
     service.getGuestsForExport(req.userId!, req.params.eventId),
   ]);
   const doc = guestsToPdf(event.name, guests);
@@ -107,7 +107,7 @@ export async function exportPdf(req: Request, res: Response) {
 
 export async function exportWristbandsPdf(req: Request, res: Response) {
   const [event, guests] = await Promise.all([
-    getOwnedEvent(req.userId!, req.params.eventId),
+    getOwnedEventOrCollaborator(req.userId!, req.params.eventId),
     inviteService.getGuestsWithInviteLinks(req.userId!, req.params.eventId),
   ]);
   const doc = await guestsToWristbandsPdf(event.name, guests);

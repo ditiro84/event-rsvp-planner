@@ -86,7 +86,9 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
         </div>
       </div>
 
-      <PayoutsSection eventId={event.id} />
+      {/* Payout account management is owner-only, never a collaborator --
+          see EventCollaborator's design note in schema.prisma. */}
+      {!event.isCollaborator && <PayoutsSection eventId={event.id} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard

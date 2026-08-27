@@ -12,6 +12,8 @@ import productsRouter from "../products/products.routes";
 import ordersRouter from "../products/orders.routes";
 import payoutsRouter from "../payouts/payouts.routes";
 import ticketTypesRouter from "../tickets/ticketTypes.routes";
+import collaboratorsRouter from "../collaborators/collaborators.routes";
+import staffPassesRouter from "../collaborators/staffPasses.routes";
 import * as rsvpController from "../rsvp/rsvp.controller";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -71,5 +73,10 @@ router.use("/:eventId/payouts", validateParams(eventIdParamsSchema), payoutsRout
 
 // Nested ticket type routes: /api/events/:eventId/ticket-types
 router.use("/:eventId/ticket-types", validateParams(eventIdParamsSchema), ticketTypesRouter);
+
+// Nested staff routes: /api/events/:eventId/collaborators, /api/events/:eventId/staff-passes
+// -- owner/admin only, see collaborators.service.ts / staffPasses.service.ts.
+router.use("/:eventId/collaborators", validateParams(eventIdParamsSchema), collaboratorsRouter);
+router.use("/:eventId/staff-passes", validateParams(eventIdParamsSchema), staffPassesRouter);
 
 export default router;

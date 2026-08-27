@@ -3,6 +3,7 @@ import { hashPassword, verifyPassword } from "../../utils/password";
 import { signAuthToken } from "../../utils/jwt";
 import { ConflictError, UnauthorizedError } from "../../lib/errors";
 import { LoginInput, RegisterInput } from "./auth.schema";
+import { resolvePendingCollaboratorInvites } from "../collaborators/collaborators.service";
 
 export async function registerUser(input: RegisterInput) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
@@ -15,6 +16,10 @@ export async function registerUser(input: RegisterInput) {
     data: { name: input.name, email: input.email, passwordHash },
     select: { id: true, name: true, email: true, role: true, createdAt: true },
   });
+
+  // Any event staff invite sent to this email before they registered
+  // becomes real access now, without the planner needing to re-invite.
+  await resolvePendingCollaboratorInvites(user.id, user.email);
 
   const token = signAuthToken({ userId: user.id });
   return { user, token };

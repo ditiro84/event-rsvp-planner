@@ -66,6 +66,10 @@ export interface EventRecord {
   hasCoverImage: boolean;
   createdAt: string;
   updatedAt: string;
+  // True when the current user has access to this event as a staff
+  // collaborator rather than as the owner (see EventCollaborator) -- used to
+  // hide owner-only UI like Payouts and Team management.
+  isCollaborator: boolean;
 }
 
 export interface EventGuestSummary {
@@ -704,6 +708,52 @@ export interface LandingService {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Event staff / collaborators
+//
+// Two tiers (see EventCollaborator/EventStaffPass in schema.prisma):
+// - EventCollaboratorRecord: a real registered account with restricted
+//   working access to one event (never payouts, delete, or other staff).
+// - EventStaffPassRecord: no-account, named, revocable door check-in link.
+// ---------------------------------------------------------------------------
+
+export type EventCollaboratorRole = "STAFF";
+
+export interface EventCollaboratorRecord {
+  id: string;
+  eventId: string;
+  userId: string;
+  user: { id: string; name: string; email: string };
+  role: EventCollaboratorRole;
+  invitedByUserId: string;
+  createdAt: string;
+}
+
+export interface EventCollaboratorInviteRecord {
+  id: string;
+  eventId: string;
+  email: string;
+  invitedByUserId: string;
+  createdAt: string;
+}
+
+export interface EventStaffPassRecord {
+  id: string;
+  eventId: string;
+  name: string;
+  token: string;
+  active: boolean;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface StaffPassContext {
+  passName: string;
+  eventName: string;
+  eventDate: string;
+  venueName: string | null;
 }
 
 export interface PlatformAnalytics {

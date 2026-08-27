@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { getConnectedProvidersByCurrency } from "../payouts/payouts.service";
 import { CreateProductInput, UpdateProductInput } from "./products.schema";
 
@@ -59,7 +59,7 @@ async function getSoldCounts(eventId: string) {
 }
 
 export async function getOwnedProduct(userId: string, eventId: string, productId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product || product.eventId !== eventId) {
     throw new NotFoundError("Product not found");
@@ -68,7 +68,7 @@ export async function getOwnedProduct(userId: string, eventId: string, productId
 }
 
 export async function listProducts(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const [products, soldByProductId] = await Promise.all([
     prisma.product.findMany({ where: { eventId }, orderBy: { createdAt: "asc" } }),
     getSoldCounts(eventId),
@@ -78,7 +78,7 @@ export async function listProducts(userId: string, eventId: string) {
 }
 
 export async function createProduct(userId: string, eventId: string, input: CreateProductInput) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const product = await prisma.product.create({
     data: {
       eventId,

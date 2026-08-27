@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { getOwnedEvent } from "./events.service";
+import { getOwnedEventOrCollaborator } from "./events.service";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
 
 const ALLOWED_MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
@@ -13,7 +13,7 @@ export interface UploadedFile {
 }
 
 export async function getInvitationCardMeta(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const card = await prisma.eventInvitationCard.findUnique({
     where: { eventId },
     select: { fileName: true, mimeType: true, size: true, createdAt: true },
@@ -22,7 +22,7 @@ export async function getInvitationCardMeta(userId: string, eventId: string) {
 }
 
 export async function uploadInvitationCard(userId: string, eventId: string, file: UploadedFile) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
 
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
     throw new BadRequestError("Invitation card must be a PDF, PNG, or JPEG file");
@@ -53,14 +53,14 @@ export async function uploadInvitationCard(userId: string, eventId: string, file
 }
 
 export async function deleteInvitationCard(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   await prisma.eventInvitationCard.deleteMany({ where: { eventId } });
 }
 
 // Host-side download (authenticated) -- used for the preview/download button
 // in the app itself.
 export async function getInvitationCardFile(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const card = await prisma.eventInvitationCard.findUnique({ where: { eventId } });
   if (!card) {
     throw new NotFoundError("No invitation card has been uploaded for this event");

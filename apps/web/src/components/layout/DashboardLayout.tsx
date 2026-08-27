@@ -15,6 +15,7 @@ import {
   Store,
   Ticket,
   Trash2,
+  UserCog,
   Users,
   X,
 } from "lucide-react";
@@ -29,7 +30,15 @@ import { EVENT_TYPE_LABELS, formatDateShort } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { EventFormModal } from "@/pages/events/EventFormModal";
 
-const EVENT_SECTIONS = [
+interface EventSection {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  hint: string;
+  ownerOnly?: boolean;
+}
+
+const EVENT_SECTIONS: EventSection[] = [
   { to: "overview", label: "Overview", icon: LayoutDashboard, hint: "Readiness at a glance and quick links to every section" },
   { to: "guests", label: "Guests", icon: Users, hint: "Manage your private guest list and import from a CSV" },
   { to: "rsvp", label: "RSVP", icon: Mail, hint: "Send invites and track confirmed, pending, and declined replies" },
@@ -38,6 +47,9 @@ const EVENT_SECTIONS = [
   { to: "tickets", label: "Tickets", icon: Ticket, hint: "Set up paid ticket types and publish a public event page" },
   { to: "seating", label: "Seating", icon: Armchair, hint: "Drag guests onto tables with the visual seating planner" },
   { to: "checkin", label: "Check-in", icon: ClipboardCheck, hint: "Scan guests and tickets in at the door" },
+  // Owner-only -- filtered out below for staff collaborators, since they
+  // can't manage other staff or check-in passes (see TeamTab.tsx).
+  { to: "team", label: "Team", icon: UserCog, hint: "Invite staff collaborators and manage door check-in passes", ownerOnly: true },
 ];
 
 const GLOBAL_SECTIONS = [
@@ -64,11 +76,21 @@ export function DashboardLayout() {
 
   const globalSections =
     user?.role === "ADMIN" ? [...GLOBAL_SECTIONS, { to: "/admin", label: "Admin" }] : GLOBAL_SECTIONS;
+  // True when a staff collaborator (not the owner, not an admin) is viewing
+  // this event -- see EventCollaborator in schema.prisma. Distinct from
+  // viewingAsAdmin below: the event's own isCollaborator flag is computed
+  // server-side from real EventCollaborator membership, not just "isn't the
+  // owner" (see isUserEventCollaborator in events.service.ts).
+  const viewingAsCollaborator = !!event && event.isCollaborator;
   // True when an admin has drilled into a subscriber's event they don't own
   // (support mode) -- see getOwnedEvent's admin bypass in events.service.ts.
   // Deleting an event is on the admin blocklist server-side regardless, but
   // hiding the button here avoids a confusing failed-request toast.
-  const viewingAsAdmin = !!event && !!user && event.userId !== user.id;
+  const viewingAsAdmin = !!event && !!user && event.userId !== user.id && !viewingAsCollaborator;
+  // The Team tab (managing other staff and check-in passes) is owner-only --
+  // a collaborator can't reach its endpoints (see collaborators.service.ts),
+  // so don't show a nav item that would just 404.
+  const eventSections = viewingAsCollaborator ? EVENT_SECTIONS.filter((s) => !s.ownerOnly) : EVENT_SECTIONS;
 
   async function handleDelete() {
     if (!event) return;
@@ -119,7 +141,7 @@ export function DashboardLayout() {
                 ))}
 
               {inEvent &&
-                EVENT_SECTIONS.map((section) => (
+                eventSections.map((section) => (
                   <Tooltip key={section.to} label={section.hint}>
                     <NavLink
                       to={`/events/${eventId}/${section.to}`}
@@ -176,6 +198,12 @@ export function DashboardLayout() {
                   Support view -- editing as admin
                 </span>
               )}
+              {viewingAsCollaborator && (
+                <span className="flex items-center gap-1 rounded-full bg-coral-50 px-2.5 py-1 text-xs font-semibold text-coral-700">
+                  <UserCog className="h-3.5 w-3.5" />
+                  Staff access
+                </span>
+              )}
             </div>
             <div className="flex shrink-0 gap-1.5">
               <button
@@ -185,10 +213,11 @@ export function DashboardLayout() {
                 <Pencil className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Edit</span>
               </button>
-              {/* Deleting an event is owner-only, no admin bypass (see
-                  getOwnedEventStrict) -- hidden here rather than shown and
-                  failing with a confusing error. */}
-              {!viewingAsAdmin && (
+              {/* Deleting an event is owner-only, no admin bypass and no
+                  collaborator access either (see getOwnedEventStrict) --
+                  hidden here rather than shown and failing with a confusing
+                  error. */}
+              {!viewingAsAdmin && !viewingAsCollaborator && (
                 <button
                   onClick={handleDelete}
                   aria-label="Delete event"
@@ -203,7 +232,7 @@ export function DashboardLayout() {
 
         {mobileNavOpen && (
           <nav className="flex flex-col gap-1 border-t border-slate-100 bg-white px-4 py-2 md:hidden">
-            {(!inEvent ? globalSections : EVENT_SECTIONS.map((s) => ({ to: `/events/${eventId}/${s.to}`, label: s.label }))).map(
+            {(!inEvent ? globalSections : eventSections.map((s) => ({ to: `/events/${eventId}/${s.to}`, label: s.label }))).map(
               (section) => (
                 <NavLink
                   key={section.to}

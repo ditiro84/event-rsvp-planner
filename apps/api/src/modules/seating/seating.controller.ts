@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { created, noContent, ok } from "../../lib/apiResponse";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import * as service from "./seating.service";
 import { seatingToPdf } from "./seating.pdf";
 import {
@@ -75,7 +75,7 @@ export async function getSeatingMap(req: Request, res: Response) {
 
 export async function exportPdf(req: Request, res: Response) {
   const [event, map] = await Promise.all([
-    getOwnedEvent(req.userId!, req.params.eventId),
+    getOwnedEventOrCollaborator(req.userId!, req.params.eventId),
     service.getSeatingMap(req.userId!, req.params.eventId),
   ]);
   const doc = seatingToPdf(event.name, map.tables, map.unassignedGuests);

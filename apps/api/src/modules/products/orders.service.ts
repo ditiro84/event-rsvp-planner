@@ -6,7 +6,7 @@ import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { getStripeClient } from "../../lib/stripeClient";
 import { paystackRequest } from "../../lib/paystackClient";
 import { capturePaypalOrder, createPaypalOrder } from "../../lib/paypalClient";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { notifyOrderPaid } from "../notifications/notifications.service";
 import { handleStripeAccountUpdated, isPayoutAccountConnected } from "../payouts/payouts.service";
 import { releaseTickets } from "../tickets/ticketTypes.service";
@@ -37,7 +37,7 @@ export function serializeOrder(order: any) {
 // --- Planner-facing ----------------------------------------------------------
 
 export async function listOrders(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const orders = await prisma.order.findMany({
     where: { eventId, status: { not: "PENDING" } },
     include: { items: true },
@@ -51,7 +51,7 @@ export async function listOrders(userId: string, eventId: string) {
 // both the owning planner and admin support (getOwnedEvent's bypass) --
 // the cross-event admin view lives separately at GET /api/admin/payment-events.
 export async function listPaymentEvents(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   const events = await prisma.paymentEvent.findMany({
     where: { eventId },
     orderBy: { createdAt: "desc" },
@@ -71,7 +71,7 @@ export async function listPaymentEvents(userId: string, eventId: string) {
 }
 
 export async function getOrdersSummary(userId: string, eventId: string) {
-  await getOwnedEvent(userId, eventId);
+  await getOwnedEventOrCollaborator(userId, eventId);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const paidOrders: any[] = await prisma.order.findMany({
     where: { eventId, status: "PAID" },

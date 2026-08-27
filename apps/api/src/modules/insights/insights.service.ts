@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { getOwnedEvent } from "../events/events.service";
+import { getOwnedEventOrCollaborator } from "../events/events.service";
 
 export type InsightSeverity = "ACTION_REQUIRED" | "UPDATE";
 
@@ -109,7 +109,7 @@ const SEVERITY_RANK: Record<InsightSeverity, number> = { ACTION_REQUIRED: 0, UPD
 
 export async function listInsights(userId: string, eventId?: string) {
   const events = eventId
-    ? [await getOwnedEvent(userId, eventId)]
+    ? [await getOwnedEventOrCollaborator(userId, eventId)]
     : await prisma.event.findMany({ where: { userId }, orderBy: { date: "asc" } });
 
   if (events.length === 0) return [];

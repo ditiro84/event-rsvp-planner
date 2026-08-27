@@ -139,8 +139,8 @@ export default function LandingPage() {
           </div>
           <div className="relative mx-auto w-full max-w-lg pb-10 pl-6 sm:pb-14 sm:pl-10 lg:mx-0 lg:max-w-none">
             <img
-              src="https://images.unsplash.com/photo-1661332517932-2d441bfb2994?fm=jpg&q=80&w=1200&auto=format&fit=crop"
-              alt="A couple in traditional Nigerian wedding attire"
+              src="https://images.unsplash.com/photo-1677768062274-fdd45caac233?fm=jpg&q=80&w=1200&auto=format&fit=crop"
+              alt="An elaborately decorated wedding reception hall"
               className="h-[340px] w-full rounded-xl2 object-cover shadow-elevated sm:h-[440px]"
             />
             <img

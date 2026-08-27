@@ -25,22 +25,22 @@ const FAQS = [
   {
     question: "Is Gadaova free to use?",
     answer:
-      "Creating events, managing your guest list, sending RSVP invites, seating, and check-in are all free. We only take a small fee when you sell tickets or merchandise through the platform -- nothing upfront, no monthly subscription.",
+      "Creating events, managing your guest list, sending RSVP invites, seating, and check-in are all free. We only take a small fee when you sell tickets or merchandise through the platform. No upfront costs, no monthly subscription.",
   },
   {
     question: "Do my guests need to create an account?",
     answer:
-      "No. Guests RSVP, buy tickets, or shop merchandise through a private link -- no sign-up or app download required on their end.",
+      "No. Guests RSVP, buy tickets, or shop merchandise through a private link, with no sign-up or app download required on their end.",
   },
   {
     question: "What payment methods can I accept?",
     answer:
-      "Connect Stripe, Paystack, or PayPal and accept payments in USD, GBP, or NGN. Payouts land directly in your own account -- Gadaova never holds your funds.",
+      "Connect Stripe, Paystack, or PayPal and accept payments in USD, GBP, or NGN. Payouts land directly in your own account, and Gadaova never holds your funds.",
   },
   {
     question: "Can I check guests in at the door?",
     answer:
-      "Yes -- scan QR codes for both RSVP'd guests and paid ticket holders from any phone or tablet browser, with live check-in stats as people arrive.",
+      "Yes. Scan QR codes for both RSVP'd guests and paid ticket holders from any phone or tablet browser, with live check-in stats as people arrive.",
   },
   {
     question: "Does Gadaova help with seating?",
@@ -50,19 +50,19 @@ const FAQS = [
   {
     question: "Can I sell things other than tickets?",
     answer:
-      "Yes -- the Merchandise tab lets you list branded products (t-shirts, programs, etc.) for guests to buy alongside their RSVP or ticket.",
+      "Yes. The Merchandise tab lets you list branded products, like t-shirts or programs, for guests to buy alongside their RSVP or ticket.",
   },
   {
     question: "Is there a mobile app?",
     answer:
-      "Gadaova works on any phone's browser, and you can install it to your home screen for an app-like experience with one tap -- no App Store download needed.",
+      "Gadaova works right in your phone's browser, and you can install it to your home screen for an app-like experience with one tap. No App Store download needed.",
   },
 ];
 
 const STEPS = [
   {
     title: "Create your event",
-    description: "Set the date, type, and details -- your event dashboard is ready in seconds.",
+    description: "Set the date, type, and details, and your event dashboard is ready in seconds.",
     image: "https://images.unsplash.com/photo-1754039984995-a91721ce1870?auto=format&fit=crop&w=1000&q=80",
   },
   {
@@ -118,7 +118,7 @@ export default function LandingPage() {
               Plan events guests will remember
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-xl text-slate-600 lg:mx-0">
-              Guest management, RSVP, seating, check-in, vendors, and payments -- all in one dashboard, so you spend
+              Guest management, RSVP, seating, check-in, vendors, and payments, all in one dashboard, so you spend
               less time on logistics and more time on the event itself.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start">
@@ -241,7 +241,7 @@ export default function LandingPage() {
               </h2>
               <p className="mt-4 text-lg text-slate-600">
                 Sell merchandise or collect payments straight from your event page. Connect Stripe, PayPal, or
-                Paystack and payouts land in your own account -- we never hold your funds.
+                Paystack, and payouts land in your own account. We never hold your funds.
               </p>
             </div>
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center lg:flex-col lg:items-stretch xl:flex-row xl:items-center">
@@ -315,7 +315,10 @@ export default function LandingPage() {
           </div>
           <div className="mt-10 divide-y divide-slate-100 rounded-xl2 border border-slate-200/80 bg-white shadow-card">
             {FAQS.map((faq) => (
-              <details key={faq.question} className="group p-5 sm:p-6">
+              // `name` groups every FAQ into one native accordion -- opening
+              // one automatically closes whichever other question was open,
+              // no JS state needed.
+              <details key={faq.question} name="faq" className="group p-5 sm:p-6">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
                   {faq.question}
                   <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
@@ -331,7 +334,7 @@ export default function LandingPage() {
           <div className="rounded-xl2 bg-brand-600 px-6 py-16 text-center sm:px-12 sm:py-20">
             <h2 className="font-display text-4xl font-bold text-white sm:text-5xl">Ready to plan your next event?</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-brand-100">
-              Create your first event free -- no credit card required.
+              Create your first event free. No credit card required.
             </p>
             <Link to={primaryHref} className="mt-10 inline-block">
               <Button size="lg" className="bg-white px-8 py-4 text-lg text-brand-700 shadow-elevated hover:bg-brand-50">

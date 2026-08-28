@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static sitemap covering the pages that don't depend on the database.
+  Published articles and public ticket event pages (/articles/:slug,
+  /tickets/:slug) are dynamic and not enumerable from a static file --
+  see the SEO handoff notes for the option to generate this from the API
+  instead if that coverage becomes worth the extra moving part.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.gadaova.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.gadaova.com/articles</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>

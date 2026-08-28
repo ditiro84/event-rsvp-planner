@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Signed-in planner tooling isn't meant to be indexed -- only the public
+# marketing/content pages below (/, /articles, /tickets/:slug, /rsvp/:token)
+# are worth crawling.
+Disallow: /events
+Disallow: /analytics
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://www.gadaova.com/sitemap.xml

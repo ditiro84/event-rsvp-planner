@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { formatDate, formatMoney, PUBLIC_EVENT_CATEGORY_LABELS } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import type { CurrencyCode, PayoutProvider, PublicTicketType } from "@/types";
 
 const PROVIDER_LABELS: Record<PayoutProvider, string> = {
@@ -196,6 +197,16 @@ function PaypalReturnBanner({ slug, paypalOrderId, onDone }: { slug: string; pay
 export default function PublicTicketEventPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data, isLoading, isError } = usePublicTicketEvent(slug);
+
+  usePageMeta({
+    title: data ? `${data.event.name} - Gadaova` : null,
+    description: data
+      ? data.event.publicDescription ||
+        `Get tickets for ${data.event.name}${data.event.venueName ? ` at ${data.event.venueName}` : ""} on ${formatDate(data.event.date)}.`
+      : null,
+    image: data?.event.hasCoverImage && slug ? publicTicketEventCoverImageUrl(slug) : null,
+    path: slug ? `/tickets/${slug}` : null,
+  });
   const checkout = useTicketCheckout(slug ?? "");
   const [searchParams, setSearchParams] = useSearchParams();
 

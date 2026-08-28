@@ -11,6 +11,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { formatDate } from "@/lib/format";
 import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
 import { ShopSection } from "./ShopSection";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const schema = z
   .object({
@@ -70,6 +71,11 @@ export default function PublicRsvpPage() {
   const guestPrefill = inviteQuery.data?.guestPrefill;
   const isLoading = isInvite ? inviteQuery.isLoading : publicEventQuery.isLoading;
   const isError = isInvite ? inviteQuery.isError : publicEventQuery.isError;
+
+  // Title-only: this is a private, guest-specific invite link, not a page
+  // meant to be found via search or given a rich social-share preview, so
+  // it skips the description/OG/canonical overrides other pages set.
+  usePageMeta({ title: event ? `RSVP - ${event.name}` : null });
 
   const submitByToken = useSubmitRsvp(token ?? "");
   const submitByInvite = useSubmitRsvpViaInvite(invitationToken ?? "");

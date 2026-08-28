@@ -6,9 +6,16 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
 import { publicArticleCoverImageUrl, usePublicArticles } from "@/hooks/useArticles";
 import { formatDate } from "@/lib/format";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function ArticlesListPage() {
   const { data: articles, isLoading, isError, refetch } = usePublicArticles(50);
+
+  usePageMeta({
+    title: "Articles - Gadaova",
+    description: "Updates and tips from the Gadaova team on planning events, managing guests, and running smoother RSVPs.",
+    path: "/articles",
+  });
 
   return (
     <div className="min-h-screen bg-canvas">

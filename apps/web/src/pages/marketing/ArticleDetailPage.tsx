@@ -7,10 +7,18 @@ import { ErrorState } from "@/components/ui/EmptyState";
 import { publicArticleCoverImageUrl, usePublicArticle } from "@/hooks/useArticles";
 import { formatDate } from "@/lib/format";
 import { renderMarkdownLite } from "@/lib/markdown";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function ArticleDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: article, isLoading, isError, refetch } = usePublicArticle(slug);
+
+  usePageMeta({
+    title: article ? `${article.title} - Gadaova` : null,
+    description: article?.excerpt,
+    image: article?.hasCoverImage ? publicArticleCoverImageUrl(article.slug) : null,
+    path: slug ? `/articles/${slug}` : null,
+  });
 
   return (
     <div className="min-h-screen bg-canvas">

@@ -974,7 +974,23 @@ model Order {
   // recomputed later) so a later change to either percentage doesn't
   // rewrite historical order amounts.
   platformFeeCents Int?
-  deliveryMethod String @default("AT_EVENT") // AT_EVENT | SHIPPING (future)
+  deliveryMethod String @default("AT_EVENT") // AT_EVENT | SHIPPING
+  // Only populated when deliveryMethod is SHIPPING -- captured at checkout
+  // (see ShopSection.tsx) so the planner can fulfil physical merchandise
+  // orders. Snapshotted onto the order itself (not a linked address book
+  // row) for the same reason OrderItem snapshots product name/price: a
+  // later change shouldn't rewrite what was actually collected at the time.
+  shippingAddressLine1 String?
+  shippingAddressLine2 String?
+  shippingCity         String?
+  shippingPostcode     String?
+  // ISO 3166-1 alpha-2 code (e.g. "GB", "US", "NG") -- matches the dropdown
+  // in apps/web/src/lib/countries.ts.
+  shippingCountry      String?
+  // Full international format including the dial code (e.g. "+44 7700
+  // 900000") -- so a courier or the planner can reach the guest about
+  // delivery without needing to guess a country code from the address.
+  shippingPhone        String?
 
   stripeCheckoutSessionId String? @unique
   stripePaymentIntentId   String?

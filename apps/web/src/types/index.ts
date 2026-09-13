@@ -523,6 +523,16 @@ export interface OrderItemRecord {
   quantity: number;
 }
 
+export interface OrderShippingAddress {
+  line1: string | null;
+  line2: string | null;
+  city: string | null;
+  postcode: string | null;
+  country: string | null;
+  // Full international format including dial code, e.g. "+44 7700 900000".
+  phone: string | null;
+}
+
 export interface OrderRecord {
   id: string;
   eventId: string;
@@ -532,6 +542,8 @@ export interface OrderRecord {
   status: OrderStatus;
   total: number;
   deliveryMethod: string;
+  // Only present when deliveryMethod is "SHIPPING" -- see orders.service.ts serializeOrder.
+  shippingAddress: OrderShippingAddress | null;
   createdAt: string;
   items: OrderItemRecord[];
 }

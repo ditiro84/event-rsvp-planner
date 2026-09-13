@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { CheckCircle2, Minus, Package, Plus, ShoppingBag, XCircle } from "lucide-react";
+import { CheckCircle2, MapPin, Minus, Package, Plus, ShoppingBag, Truck, XCircle } from "lucide-react";
 import { useCapturePaypal, useCheckout, usePublicShop, publicProductImageUrl } from "@/hooks/useProducts";
 import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
+import { COUNTRIES } from "@/lib/countries";
 import type { CurrencyCode, PayoutProvider, PublicShopProduct } from "@/types";
 
 const PROVIDER_LABELS: Record<PayoutProvider, string> = {
@@ -160,6 +161,14 @@ export function ShopSection({
   const [guestName, setGuestName] = useState(prefillName ?? "");
   const [guestEmail, setGuestEmail] = useState(prefillEmail ?? "");
   const [provider, setProvider] = useState<PayoutProvider | "">("");
+  const [deliveryMethod, setDeliveryMethod] = useState<"AT_EVENT" | "SHIPPING">("AT_EVENT");
+  const [addressLine1, setAddressLine1] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [city, setCity] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [country, setCountry] = useState("");
+  const [dialCode, setDialCode] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   const orderParam = searchParams.get("order");
   const paypalOrderId = orderParam === "paypal_return" ? searchParams.get("token") : null;
@@ -202,12 +211,27 @@ export function ShopSection({
   function clearCart() {
     setCart({});
     setShowForm(false);
+    setDeliveryMethod("AT_EVENT");
+    setAddressLine1("");
+    setAddressLine2("");
+    setCity("");
+    setPostcode("");
+    setCountry("");
+    setDialCode("");
+    setPhoneNumber("");
   }
 
   async function handleCheckout(e: FormEvent) {
     e.preventDefault();
     if (!guestName.trim() || !guestEmail.trim()) {
       toast.error("Enter your name and email to check out");
+      return;
+    }
+    if (
+      deliveryMethod === "SHIPPING" &&
+      (!addressLine1.trim() || !city.trim() || !postcode.trim() || !country || !dialCode || !phoneNumber.trim())
+    ) {
+      toast.error("Fill in your shipping address and phone number to check out");
       return;
     }
     if (availableProviders.length === 0) {
@@ -219,6 +243,17 @@ export function ShopSection({
         guestName,
         guestEmail,
         guestId,
+        deliveryMethod,
+        ...(deliveryMethod === "SHIPPING"
+          ? {
+              shippingAddressLine1: addressLine1,
+              shippingAddressLine2: addressLine2 || undefined,
+              shippingCity: city,
+              shippingPostcode: postcode,
+              shippingCountry: country,
+              shippingPhone: `${dialCode} ${phoneNumber}`.trim(),
+            }
+          : {}),
         items: cartItems.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
         provider: provider || undefined,
       });
@@ -272,7 +307,7 @@ export function ShopSection({
         </div>
         {cartCount > 0 && <Badge variant="brand">{cartCount} in cart</Badge>}
       </div>
-      <p className="mt-1 text-sm text-slate-500">Buy merchandise for this event — pickup at the event.</p>
+      <p className="mt-1 text-sm text-slate-500">Buy merchandise for this event — pick up at the event or have it shipped to you.</p>
 
       <div className="mt-3 divide-y divide-slate-100">
         {products.map((product) => (
@@ -321,6 +356,111 @@ export function ShopSection({
                   required
                 />
               </Field>
+
+              <Field label="Delivery">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod("AT_EVENT")}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                      deliveryMethod === "AT_EVENT"
+                        ? "border-brand-600 bg-brand-50 text-brand-700"
+                        : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    Pickup at event
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod("SHIPPING")}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                      deliveryMethod === "SHIPPING"
+                        ? "border-brand-600 bg-brand-50 text-brand-700"
+                        : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Truck className="h-3.5 w-3.5" />
+                    Ship to me
+                  </button>
+                </div>
+              </Field>
+
+              {deliveryMethod === "SHIPPING" && (
+                <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+                  <Field label="Address line 1" htmlFor="shop-address1">
+                    <Input
+                      id="shop-address1"
+                      value={addressLine1}
+                      onChange={(e) => setAddressLine1(e.target.value)}
+                      required
+                    />
+                  </Field>
+                  <Field label="Address line 2 (optional)" htmlFor="shop-address2">
+                    <Input id="shop-address2" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="City" htmlFor="shop-city">
+                      <Input id="shop-city" value={city} onChange={(e) => setCity(e.target.value)} required />
+                    </Field>
+                    <Field label="Postcode" htmlFor="shop-postcode">
+                      <Input id="shop-postcode" value={postcode} onChange={(e) => setPostcode(e.target.value)} required />
+                    </Field>
+                  </div>
+                  <Field label="Country" htmlFor="shop-country">
+                    <Select
+                      id="shop-country"
+                      value={country}
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        setCountry(code);
+                        // Default the dial code to match -- guests can still
+                        // override it below (e.g. shipping to a friend's
+                        // address abroad but giving their own phone number).
+                        const match = COUNTRIES.find((c) => c.code === code);
+                        if (match) setDialCode(match.dialCode);
+                      }}
+                      required
+                    >
+                      <option value="">Select a country</option>
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Phone number" htmlFor="shop-phone-number">
+                    <div className="flex gap-2">
+                      <Select
+                        id="shop-phone-dial-code"
+                        aria-label="Country code"
+                        value={dialCode}
+                        onChange={(e) => setDialCode(e.target.value)}
+                        className="w-28 shrink-0"
+                        required
+                      >
+                        <option value="">Code</option>
+                        {COUNTRIES.map((c) => (
+                          <option key={c.code} value={c.dialCode}>
+                            {c.dialCode} {c.name}
+                          </option>
+                        ))}
+                      </Select>
+                      <Input
+                        id="shop-phone-number"
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="7700 900000"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </Field>
+                </div>
+              )}
+
               {availableProviders.length > 1 && (
                 <Field label="Payment method" htmlFor="shop-provider">
                   <Select

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Package, Pencil, Plus, ShoppingCart, Store, Trash2 } from "lucide-react";
+import { Package, Pencil, Plus, ShoppingCart, Store, Trash2, Truck } from "lucide-react";
 import { useDeleteProduct, useOrders, useOrdersSummary, useProducts, productImagePath } from "@/hooks/useProducts";
 import { useUpdateEvent } from "@/hooks/useEvents";
 import { Card, StatCard } from "@/components/ui/Card";
@@ -12,9 +12,18 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
+import { COUNTRIES } from "@/lib/countries";
 import { ProductFormModal } from "./ProductFormModal";
 import { PayoutsSection } from "./PayoutsSection";
-import type { EventRecord, ProductRecord } from "@/types";
+import type { EventRecord, OrderShippingAddress, ProductRecord } from "@/types";
+
+// Full postal address as one line for the planner's fulfilment tooltip --
+// country code resolved to its readable name (see lib/countries.ts).
+function formatShippingAddress(address: OrderShippingAddress): string {
+  const countryName = address.country ? COUNTRIES.find((c) => c.code === address.country)?.name ?? address.country : null;
+  const addressLine = [address.line1, address.line2, address.city, address.postcode, countryName].filter(Boolean).join(", ");
+  return address.phone ? `${addressLine} • ${address.phone}` : addressLine;
+}
 
 function stockBadge(product: ProductRecord) {
   if (product.stockQuantity === null) return <Badge variant="success">In Stock</Badge>;
@@ -233,7 +242,16 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
                       </Badge>
                     </td>
                     <td className="px-5 py-3.5 text-slate-600">
-                      {order.deliveryMethod === "AT_EVENT" ? "At Event" : order.deliveryMethod}
+                      {order.deliveryMethod === "SHIPPING" && order.shippingAddress ? (
+                        <Tooltip label={formatShippingAddress(order.shippingAddress)} side="top">
+                          <span className="inline-flex cursor-help items-center gap-1 text-brand-700">
+                            <Truck className="h-3.5 w-3.5" />
+                            Shipping
+                          </span>
+                        </Tooltip>
+                      ) : (
+                        "At Event"
+                      )}
                     </td>
                   </tr>
                 ))}

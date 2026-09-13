@@ -24,6 +24,20 @@ export function serializeOrder(order: any) {
     currency: order.currency,
     total: order.totalCents / 100,
     deliveryMethod: order.deliveryMethod,
+    // Nested rather than five flat fields so the frontend can treat "no
+    // shipping address" as a single null check -- only ever populated when
+    // deliveryMethod is SHIPPING (see createCheckoutSession below).
+    shippingAddress:
+      order.deliveryMethod === "SHIPPING"
+        ? {
+            line1: order.shippingAddressLine1 ?? null,
+            line2: order.shippingAddressLine2 ?? null,
+            city: order.shippingCity ?? null,
+            postcode: order.shippingPostcode ?? null,
+            country: order.shippingCountry ?? null,
+            phone: order.shippingPhone ?? null,
+          }
+        : null,
     createdAt: order.createdAt,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: (order.items ?? []).map((i: any) => ({
@@ -185,6 +199,15 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
       totalCents,
       platformFeeCents,
       deliveryMethod: input.deliveryMethod ?? "AT_EVENT",
+      // Only ever stored for SHIPPING orders -- the zod schema already
+      // enforces these are present when deliveryMethod is SHIPPING, this
+      // is just the backstop against a null being written for AT_EVENT.
+      shippingAddressLine1: input.deliveryMethod === "SHIPPING" ? input.shippingAddressLine1 ?? null : null,
+      shippingAddressLine2: input.deliveryMethod === "SHIPPING" ? input.shippingAddressLine2 ?? null : null,
+      shippingCity: input.deliveryMethod === "SHIPPING" ? input.shippingCity ?? null : null,
+      shippingPostcode: input.deliveryMethod === "SHIPPING" ? input.shippingPostcode ?? null : null,
+      shippingCountry: input.deliveryMethod === "SHIPPING" ? input.shippingCountry ?? null : null,
+      shippingPhone: input.deliveryMethod === "SHIPPING" ? input.shippingPhone ?? null : null,
       items: { create: orderItemsData },
     },
   });

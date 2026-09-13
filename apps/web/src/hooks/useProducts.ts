@@ -113,6 +113,13 @@ export function useCheckout(rsvpToken: string) {
       guestName: string;
       guestEmail: string;
       guestId?: string;
+      deliveryMethod?: "AT_EVENT" | "SHIPPING";
+      shippingAddressLine1?: string;
+      shippingAddressLine2?: string;
+      shippingCity?: string;
+      shippingPostcode?: string;
+      shippingCountry?: string;
+      shippingPhone?: string;
       items: { productId: string; quantity: number }[];
       provider?: PayoutProvider;
     }) => {

@@ -518,12 +518,18 @@ export interface ProductRecord {
   updatedAt: string;
 }
 
-export type OrderStatus = "PENDING" | "PAID" | "CANCELLED";
+// MANUAL = captured with no in-app payment processor connected -- the
+// planner collects payment themselves (see the OrderStatus.MANUAL comment
+// in schema.prisma).
+export type OrderStatus = "PENDING" | "PAID" | "CANCELLED" | "MANUAL";
 
 export interface OrderItemRecord {
   productName: string;
   unitPrice: number;
   quantity: number;
+  // Guest-entered size for this line item, e.g. "M" -- distinct from the
+  // product's own planner-set size label.
+  selectedSize: string | null;
 }
 
 export interface OrderShippingAddress {

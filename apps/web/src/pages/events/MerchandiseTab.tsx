@@ -12,18 +12,10 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
-import { COUNTRIES } from "@/lib/countries";
+import { formatOrderItems, formatShippingAddress, orderStatusBadgeVariant, orderStatusLabel } from "@/lib/orders";
 import { ProductFormModal } from "./ProductFormModal";
 import { PayoutsSection } from "./PayoutsSection";
-import type { EventRecord, OrderShippingAddress, ProductRecord } from "@/types";
-
-// Full postal address as one line for the planner's fulfilment tooltip --
-// country code resolved to its readable name (see lib/countries.ts).
-function formatShippingAddress(address: OrderShippingAddress): string {
-  const countryName = address.country ? COUNTRIES.find((c) => c.code === address.country)?.name ?? address.country : null;
-  const addressLine = [address.line1, address.line2, address.city, address.postcode, countryName].filter(Boolean).join(", ");
-  return address.phone ? `${addressLine} • ${address.phone}` : addressLine;
-}
+import type { EventRecord, ProductRecord } from "@/types";
 
 function stockBadge(product: ProductRecord) {
   if (product.stockQuantity === null) return <Badge variant="success">In Stock</Badge>;
@@ -247,16 +239,12 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
                       <p className="font-semibold text-slate-900">{order.guestName}</p>
                       <p className="text-xs text-slate-400">{formatDate(order.createdAt)}</p>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600">
-                      {order.items.map((i) => `${i.productName} × ${i.quantity}`).join(", ")}
-                    </td>
+                    <td className="px-5 py-3.5 text-slate-600">{formatOrderItems(order.items)}</td>
                     <td className="px-5 py-3.5 text-right font-bold text-slate-900">
                       ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-5 py-3.5 text-center">
-                      <Badge variant={order.status === "PAID" ? "success" : "danger"}>
-                        {order.status === "PAID" ? "Paid" : "Cancelled"}
-                      </Badge>
+                      <Badge variant={orderStatusBadgeVariant(order.status)}>{orderStatusLabel(order.status)}</Badge>
                     </td>
                     <td className="px-5 py-3.5 text-slate-600">
                       {order.deliveryMethod === "SHIPPING" && order.shippingAddress ? (

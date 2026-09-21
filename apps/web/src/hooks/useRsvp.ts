@@ -30,7 +30,7 @@ export function useSubmitRsvp(token: string) {
   return useMutation({
     mutationFn: async (input: Record<string, unknown>) => {
       const res = await api.post(`/rsvp/${token}`, input);
-      return res.data.data as { message: string; guest: { firstName: string; lastName: string; rsvpStatus: string } };
+      return res.data.data as { message: string; guest: { id: string; firstName: string; lastName: string; rsvpStatus: string } };
     },
   });
 }
@@ -51,7 +51,7 @@ export function useSubmitRsvpViaInvite(invitationToken: string) {
   return useMutation({
     mutationFn: async (input: Record<string, unknown>) => {
       const res = await api.post(`/rsvp/invite/${invitationToken}`, input);
-      return res.data.data as { message: string; guest: { firstName: string; lastName: string; rsvpStatus: string } };
+      return res.data.data as { message: string; guest: { id: string; firstName: string; lastName: string; rsvpStatus: string } };
     },
   });
 }

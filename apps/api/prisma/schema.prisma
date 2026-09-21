@@ -932,6 +932,13 @@ enum OrderStatus {
   PENDING
   PAID
   CANCELLED
+  // Order was placed with no payout processor connected for its currency --
+  // captured immediately (stock decremented, planner notified) rather than
+  // blocking checkout, since plenty of planners collect payment themselves
+  // (Zelle, cash at pickup, etc. -- see the product description convention
+  // in ShopSection.tsx) instead of using an in-app processor. Never
+  // transitions to PAID automatically; there's no webhook coming for it.
+  MANUAL
 }
 
 // What an order is actually for -- lets the same Order/OrderItem/checkout
@@ -1028,6 +1035,11 @@ model OrderItem {
   productName     String
   unitPriceCents  Int
   quantity        Int
+  // Guest-entered size at add-to-cart time (e.g. "M", "42") -- distinct from
+  // Product.size (the planner's fixed label for the product itself): most
+  // apparel here is sold in one listing covering many sizes, so the guest
+  // specifies which one they want per line item. Free text, optional.
+  selectedSize    String?
 
   @@index([orderId])
   @@map("order_items")

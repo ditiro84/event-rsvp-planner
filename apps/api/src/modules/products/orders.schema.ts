@@ -3,6 +3,10 @@ import { z } from "zod";
 export const checkoutItemSchema = z.object({
   productId: z.string().min(1),
   quantity: z.coerce.number().int().min(1).max(100),
+  // Guest-entered size for this line item (e.g. "M", "42") -- see
+  // OrderItem.selectedSize in schema.prisma for why this is per-item rather
+  // than per-product.
+  selectedSize: z.string().trim().max(50).optional(),
 });
 
 // Address fields are only required when deliveryMethod is SHIPPING -- see

@@ -120,11 +120,15 @@ export function useCheckout(rsvpToken: string) {
       shippingPostcode?: string;
       shippingCountry?: string;
       shippingPhone?: string;
-      items: { productId: string; quantity: number }[];
+      items: { productId: string; quantity: number; selectedSize?: string }[];
       provider?: PayoutProvider;
     }) => {
       const res = await api.post(`/shop/${rsvpToken}/checkout`, input);
-      return res.data.data as { checkoutUrl: string };
+      // checkoutUrl is null when the order was captured directly with no
+      // payment processor connected (status MANUAL) -- see
+      // orders.service.ts createCheckoutSession. The frontend shows an
+      // inline confirmation in that case instead of redirecting.
+      return res.data.data as { checkoutUrl: string | null; order?: OrderRecord };
     },
   });
 }

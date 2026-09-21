@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Copy, FileText, Search, Send, Trash2, Upload } from "lucide-react";
+import { Clock, Copy, FileText, ShoppingBag, Search, Send, Trash2, Upload } from "lucide-react";
 import { usePlannerRsvpDashboard, useToggleRsvpOpen } from "@/hooks/useRsvp";
 import { useGuests, type GuestFilters } from "@/hooks/useGuests";
 import { useBulkSendInviteEmails } from "@/hooks/useInvites";
+import { useOrders } from "@/hooks/useProducts";
 import {
   useDeleteInvitationCard,
   useInvitationCardMeta,
@@ -17,11 +18,13 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Badge, RsvpStatusBadge } from "@/components/ui/Badge";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { formatDate, formatFileSize, formatRelativeTime } from "@/lib/format";
+import { formatOrderItems, formatShippingAddress, ordersForGuest } from "@/lib/orders";
 import { getApiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import type { EventRecord, RsvpStatus } from "@/types";
+import type { EventRecord, OrderRecord, RsvpStatus } from "@/types";
 
 const TABS: { label: string; value: RsvpStatus | undefined; statKey: "confirmed" | "pending" | "declined" | "maybe" | undefined }[] = [
   { label: "All Guests", value: undefined, statKey: undefined },
@@ -41,6 +44,12 @@ export function RsvpTab({ event }: { event: EventRecord }) {
   const filters: GuestFilters = { status: statusFilter, search: search || undefined };
   const { data: guests } = useGuests(event.id, filters);
   const { data: allGuests } = useGuests(event.id, {});
+  // Merchandise orders tied to this event's guests -- see the "Merchandise"
+  // column below. Same data MerchandiseTab's Recent Orders table shows;
+  // this view keys it off the guest instead of the order, matched via
+  // Order.guestId (set once the guest submits their RSVP, see
+  // PublicRsvpPage.tsx passing guestId into ShopSection).
+  const { data: orders } = useOrders(event.id);
 
   const rsvpUrl = `${window.location.origin}/rsvp/${event.rsvpToken}`;
 
@@ -229,6 +238,9 @@ export function RsvpTab({ event }: { event: EventRecord }) {
                   <th className="px-4 py-2.5 text-left font-semibold text-slate-500">Responded Date</th>
                   <th className="px-4 py-2.5 text-left font-semibold text-slate-500">Party Size</th>
                   <th className="px-4 py-2.5 text-left font-semibold text-slate-500">Dietary Notes</th>
+                  {event.merchandiseEnabled && (
+                    <th className="px-4 py-2.5 text-left font-semibold text-slate-500">Merchandise</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -249,6 +261,11 @@ export function RsvpTab({ event }: { event: EventRecord }) {
                     <td className="px-4 py-3 text-slate-600">{guest.rsvpRespondedAt ? formatDate(guest.rsvpRespondedAt) : "—"}</td>
                     <td className="px-4 py-3 font-semibold text-slate-900">{1 + guest.additionalGuestsCount}</td>
                     <td className="px-4 py-3 text-slate-600">{guest.dietaryRequirements || "—"}</td>
+                    {event.merchandiseEnabled && (
+                      <td className="px-4 py-3 text-slate-600">
+                        <GuestOrdersCell orders={ordersForGuest(orders, guest.id)} />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -274,6 +291,30 @@ export function RsvpTab({ event }: { event: EventRecord }) {
         </div>
       </Card>
     </div>
+  );
+}
+
+// What this guest bought (if anything), with a tooltip covering items,
+// sizes, and delivery/phone details -- the guest-facing shop collects all
+// of this alongside the RSVP itself now (see ShopSection.tsx), so it's
+// useful to see right here rather than only on the Merchandise tab's
+// separate Orders table.
+function GuestOrdersCell({ orders }: { orders: OrderRecord[] }) {
+  if (orders.length === 0) return <span className="text-slate-400">—</span>;
+
+  const itemsLabel = orders.map((o) => formatOrderItems(o.items)).join("; ");
+  const detailParts = orders
+    .map((o) => o.shippingAddress && formatShippingAddress(o.shippingAddress))
+    .filter((v): v is string => !!v);
+  const tooltipLabel = detailParts.length > 0 ? `${itemsLabel} — ${detailParts.join("; ")}` : itemsLabel;
+
+  return (
+    <Tooltip label={tooltipLabel} side="top">
+      <span className="inline-flex cursor-help items-center gap-1 truncate text-brand-700">
+        <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{itemsLabel}</span>
+      </span>
+    </Tooltip>
   );
 }
 

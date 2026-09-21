@@ -44,6 +44,7 @@ export function serializeOrder(order: any) {
       productName: i.productName,
       unitPrice: i.unitPriceCents / 100,
       quantity: i.quantity,
+      selectedSize: i.selectedSize ?? null,
     })),
   };
 }
@@ -86,9 +87,12 @@ export async function listPaymentEvents(userId: string, eventId: string) {
 
 export async function getOrdersSummary(userId: string, eventId: string) {
   await getOwnedEventOrCollaborator(userId, eventId);
+  // Counts both processor-paid (PAID) and manually-collected (MANUAL)
+  // orders -- both represent merchandise actually sold, just settled
+  // differently (see the OrderStatus.MANUAL comment in schema.prisma).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const paidOrders: any[] = await prisma.order.findMany({
-    where: { eventId, status: "PAID" },
+    where: { eventId, status: { in: ["PAID", "MANUAL"] } },
     include: { items: true },
   });
 
@@ -128,7 +132,7 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productById = new Map<string, any>(products.map((p: any) => [p.id, p]));
 
-  const orderItemsData: { productId: string; productName: string; unitPriceCents: number; quantity: number }[] = [];
+  const orderItemsData: { productId: string; productName: string; unitPriceCents: number; quantity: number; selectedSize: string | null }[] = [];
   let totalCents = 0;
   // Typed `any` (not `string`) so it flows freely into the `Currency` enum
   // fields below regardless of whether the Prisma client in this build is
@@ -157,15 +161,67 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
       productName: product.name,
       unitPriceCents: product.priceCents,
       quantity: item.quantity,
+      selectedSize: item.selectedSize?.trim() || null,
     });
   }
 
   if (!currency) throw new BadRequestError("Your cart is empty");
 
+  // Fields shared between the MANUAL path below and the processor-checkout
+  // path further down -- kept in one place so the two never drift apart.
+  const sharedOrderData = {
+    eventId: event.id,
+    guestId: input.guestId ?? null,
+    guestName: input.guestName,
+    guestEmail: input.guestEmail,
+    currency,
+    deliveryMethod: input.deliveryMethod ?? "AT_EVENT",
+    // Only ever stored for SHIPPING orders -- the zod schema already
+    // enforces these are present when deliveryMethod is SHIPPING, this
+    // is just the backstop against a null being written for AT_EVENT.
+    shippingAddressLine1: input.deliveryMethod === "SHIPPING" ? input.shippingAddressLine1 ?? null : null,
+    shippingAddressLine2: input.deliveryMethod === "SHIPPING" ? input.shippingAddressLine2 ?? null : null,
+    shippingCity: input.deliveryMethod === "SHIPPING" ? input.shippingCity ?? null : null,
+    shippingPostcode: input.deliveryMethod === "SHIPPING" ? input.shippingPostcode ?? null : null,
+    shippingCountry: input.deliveryMethod === "SHIPPING" ? input.shippingCountry ?? null : null,
+    shippingPhone: input.deliveryMethod === "SHIPPING" ? input.shippingPhone ?? null : null,
+  };
+
   const payoutAccounts = await prisma.eventPayoutAccount.findMany({ where: { eventId: event.id, currency } });
   const connectedAccounts = payoutAccounts.filter(isPayoutAccountConnected);
+
   if (connectedAccounts.length === 0) {
-    throw new BadRequestError(`This event hasn't connected a way to accept ${currency} payments yet.`);
+    // No processor connected for this currency -- rather than blocking the
+    // guest, capture the order right away as MANUAL: plenty of planners
+    // collect payment themselves outside the app (Zelle, cash at pickup --
+    // see the product description convention in ShopSection.tsx). Stock is
+    // decremented immediately (unlike the PAID path) since there's no
+    // webhook coming later to trigger it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order: any = await prisma.$transaction(async (tx: any) => {
+      const created = await tx.order.create({
+        data: {
+          ...sharedOrderData,
+          status: "MANUAL",
+          provider: null,
+          payoutAccountId: null,
+          totalCents,
+          platformFeeCents: 0,
+          items: { create: orderItemsData },
+        },
+        include: { items: true, event: { select: { id: true, name: true, userId: true } } },
+      });
+      for (const item of orderItemsData) {
+        await tx.product.updateMany({
+          where: { id: item.productId, stockQuantity: { not: null } },
+          data: { stockQuantity: { decrement: item.quantity } },
+        });
+      }
+      return created;
+    });
+
+    await notifyOrderPaid(order.event.userId, order.event, order);
+    return { checkoutUrl: null, order: serializeOrder(order) };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -188,26 +244,12 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
 
   const order = await prisma.order.create({
     data: {
-      eventId: event.id,
-      guestId: input.guestId ?? null,
-      guestName: input.guestName,
-      guestEmail: input.guestEmail,
+      ...sharedOrderData,
       status: "PENDING",
-      currency,
       provider: payoutAccount.provider,
       payoutAccountId: payoutAccount.id,
       totalCents,
       platformFeeCents,
-      deliveryMethod: input.deliveryMethod ?? "AT_EVENT",
-      // Only ever stored for SHIPPING orders -- the zod schema already
-      // enforces these are present when deliveryMethod is SHIPPING, this
-      // is just the backstop against a null being written for AT_EVENT.
-      shippingAddressLine1: input.deliveryMethod === "SHIPPING" ? input.shippingAddressLine1 ?? null : null,
-      shippingAddressLine2: input.deliveryMethod === "SHIPPING" ? input.shippingAddressLine2 ?? null : null,
-      shippingCity: input.deliveryMethod === "SHIPPING" ? input.shippingCity ?? null : null,
-      shippingPostcode: input.deliveryMethod === "SHIPPING" ? input.shippingPostcode ?? null : null,
-      shippingCountry: input.deliveryMethod === "SHIPPING" ? input.shippingCountry ?? null : null,
-      shippingPhone: input.deliveryMethod === "SHIPPING" ? input.shippingPhone ?? null : null,
       items: { create: orderItemsData },
     },
   });

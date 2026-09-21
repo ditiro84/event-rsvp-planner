@@ -88,9 +88,9 @@ export default function PublicRsvpPage() {
     ? `${apiBaseUrl}/rsvp/invite/${invitationToken}/invitation-card`
     : `${apiBaseUrl}/rsvp/${token}/invitation-card`;
 
-  const [submitted, setSubmitted] = useState<{ firstName: string; lastName: string; email: string; rsvpStatus: string } | null>(
-    null
-  );
+  const [submitted, setSubmitted] = useState<
+    { guestId: string; firstName: string; lastName: string; email: string; rsvpStatus: string } | null
+  >(null);
 
   const {
     register,
@@ -135,6 +135,7 @@ export default function PublicRsvpPage() {
         message: values.message || undefined,
       });
       setSubmitted({
+        guestId: result.guest.id,
         firstName: result.guest.firstName,
         lastName: values.lastName,
         email: values.email || "",
@@ -175,6 +176,7 @@ export default function PublicRsvpPage() {
             rsvpToken={event.rsvpToken}
             guestName={`${submitted.firstName} ${submitted.lastName}`.trim()}
             guestEmail={submitted.email || undefined}
+            guestId={submitted.guestId}
           />
         </div>
       </div>

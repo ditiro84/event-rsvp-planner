@@ -21,75 +21,96 @@ const PROVIDER_LABELS: Record<PayoutProvider, string> = {
 function ProductRow({
   product,
   quantity,
+  size,
   disabled,
   onAdd,
   onChangeQty,
+  onSizeChange,
 }: {
   product: PublicShopProduct;
   quantity: number;
+  size: string;
   disabled: boolean;
   onAdd: () => void;
   onChangeQty: (delta: number) => void;
+  onSizeChange: (size: string) => void;
 }) {
   const soldOut = product.stockQuantity === 0;
   return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-        {product.hasImage ? (
-          <img src={publicProductImageUrl(product.id)} alt={product.name} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-slate-300">
-            <Package className="h-5 w-5" />
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">
-          {product.name}
-          {product.size && <span className="ml-1.5 font-normal text-slate-400">· Size {product.size}</span>}
-        </p>
-        {/* Shown in full (not truncated) -- planners sometimes use this
-            field for payment instructions (e.g. "Pay via Zelle to ...")
-            for events not using in-app checkout, so clipping it would hide
-            something guests actually need to read. whitespace-pre-line
-            keeps any line breaks the planner typed. */}
-        {product.description && (
-          <p className="mt-0.5 whitespace-pre-line text-xs text-slate-500">{product.description}</p>
-        )}
-        <p className="mt-0.5 text-sm font-medium text-brand-700">{formatMoney(product.price, product.currency)}</p>
-      </div>
-      {soldOut ? (
-        <span className="shrink-0 text-xs font-medium text-slate-400">Sold out</span>
-      ) : quantity > 0 ? (
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onChangeQty(-1)}
-            aria-label={`Remove one ${product.name}`}
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </button>
-          <span className="w-4 text-center text-sm font-semibold text-slate-900">{quantity}</span>
-          <button
-            type="button"
-            onClick={() => onChangeQty(1)}
-            aria-label={`Add one more ${product.name}`}
-            disabled={product.stockQuantity !== null && quantity >= product.stockQuantity}
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
+    <div className="py-3">
+      <div className="flex items-center gap-3">
+        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+          {product.hasImage ? (
+            <img src={publicProductImageUrl(product.id)} alt={product.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-slate-300">
+              <Package className="h-5 w-5" />
+            </div>
+          )}
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={disabled}
-          className="shrink-0 rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Add
-        </button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">
+            {product.name}
+            {product.size && <span className="ml-1.5 font-normal text-slate-400">· Size {product.size}</span>}
+          </p>
+          {/* Shown in full (not truncated) -- planners sometimes use this
+              field for payment instructions (e.g. "Pay via Zelle to ...")
+              for events not using in-app checkout, so clipping it would hide
+              something guests actually need to read. whitespace-pre-line
+              keeps any line breaks the planner typed. */}
+          {product.description && (
+            <p className="mt-0.5 whitespace-pre-line text-xs text-slate-500">{product.description}</p>
+          )}
+          <p className="mt-0.5 text-sm font-medium text-brand-700">{formatMoney(product.price, product.currency)}</p>
+        </div>
+        {soldOut ? (
+          <span className="shrink-0 text-xs font-medium text-slate-400">Sold out</span>
+        ) : quantity > 0 ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onChangeQty(-1)}
+              aria-label={`Remove one ${product.name}`}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <span className="w-4 text-center text-sm font-semibold text-slate-900">{quantity}</span>
+            <button
+              type="button"
+              onClick={() => onChangeQty(1)}
+              aria-label={`Add one more ${product.name}`}
+              disabled={product.stockQuantity !== null && quantity >= product.stockQuantity}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={disabled}
+            className="shrink-0 rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Add
+          </button>
+        )}
+      </div>
+      {/* Guest-specified size for this line item -- most items here are one
+          listing covering a range of sizes (see the Size field's own
+          comment on the planner side), so the guest picks theirs once
+          they've added it to their cart. */}
+      {quantity > 0 && (
+        <div className="ml-[68px] mt-2">
+          <Input
+            value={size}
+            onChange={(e) => onSizeChange(e.target.value)}
+            placeholder="Size (optional, e.g. M or 42)"
+            aria-label={`Size for ${product.name}`}
+            className="h-8 max-w-[220px] text-xs"
+          />
+        </div>
       )}
     </div>
   );
@@ -166,8 +187,13 @@ export function ShopSection({
   const checkout = useCheckout(rsvpToken);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [cart, setCart] = useState<Record<string, number>>({});
-  const [showForm, setShowForm] = useState(false);
+  // Keyed by productId. size is guest-entered per line item -- see
+  // OrderItem.selectedSize in schema.prisma.
+  const [cart, setCart] = useState<Record<string, { quantity: number; size: string }>>({});
+  // Set once a MANUAL order (no payment processor connected -- see
+  // orders.service.ts createCheckoutSession) is placed, so the form can be
+  // swapped for a confirmation instead of redirecting anywhere.
+  const [orderPlaced, setOrderPlaced] = useState(false);
   const [guestName, setGuestName] = useState(prefillName ?? "");
   const [guestEmail, setGuestEmail] = useState(prefillEmail ?? "");
   const [provider, setProvider] = useState<PayoutProvider | "">("");
@@ -197,14 +223,14 @@ export function ShopSection({
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
   const cartCurrency: CurrencyCode | null = useMemo(() => {
-    const [firstId] = Object.keys(cart).filter((id) => (cart[id] ?? 0) > 0);
+    const [firstId] = Object.keys(cart).filter((id) => (cart[id]?.quantity ?? 0) > 0);
     return firstId ? productById.get(firstId)?.currency ?? null : null;
   }, [cart, productById]);
 
   const cartItems = Object.entries(cart)
-    .filter(([, qty]) => qty > 0)
-    .map(([productId, quantity]) => ({ product: productById.get(productId), quantity }))
-    .filter((i): i is { product: PublicShopProduct; quantity: number } => !!i.product);
+    .filter(([, v]) => v.quantity > 0)
+    .map(([productId, v]) => ({ product: productById.get(productId), quantity: v.quantity, size: v.size }))
+    .filter((i): i is { product: PublicShopProduct; quantity: number; size: string } => !!i.product);
 
   const cartTotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
@@ -215,12 +241,16 @@ export function ShopSection({
       toast.error(`Your cart is in ${cartCurrency}. Clear it first to buy items priced in a different currency.`);
       return;
     }
-    setCart((c) => ({ ...c, [productId]: Math.max(0, nextQty) }));
+    setCart((c) => ({ ...c, [productId]: { quantity: Math.max(0, nextQty), size: c[productId]?.size ?? "" } }));
+  }
+
+  function setItemSize(productId: string, size: string) {
+    setCart((c) => ({ ...c, [productId]: { quantity: c[productId]?.quantity ?? 0, size } }));
   }
 
   function clearCart() {
     setCart({});
-    setShowForm(false);
+    setOrderPlaced(false);
     setDeliveryMethod("AT_EVENT");
     setAddressLine1("");
     setAddressLine2("");
@@ -244,10 +274,6 @@ export function ShopSection({
       toast.error("Fill in your shipping address and phone number to check out");
       return;
     }
-    if (availableProviders.length === 0) {
-      toast.error("This event hasn't connected a way to accept payment in this currency yet");
-      return;
-    }
     try {
       const { checkoutUrl } = await checkout.mutateAsync({
         guestName,
@@ -264,10 +290,20 @@ export function ShopSection({
               shippingPhone: `${dialCode} ${phoneNumber}`.trim(),
             }
           : {}),
-        items: cartItems.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+        items: cartItems.map((i) => ({ productId: i.product.id, quantity: i.quantity, selectedSize: i.size.trim() || undefined })),
         provider: provider || undefined,
       });
-      window.location.href = checkoutUrl;
+      if (checkoutUrl) {
+        // A processor is connected -- hand off to its hosted checkout page
+        // as before.
+        window.location.href = checkoutUrl;
+        return;
+      }
+      // No processor connected for this currency -- the order was captured
+      // directly (status MANUAL, see orders.service.ts). Nothing to redirect
+      // to, so just confirm inline; the guest pays the host however the
+      // product description says to.
+      setOrderPlaced(true);
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -324,10 +360,12 @@ export function ShopSection({
           <ProductRow
             key={product.id}
             product={product}
-            quantity={cart[product.id] ?? 0}
+            quantity={cart[product.id]?.quantity ?? 0}
+            size={cart[product.id]?.size ?? ""}
             disabled={product.stockQuantity === 0}
-            onAdd={() => setQty(product.id, product, (cart[product.id] ?? 0) + 1)}
-            onChangeQty={(delta) => setQty(product.id, product, (cart[product.id] ?? 0) + delta)}
+            onAdd={() => setQty(product.id, product, (cart[product.id]?.quantity ?? 0) + 1)}
+            onChangeQty={(delta) => setQty(product.id, product, (cart[product.id]?.quantity ?? 0) + delta)}
+            onSizeChange={(size) => setItemSize(product.id, size)}
           />
         ))}
       </div>
@@ -339,18 +377,26 @@ export function ShopSection({
             <span className="font-bold text-slate-900">{formatMoney(cartTotal, cartCurrency ?? "USD")}</span>
           </div>
 
-          {cartCurrency && availableProviders.length === 0 ? (
-            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              This event hasn't connected a way to accept {cartCurrency} payments yet — check back later.
-            </p>
-          ) : !showForm ? (
-            <div className="mt-3 flex gap-2">
-              <Button variant="secondary" size="sm" onClick={clearCart} type="button">
-                Clear cart
-              </Button>
-              <Button size="sm" onClick={() => setShowForm(true)} type="button">
-                Checkout
-              </Button>
+          {/* Opens the moment the cart has anything in it (i.e. right when
+              a guest clicks Add) rather than gating it behind a separate
+              Checkout click -- delivery details and (if this event has one
+              connected) payment happen in one step. */}
+          {orderPlaced ? (
+            <div className="mt-3 flex items-start gap-3 rounded-lg border border-success-200 bg-success-50 p-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success-600" />
+              <div>
+                <p className="text-sm font-semibold text-success-800">Order placed!</p>
+                <p className="text-sm text-success-700">
+                  The host will be in touch about payment — check the item description above for how they'd like to be paid.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  className="mt-2 text-xs font-medium text-success-700 hover:underline"
+                >
+                  Shop for something else
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleCheckout} className="mt-3 space-y-3">
@@ -488,11 +534,13 @@ export function ShopSection({
                 </Field>
               )}
               <div className="flex gap-2">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setShowForm(false)}>
-                  Back
+                <Button type="button" variant="secondary" size="sm" onClick={clearCart}>
+                  Clear cart
                 </Button>
                 <Button type="submit" size="sm" isLoading={checkout.isPending} className="flex-1">
-                  Pay {formatMoney(cartTotal, cartCurrency ?? "USD")}
+                  {availableProviders.length > 0
+                    ? `Pay ${formatMoney(cartTotal, cartCurrency ?? "USD")}`
+                    : `Submit order — ${formatMoney(cartTotal, cartCurrency ?? "USD")}`}
                 </Button>
               </div>
             </form>

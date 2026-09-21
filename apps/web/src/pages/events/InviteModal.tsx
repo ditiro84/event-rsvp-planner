@@ -7,15 +7,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useGetInviteLink, useMarkInviteSent, useSendInviteEmail } from "@/hooks/useInvites";
 import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/format";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import type { Guest } from "@/types";
-
-// Builds a wa.me "click to chat" link -- no WhatsApp Business API or
-// credentials needed, the host just taps it and WhatsApp opens with the
-// message pre-filled, ready to send.
-function buildWhatsAppUrl(phone: string, message: string) {
-  const digits = phone.replace(/[^\d]/g, "");
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
-}
 
 export function InviteModal({
   open,
@@ -68,7 +61,7 @@ export function InviteModal({
     const message = link.hasInvitationCard
       ? `You're invited to ${eventName}! RSVP here: ${link.url}\n\nView your invitation card: ${invitationCardUrl}`
       : `You're invited to ${eventName}! RSVP here: ${link.url}`;
-    window.open(buildWhatsAppUrl(guest.phone, message), "_blank", "noopener,noreferrer");
+    window.open(buildWhatsAppUrl(message, guest.phone), "_blank", "noopener,noreferrer");
     markSent.mutate({ guestId: guest.id, channel: "whatsapp" });
   }
 

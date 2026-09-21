@@ -14,8 +14,10 @@ export function useCardTheme(): CardTheme | null {
 }
 
 // Adds an alpha suffix to a "#rrggbb" hex colour, e.g. for a soft tinted
-// badge background behind a solid icon of the same colour.
-function withAlpha(hex: string, alpha: number): string {
+// badge background behind a solid icon of the same colour. Exported too --
+// PublicRsvpPage.tsx uses it directly to build the page's ambient
+// background gradient (see the fixed bg-canvas-replacement layer there).
+export function withAlpha(hex: string, alpha: number): string {
   const a = Math.round(alpha * 255)
     .toString(16)
     .padStart(2, "0");

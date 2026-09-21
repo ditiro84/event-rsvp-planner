@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Copy, FileText, ShoppingBag, Search, Send, Trash2, Upload } from "lucide-react";
+import { Clock, Copy, FileText, MessageCircle, ShoppingBag, Search, Send, Trash2, Upload } from "lucide-react";
 import { usePlannerRsvpDashboard, useToggleRsvpOpen } from "@/hooks/useRsvp";
 import { useGuests, type GuestFilters } from "@/hooks/useGuests";
 import { useBulkSendInviteEmails } from "@/hooks/useInvites";
@@ -25,6 +25,7 @@ import { formatOrderItems, formatShippingAddress, ordersForGuest } from "@/lib/o
 import { getApiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { slugify } from "@/lib/slug";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import type { EventRecord, OrderRecord, RsvpStatus } from "@/types";
 
 const TABS: { label: string; value: RsvpStatus | undefined; statKey: "confirmed" | "pending" | "declined" | "maybe" | undefined }[] = [
@@ -61,6 +62,16 @@ export function RsvpTab({ event }: { event: EventRecord }) {
   function copyLink() {
     navigator.clipboard.writeText(rsvpUrl);
     toast.success("RSVP link copied to clipboard");
+  }
+
+  // No specific guest here (this is the one event-wide link, not a
+  // personalized invite -- see InviteModal.tsx for that version) so the
+  // phone number is omitted from buildWhatsAppUrl. WhatsApp then opens its
+  // own contact/group picker instead of a specific chat, which is exactly
+  // what's wanted for a broadcast link the host might send to a group chat.
+  function shareToWhatsApp() {
+    const message = `You're invited to ${event.name}! RSVP here: ${rsvpUrl}`;
+    window.open(buildWhatsAppUrl(message), "_blank", "noopener,noreferrer");
   }
 
   async function handleSendReminders() {
@@ -108,6 +119,10 @@ export function RsvpTab({ event }: { event: EventRecord }) {
           <Button variant="secondary" size="sm" onClick={copyLink}>
             <Copy className="h-4 w-4" />
             Share RSVP Link
+          </Button>
+          <Button variant="secondary" size="sm" onClick={shareToWhatsApp}>
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
           </Button>
           <Button size="sm" onClick={handleSendReminders} isLoading={bulkSendInvites.isPending}>
             <Send className="h-4 w-4" />

@@ -13,7 +13,7 @@ import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
 import { ShopSection } from "./ShopSection";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { extractCardTheme, type CardTheme } from "@/lib/cardTheme";
-import { CardThemeContext, buildCardThemeStyles } from "@/lib/cardThemeContext";
+import { CardThemeContext, buildCardThemeStyles, withAlpha } from "@/lib/cardThemeContext";
 
 const schema = z
   .object({
@@ -196,35 +196,46 @@ export default function PublicRsvpPage() {
     const copy = CONFIRMATION_COPY[submitted.rsvpStatus] ?? CONFIRMATION_COPY.CONFIRMED;
     return (
       <CardThemeContext.Provider value={theme}>
-        <div className="relative min-h-screen bg-canvas px-4 pb-16 pt-16">
-          {/* Blurred, faded card image as an ambient full-page backdrop --
-              carries over whatever pattern/colour the card has (including
-              "flowery" designs) without trying to reproduce it, since only
-              the actual image can do that; the extracted primary/secondary
-              colours below handle the parts of the page a photo can't. */}
-          {theme && (
-            <div
-              aria-hidden
-              className="fixed inset-0 -z-10 bg-cover bg-center opacity-25 blur-2xl"
-              style={{ backgroundImage: `url(${theme.imageUrl})` }}
-            />
-          )}
-          <div className="mx-auto max-w-lg">
-            <div className="rounded-xl2 border border-slate-200 bg-white/95 p-8 text-center shadow-card backdrop-blur-sm">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-success-500" />
-              <h1 className="mt-4 font-display text-xl font-semibold text-slate-900">{copy.title(submitted.firstName)}</h1>
-              <p className="mt-2 text-sm text-slate-500">{copy.body}</p>
+        <div className="relative min-h-screen">
+          {/* Ambient page background: the card's own colours as a gradient
+              wash, plus a soft blurred copy of the card image so
+              "flowery"/decorative card designs carry through too (see
+              lib/cardTheme.ts). This sits in its own plain wrapper at z-0
+              with the real content lifted to z-10 -- nesting a negative
+              z-index layer inside a div that itself paints bg-canvas would
+              put the layer BEHIND that background and hide it completely
+              (a real bug from the first pass here: the page stayed plain
+              white despite a theme being active). Falls back to the flat
+              bg-canvas colour when there's no theme. */}
+          <div
+            aria-hidden
+            className={`fixed inset-0 z-0 scale-110 bg-canvas bg-cover bg-center ${theme ? "blur-lg" : ""}`}
+            style={
+              theme
+                ? {
+                    backgroundImage: `linear-gradient(to bottom right, ${withAlpha(theme.primary, 0.55)}, ${withAlpha(theme.secondary, 0.45)}), url(${theme.imageUrl})`,
+                  }
+                : undefined
+            }
+          />
+          <div className="relative z-10 px-4 pb-16 pt-16">
+            <div className="mx-auto max-w-lg">
+              <div className="rounded-xl2 border border-slate-200 bg-white/95 p-8 text-center shadow-card backdrop-blur-sm">
+                <CheckCircle2 className="mx-auto h-12 w-12 text-success-500" />
+                <h1 className="mt-4 font-display text-xl font-semibold text-slate-900">{copy.title(submitted.firstName)}</h1>
+                <p className="mt-2 text-sm text-slate-500">{copy.body}</p>
+              </div>
+              {/* Shown right after confirming, not just before -- a guest who
+                  just RSVP'd is the most likely to be curious about merch,
+                  and this way they don't have to refresh the page to see it
+                  again. */}
+              <ShopSection
+                rsvpToken={event.rsvpToken}
+                guestName={`${submitted.firstName} ${submitted.lastName}`.trim()}
+                guestEmail={submitted.email || undefined}
+                guestId={submitted.guestId}
+              />
             </div>
-            {/* Shown right after confirming, not just before -- a guest who
-                just RSVP'd is the most likely to be curious about merch,
-                and this way they don't have to refresh the page to see it
-                again. */}
-            <ShopSection
-              rsvpToken={event.rsvpToken}
-              guestName={`${submitted.firstName} ${submitted.lastName}`.trim()}
-              guestEmail={submitted.email || undefined}
-              guestId={submitted.guestId}
-            />
           </div>
         </div>
       </CardThemeContext.Provider>
@@ -243,20 +254,30 @@ export default function PublicRsvpPage() {
 
   return (
     <CardThemeContext.Provider value={theme}>
-      <div className="relative min-h-screen bg-canvas pb-16">
-        {/* Blurred, faded card image as an ambient full-page backdrop --
-            this is what carries over "flowery"/decorative details from the
-            card that extracted colours alone can't reproduce. The extracted
-            primary/secondary colours (via themeStyles below) then theme the
-            hero, title, badges, and buttons on top of it. Falls back to
-            nothing (plain bg-canvas) when there's no theme. */}
-        {theme && (
-          <div
-            aria-hidden
-            className="fixed inset-0 -z-10 bg-cover bg-center opacity-25 blur-2xl"
-            style={{ backgroundImage: `url(${theme.imageUrl})` }}
-          />
-        )}
+      <div className="relative min-h-screen">
+        {/* Ambient page background: the card's own colours as a gradient
+            wash, plus a soft blurred copy of the card image so
+            "flowery"/decorative card designs carry through too -- this is
+            what makes the page read as "gold" (or whatever the card's
+            colours are) instead of plain white. Sits in its own plain
+            wrapper at z-0, with the real content lifted to z-10: nesting a
+            negative z-index layer inside a div that itself paints
+            bg-canvas puts the layer BEHIND that background and hides it
+            completely (the bug in the first pass here -- the page stayed
+            plain white despite a theme being active). Falls back to the
+            flat bg-canvas colour when there's no theme. */}
+        <div
+          aria-hidden
+          className={`fixed inset-0 z-0 scale-110 bg-canvas bg-cover bg-center ${theme ? "blur-lg" : ""}`}
+          style={
+            theme
+              ? {
+                  backgroundImage: `linear-gradient(to bottom right, ${withAlpha(theme.primary, 0.55)}, ${withAlpha(theme.secondary, 0.45)}), url(${theme.imageUrl})`,
+                }
+              : undefined
+          }
+        />
+        <div className="relative z-10 pb-16">
         {event.imageUrl ? (
           <div className="h-48 w-full overflow-hidden sm:h-64">
             <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
@@ -416,6 +437,7 @@ export default function PublicRsvpPage() {
             guestName={guestPrefill ? `${guestPrefill.firstName} ${guestPrefill.lastName}`.trim() : undefined}
             guestEmail={guestPrefill?.email ?? undefined}
           />
+        </div>
         </div>
       </div>
     </CardThemeContext.Provider>

@@ -460,7 +460,7 @@ export function ShopSection({
                         ? "border-brand-600 bg-brand-50 text-brand-700"
                         : "border-slate-200 text-slate-500 hover:bg-slate-50"
                     }`}
-                    style={deliveryMethod === "SHIPPING" ? themeStyles.outline("secondary") : undefined}
+                    style={deliveryMethod === "SHIPPING" ? themeStyles.outline("tertiary") : undefined}
                   >
                     <Truck className="h-3.5 w-3.5" />
                     Ship to me

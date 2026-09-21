@@ -272,7 +272,7 @@ export default function PublicRsvpPage() {
           style={
             theme
               ? {
-                  backgroundImage: `linear-gradient(to bottom right, ${withAlpha(theme.primary, 0.55)}, ${withAlpha(theme.secondary, 0.45)}), url(${theme.imageUrl})`,
+                  backgroundImage: `linear-gradient(to bottom right, ${withAlpha(theme.primary, 0.55)}, ${withAlpha(theme.tertiary, 0.5)}, ${withAlpha(theme.secondary, 0.45)}), url(${theme.imageUrl})`,
                 }
               : undefined
           }
@@ -295,60 +295,90 @@ export default function PublicRsvpPage() {
         )}
         <div className="mx-auto max-w-lg px-4 pt-8">
           <div className="text-center">
+            {/* Stays outside the text-safety panel below so it keeps doing
+                its "avatar overlapping the cover photo" overlap trick
+                against the hero banner above, rather than poking out of a
+                rounded panel edge. */}
             <div
-              className="mx-auto -mt-16 flex h-20 w-20 items-center justify-center rounded-full border-4 border-canvas bg-gradient-to-br from-brand-50 to-coral-50 shadow-card ring-4 ring-white"
+              className="relative z-10 mx-auto -mt-16 flex h-20 w-20 items-center justify-center rounded-full border-4 border-canvas bg-gradient-to-br from-brand-50 to-coral-50 shadow-card ring-4 ring-white"
               style={theme ? { backgroundImage: "none", backgroundColor: `${theme.primary}1a` } : undefined}
             >
               <PartyPopper className="h-8 w-8 text-brand-600" style={theme ? { color: theme.primary } : undefined} />
             </div>
-            <h1
-              className="mt-4 font-display text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-coral-500 bg-clip-text text-transparent sm:text-4xl"
-              style={themeStyles.titleGradient}
+
+            {/* Text-safety panel: everything in here sits directly over the
+                vivid ambient background (see the fixed layer above), so on a
+                richly-coloured card that background can get dark/saturated
+                enough that plain text (especially the gradient-filled
+                title, which shares its colours with that background) loses
+                contrast against it. A translucent near-white backing, the
+                same frosted look the RSVP form card below already uses,
+                guarantees every piece of text here stays readable no matter
+                how bold the extracted palette is. Only applied when there's
+                a theme -- otherwise this stays a plain, background-less
+                block like before. */}
+            <div
+              className={theme ? "-mt-6 rounded-3xl px-6 pb-6 pt-10 shadow-card backdrop-blur-sm sm:px-8 sm:pb-8" : "mt-4"}
+              style={themeStyles.surface}
             >
-              {event.name}
-            </h1>
-            <div className="mt-3 flex flex-col items-center gap-2 text-sm text-slate-600">
-              <span className="flex items-center gap-2">
-                <span
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600"
-                  style={themeStyles.tint("primary")}
-                >
-                  <CalendarHeart className="h-3.5 w-3.5" />
-                </span>
-                {formatDate(event.date)}
-                {event.startTime ? ` at ${event.startTime}` : ""}
-              </span>
-              {event.venueName && (
+              {theme && (
+                <div
+                  aria-hidden
+                  className="mx-auto mb-3 h-1.5 w-20 rounded-full"
+                  style={{
+                    backgroundImage: `linear-gradient(to right, ${theme.primary}, ${theme.tertiary}, ${theme.secondary}, ${theme.quaternary})`,
+                  }}
+                />
+              )}
+              <h1
+                className="font-display text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-coral-500 bg-clip-text text-transparent sm:text-4xl"
+                style={themeStyles.titleGradient}
+              >
+                {event.name}
+              </h1>
+              <div className="mt-3 flex flex-col items-center gap-2 text-sm text-slate-600">
                 <span className="flex items-center gap-2">
                   <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-coral-50 text-coral-600"
-                    style={themeStyles.tint("secondary")}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600"
+                    style={themeStyles.tint("primary")}
                   >
-                    <MapPin className="h-3.5 w-3.5" />
+                    <CalendarHeart className="h-3.5 w-3.5" />
                   </span>
-                  {event.venueName}
-                  {event.venueAddress ? `, ${event.venueAddress}` : ""}
+                  {formatDate(event.date)}
+                  {event.startTime ? ` at ${event.startTime}` : ""}
                 </span>
+                {event.venueName && (
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-coral-50 text-coral-600"
+                      style={themeStyles.tint("tertiary")}
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                    </span>
+                    {event.venueName}
+                    {event.venueAddress ? `, ${event.venueAddress}` : ""}
+                  </span>
+                )}
+              </div>
+              {event.customMessage && <p className="mt-4 text-sm text-slate-600">{event.customMessage}</p>}
+              {guestPrefill && (
+                <p className="mt-3 text-xs text-slate-400">
+                  This invite was sent to {guestPrefill.firstName} {guestPrefill.lastName} — feel free to update any details below.
+                </p>
+              )}
+              {event.hasInvitationCard && (
+                <a
+                  href={invitationCardUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 hover:brightness-90"
+                  style={themeStyles.primaryFill}
+                >
+                  <FileText className="h-5 w-5" />
+                  View invitation card
+                </a>
               )}
             </div>
-            {event.customMessage && <p className="mt-4 text-sm text-slate-600">{event.customMessage}</p>}
-            {guestPrefill && (
-              <p className="mt-3 text-xs text-slate-400">
-                This invite was sent to {guestPrefill.firstName} {guestPrefill.lastName} — feel free to update any details below.
-              </p>
-            )}
-            {event.hasInvitationCard && (
-              <a
-                href={invitationCardUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 hover:brightness-90"
-                style={themeStyles.primaryFill}
-              >
-                <FileText className="h-5 w-5" />
-                View invitation card
-              </a>
-            )}
           </div>
 
           <form

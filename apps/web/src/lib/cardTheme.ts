@@ -11,10 +11,20 @@
 // in PublicRsvpPage.tsx.
 
 export interface CardTheme {
-  // Two accent colours pulled from the card, already darkened as needed for
-  // readable contrast against white text/icons.
+  // Four accent colours pulled from the card (not just two -- a richer
+  // palette reads as "colourful" rather than a flat two-tone duotone),
+  // already darkened as needed for readable contrast against white
+  // text/icons. All four are always populated: when the card doesn't
+  // actually contain four sufficiently distinct colours, the remaining
+  // slots are filled by hue-rotating the primary around the colour wheel
+  // (see rotateHue below) so callers never need to null-check them.
   primary: string;
   secondary: string;
+  tertiary: string;
+  quaternary: string;
+  // All four above, in the same order, for callers that want to iterate
+  // (e.g. cycling accents across a list of badges) instead of naming one.
+  palette: [string, string, string, string];
   // Object URL for the card image itself, so it can also be used as a
   // blurred ambient background layer. Caller owns it and should revoke it
   // (URL.revokeObjectURL) when no longer needed.
@@ -178,13 +188,38 @@ export async function extractCardTheme(imageUrl: string): Promise<CardTheme | nu
       return null;
     }
 
-    const primaryRgb: [number, number, number] = [sorted[0].r, sorted[0].g, sorted[0].b];
-    const primaryHex = darkenForContrast(rgbToHex(...primaryRgb));
+    // Greedily pick up to 4 buckets, each required to be visually distinct
+    // (colorDistance > 60) from every bucket already picked -- this is what
+    // turns "the two most common colours" into an actual small palette
+    // instead of four near-identical shades of the same dominant colour.
+    const pickedRgb: [number, number, number][] = [[sorted[0].r, sorted[0].g, sorted[0].b]];
+    for (const c of sorted.slice(1)) {
+      if (pickedRgb.length >= 4) break;
+      const rgb: [number, number, number] = [c.r, c.g, c.b];
+      if (pickedRgb.every((p) => colorDistance(rgb, p) > 60)) pickedRgb.push(rgb);
+    }
 
-    const distinct = sorted.find((c) => colorDistance([c.r, c.g, c.b], primaryRgb) > 70);
-    const secondaryHex = darkenForContrast(distinct ? rgbToHex(distinct.r, distinct.g, distinct.b) : rotateHue(primaryHex, 40));
+    // Fill any remaining slots (a monochrome card, or one with only 2-3
+    // real accent colours) by hue-rotating the primary around the colour
+    // wheel, spread apart so the fallback still reads as a palette rather
+    // than four copies of the same hue.
+    const rotations = [40, -40, 90, -90, 150];
+    let rotationIndex = 0;
+    const hexes = pickedRgb.map((rgb) => darkenForContrast(rgbToHex(...rgb)));
+    while (hexes.length < 4) {
+      hexes.push(darkenForContrast(rotateHue(hexes[0], rotations[rotationIndex++ % rotations.length])));
+    }
 
-    return { primary: primaryHex, secondary: secondaryHex, imageUrl: objectUrl };
+    const [primaryHex, secondaryHex, tertiaryHex, quaternaryHex] = hexes;
+
+    return {
+      primary: primaryHex,
+      secondary: secondaryHex,
+      tertiary: tertiaryHex,
+      quaternary: quaternaryHex,
+      palette: [primaryHex, secondaryHex, tertiaryHex, quaternaryHex],
+      imageUrl: objectUrl,
+    };
   } catch {
     return null;
   }

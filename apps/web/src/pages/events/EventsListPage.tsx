@@ -71,7 +71,13 @@ export default function EventsListPage() {
         <div>
           <h1 className="font-display text-[32px] font-bold text-slate-950">
             {getGreeting()}
-            {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+            {user?.name ? (
+              <>
+                , <span className="bg-gradient-to-r from-brand-600 to-coral-500 bg-clip-text text-transparent">{user.name.split(" ")[0]}</span>
+              </>
+            ) : (
+              ""
+            )}
           </h1>
           <p className="mt-1 text-[15px] text-slate-500">Here is a summary of your workspace activities and live events today.</p>
         </div>
@@ -87,7 +93,7 @@ export default function EventsListPage() {
 
       {!isLoading && !isError && events && events.length > 0 && (
         <div className="mb-8 grid grid-cols-2 gap-6 lg:grid-cols-4">
-          <StatCard label="Upcoming Events" value={upcoming.length} icon={<CalendarHeart className="h-4 w-4" />} />
+          <StatCard label="Upcoming Events" value={upcoming.length} accent="purple" icon={<CalendarHeart className="h-4 w-4" />} />
           <StatCard label="Total Guests" value={summary.totalGuests} accent="coral" icon={<Users className="h-4 w-4" />} />
           <StatCard
             label="Pending RSVPs"
@@ -115,7 +121,10 @@ export default function EventsListPage() {
 
       {!isLoading && upcoming.length > 0 && (
         <div className="mb-8">
-          <h2 className="mb-4 font-display text-xl font-bold text-slate-950">Active Projects</h2>
+          <h2 className="mb-4 flex items-center gap-2 font-display text-xl font-bold text-slate-950">
+            <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-brand-500 to-coral-500" />
+            Active Projects
+          </h2>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {upcoming.map((event, index) => (
               <EventCard key={event.id} event={event} index={index} needsAttention={actionRequiredByEvent.has(event.id)} />
@@ -215,74 +224,86 @@ function EventCard({
   // alternation is the simplest way to keep a grid of cards from reading
   // as one repeated purple square.
   const tileClasses = index % 2 === 0 ? "bg-brand-100 text-brand-500" : "bg-coral-100 text-coral-500";
+  // Same alternation as the icon tile, carried onto a top accent bar so the
+  // card reads as colorful at a glance, not just via the small corner icon.
+  const accentBarClasses =
+    index % 2 === 0 ? "bg-gradient-to-r from-brand-500 to-brand-300" : "bg-gradient-to-r from-coral-500 to-coral-300";
+  const iconBadgeClasses = index % 2 === 0 ? "bg-brand-50 text-brand-600" : "bg-coral-50 text-coral-600";
   return (
-    <Card className={`p-6 sm:p-8 ${muted ? "opacity-70" : ""}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {needsAttention ? (
-              <Badge variant="warning" className="rounded-full uppercase">
-                Needs Attention
-              </Badge>
+    <Card className={`overflow-hidden p-0 ${muted ? "opacity-70" : ""}`}>
+      <div className={`h-1.5 w-full ${accentBarClasses}`} />
+      <div className="p-6 sm:p-8">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {needsAttention ? (
+                <Badge variant="warning" className="rounded-full uppercase">
+                  Needs Attention
+                </Badge>
+              ) : (
+                <Badge variant="success" className="rounded-full uppercase">
+                  On Track
+                </Badge>
+              )}
+              {/* Shown when this event belongs to someone else and the
+                  current user only has EventCollaborator (staff) access to
+                  it -- see isCollaborator in events.service.ts. */}
+              {event.isCollaborator && (
+                <Badge variant="coral" className="flex items-center gap-1 rounded-full uppercase">
+                  <UserCog className="h-3 w-3" />
+                  Staff
+                </Badge>
+              )}
+            </div>
+            <h3 className="mt-2 truncate text-2xl font-bold text-slate-950">{event.name}</h3>
+          </div>
+          <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl2 ${tileClasses}`}>
+            {event.imageUrl ? (
+              <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
             ) : (
-              <Badge variant="success" className="rounded-full uppercase">
-                On Track
-              </Badge>
-            )}
-            {/* Shown when this event belongs to someone else and the
-                current user only has EventCollaborator (staff) access to
-                it -- see isCollaborator in events.service.ts. */}
-            {event.isCollaborator && (
-              <Badge variant="coral" className="flex items-center gap-1 rounded-full uppercase">
-                <UserCog className="h-3 w-3" />
-                Staff
-              </Badge>
+              <Sparkles className="h-6 w-6" />
             )}
           </div>
-          <h3 className="mt-2 truncate text-2xl font-bold text-slate-950">{event.name}</h3>
         </div>
-        <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl2 ${tileClasses}`}>
-          {event.imageUrl ? (
-            <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <Sparkles className="h-6 w-6" />
+
+        <div className="mt-4 space-y-2.5 text-sm text-slate-600">
+          <span className="flex items-center gap-2.5">
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${iconBadgeClasses}`}>
+              <CalendarHeart className="h-3.5 w-3.5" />
+            </span>
+            {formatDate(event.date)}
+          </span>
+          {event.venueName && (
+            <span className="flex items-center gap-2.5 truncate">
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${iconBadgeClasses}`}>
+                <MapPin className="h-3.5 w-3.5" />
+              </span>
+              <span className="truncate">{event.venueName}</span>
+            </span>
           )}
         </div>
-      </div>
 
-      <div className="mt-4 space-y-2.5 text-sm text-slate-600">
-        <span className="flex items-center gap-2.5">
-          <CalendarHeart className="h-4 w-4 text-slate-400" />
-          {formatDate(event.date)}
-        </span>
-        {event.venueName && (
-          <span className="flex items-center gap-2.5 truncate">
-            <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-            <span className="truncate">{event.venueName}</span>
-          </span>
-        )}
-      </div>
+        <div className="mt-5 space-y-4 border-t border-slate-100 pt-5">
+          <ProgressStat label="RSVP Progress" value={g.confirmed} max={g.totalGuests || 0} suffix="confirmed" />
+          <ProgressStat label="Seating Assignment" value={g.assignedGuests} max={g.confirmed || 0} suffix="assigned" accent="success" />
+        </div>
 
-      <div className="mt-5 space-y-4 border-t border-slate-100 pt-5">
-        <ProgressStat label="RSVP Progress" value={g.confirmed} max={g.totalGuests || 0} suffix="confirmed" />
-        <ProgressStat label="Seating Assignment" value={g.assignedGuests} max={g.confirmed || 0} suffix="assigned" accent="success" />
-      </div>
-
-      <div className="mt-5 flex items-center justify-between pt-1">
-        <Link
-          to={`/events/${event.id}/overview`}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-        >
-          <Settings className="h-3.5 w-3.5" />
-          Manage
-        </Link>
-        <Link
-          to={`/events/${event.id}/overview`}
-          className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          Open Event
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        <div className="mt-5 flex items-center justify-between pt-1">
+          <Link
+            to={`/events/${event.id}/overview`}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Manage
+          </Link>
+          <Link
+            to={`/events/${event.id}/overview`}
+            className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            Open Event
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
     </Card>
   );

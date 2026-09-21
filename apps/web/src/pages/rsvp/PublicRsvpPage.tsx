@@ -200,23 +200,32 @@ export default function PublicRsvpPage() {
           <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
         </div>
       ) : (
-        <div className="h-28 w-full bg-gradient-to-br from-brand-600 via-brand-600 to-brand-700 sm:h-36" />
+        // Duotone gradient (brand -> coral) instead of a flat brand fill --
+        // matches the app's two-color accent system and gives the hero more
+        // life when there's no cover photo to carry the color.
+        <div className="h-28 w-full bg-gradient-to-br from-brand-600 via-brand-500 to-coral-500 sm:h-36" />
       )}
       <div className="mx-auto max-w-lg px-4 pt-8">
         <div className="text-center">
-          <div className="mx-auto -mt-16 flex h-16 w-16 items-center justify-center rounded-full border-4 border-canvas bg-white shadow-card">
-            <PartyPopper className="h-7 w-7 text-brand-600" />
+          <div className="mx-auto -mt-16 flex h-20 w-20 items-center justify-center rounded-full border-4 border-canvas bg-gradient-to-br from-brand-50 to-coral-50 shadow-card ring-4 ring-white">
+            <PartyPopper className="h-8 w-8 text-brand-600" />
           </div>
-          <h1 className="mt-4 font-display text-2xl font-semibold text-slate-900">{event.name}</h1>
-          <div className="mt-2 flex flex-col items-center gap-1 text-sm text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <CalendarHeart className="h-4 w-4" />
+          <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-coral-500 bg-clip-text text-transparent sm:text-4xl">
+            {event.name}
+          </h1>
+          <div className="mt-3 flex flex-col items-center gap-2 text-sm text-slate-600">
+            <span className="flex items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
+                <CalendarHeart className="h-3.5 w-3.5" />
+              </span>
               {formatDate(event.date)}
               {event.startTime ? ` at ${event.startTime}` : ""}
             </span>
             {event.venueName && (
-              <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4" />
+              <span className="flex items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-coral-50 text-coral-600">
+                  <MapPin className="h-3.5 w-3.5" />
+                </span>
                 {event.venueName}
                 {event.venueAddress ? `, ${event.venueAddress}` : ""}
               </span>
@@ -233,9 +242,9 @@ export default function PublicRsvpPage() {
               href={invitationCardUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-800"
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700"
             >
-              <FileText className="h-4 w-4" />
+              <FileText className="h-5 w-5" />
               View invitation card
             </a>
           )}

@@ -22,10 +22,14 @@ function getGreeting() {
 }
 
 function isUpcoming(event: EventListItem) {
+  // event.date is a date-only value stored as UTC midnight (see the
+  // formatDate comment in lib/format.ts for the full explanation) -- read
+  // it back with the UTC getters, not the local ones, so a US viewer
+  // doesn't have events roll off "Upcoming" a calendar day early.
   const eventDay = new Date(event.date);
   const today = new Date();
   return (
-    new Date(eventDay.getFullYear(), eventDay.getMonth(), eventDay.getDate()) >=
+    new Date(eventDay.getUTCFullYear(), eventDay.getUTCMonth(), eventDay.getUTCDate()) >=
     new Date(today.getFullYear(), today.getMonth(), today.getDate())
   );
 }

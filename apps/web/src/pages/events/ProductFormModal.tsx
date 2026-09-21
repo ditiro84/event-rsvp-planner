@@ -16,6 +16,7 @@ import type { ProductRecord } from "@/types";
 const schema = z.object({
   name: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
+  size: z.string().optional(),
   price: z.coerce.number().min(0, "Price must be 0 or more"),
   currency: z.enum(["USD", "GBP", "NGN"]),
   stockQuantity: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
@@ -68,12 +69,13 @@ export function ProductFormModal({
       ? {
           name: product.name,
           description: product.description ?? "",
+          size: product.size ?? "",
           price: product.price,
           currency: product.currency,
           stockQuantity: product.stockQuantity ?? "",
           active: product.active,
         }
-      : { name: "", description: "", price: 0, currency: "USD", stockQuantity: "", active: true },
+      : { name: "", description: "", size: "", price: 0, currency: "USD", stockQuantity: "", active: true },
   });
 
   async function onSubmit(values: FormValues) {
@@ -149,9 +151,14 @@ export function ProductFormModal({
             </Select>
           </Field>
         </div>
-        <Field label="Stock (blank = unlimited)" htmlFor="p-stock" error={errors.stockQuantity?.message as string | undefined}>
-          <Input id="p-stock" type="number" min="0" {...register("stockQuantity")} />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Size (optional)" htmlFor="p-size" hint='e.g. "M" or "42"'>
+            <Input id="p-size" {...register("size")} />
+          </Field>
+          <Field label="Stock (blank = unlimited)" htmlFor="p-stock" error={errors.stockQuantity?.message as string | undefined}>
+            <Input id="p-stock" type="number" min="0" {...register("stockQuantity")} />
+          </Field>
+        </div>
         <Field label="Description" htmlFor="p-description">
           <Textarea id="p-description" rows={3} {...register("description")} />
         </Field>

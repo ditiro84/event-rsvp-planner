@@ -70,7 +70,7 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
           <div className="flex items-center gap-3">
             <h1 className="font-display text-2xl font-bold text-slate-950">Event Merchandise</h1>
             <Badge variant={event.merchandiseEnabled ? "success" : "neutral"}>
-              {event.merchandiseEnabled ? "Preview Enabled" : "Preview Disabled"}
+              {event.merchandiseEnabled ? "Shop Open to Guests" : "Shop Closed"}
             </Badge>
           </div>
           <p className="mt-1 text-sm text-slate-500">
@@ -81,7 +81,7 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
         <div className="flex shrink-0 gap-2.5">
           <Button variant="secondary" onClick={handleToggleShop} isLoading={updateEvent.isPending}>
             <Store className="h-4 w-4" />
-            {event.merchandiseEnabled ? "Disable Preview" : "Enable Preview"}
+            {event.merchandiseEnabled ? "Close Shop to Guests" : "Open Shop to Guests"}
           </Button>
           <Button
             onClick={() => {
@@ -94,6 +94,20 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
           </Button>
         </div>
       </div>
+
+      {/* The "Event Shop" section on the RSVP page renders nothing at all
+          (no placeholder) when either of these is true -- flag it here so
+          planners aren't left wondering why guests report seeing no shop. */}
+      {(!event.merchandiseEnabled || products.length === 0) && (
+        <div className="flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-800">
+          <Store className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            {!event.merchandiseEnabled
+              ? "The shop is closed, so guests won't see it on the RSVP page yet."
+              : "The shop is open, but guests won't see it on the RSVP page until you add at least one product."}
+          </p>
+        </div>
+      )}
 
       {/* Payout account management is owner-only, never a collaborator --
           see EventCollaborator's design note in schema.prisma. */}
@@ -157,7 +171,10 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
                       <p className="text-lg font-bold text-slate-900">{formatMoney(product.price, product.currency)}</p>
                       {stockBadge(product)}
                     </div>
-                    <p className="truncate font-semibold text-slate-900">{product.name}</p>
+                    <p className="truncate font-semibold text-slate-900">
+                      {product.name}
+                      {product.size && <span className="ml-1.5 font-normal text-slate-400">· Size {product.size}</span>}
+                    </p>
                     {!product.active && <span className="text-xs text-slate-400">Hidden from shop</span>}
                   </div>
                   <div className="h-px w-full bg-slate-100" />

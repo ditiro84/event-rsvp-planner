@@ -505,6 +505,9 @@ export interface ProductRecord {
   eventId: string;
   name: string;
   description: string | null;
+  // Free-text size label (e.g. "M", "42", "One Size") -- optional, not every
+  // product is sized apparel.
+  size: string | null;
   price: number;
   currency: CurrencyCode;
   stockQuantity: number | null;
@@ -558,6 +561,7 @@ export interface PublicShopProduct {
   id: string;
   name: string;
   description: string | null;
+  size: string | null;
   price: number;
   currency: CurrencyCode;
   stockQuantity: number | null;

@@ -44,8 +44,18 @@ function ProductRow({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">{product.name}</p>
-        {product.description && <p className="truncate text-xs text-slate-500">{product.description}</p>}
+        <p className="truncate text-sm font-semibold text-slate-900">
+          {product.name}
+          {product.size && <span className="ml-1.5 font-normal text-slate-400">· Size {product.size}</span>}
+        </p>
+        {/* Shown in full (not truncated) -- planners sometimes use this
+            field for payment instructions (e.g. "Pay via Zelle to ...")
+            for events not using in-app checkout, so clipping it would hide
+            something guests actually need to read. whitespace-pre-line
+            keeps any line breaks the planner typed. */}
+        {product.description && (
+          <p className="mt-0.5 whitespace-pre-line text-xs text-slate-500">{product.description}</p>
+        )}
         <p className="mt-0.5 text-sm font-medium text-brand-700">{formatMoney(product.price, product.currency)}</p>
       </div>
       {soldOut ? (

@@ -63,9 +63,13 @@ export function Badge({
 // Events cards so a planner can scan the list and immediately see what's
 // imminent without reading every date.
 export function EventStatusBadge({ date }: { date: string }) {
+  // date is a date-only value stored as UTC midnight (see the formatDate
+  // comment in lib/format.ts) -- read it with the UTC getters, not the
+  // local ones, or a viewer west of UTC (e.g. US) sees "Today"/"Past" a
+  // calendar day early while a UK viewer sees it correctly.
   const eventDate = new Date(date);
   const today = new Date();
-  const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+  const eventDay = new Date(eventDate.getUTCFullYear(), eventDate.getUTCMonth(), eventDate.getUTCDate());
   const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const diffDays = Math.round((eventDay.getTime() - todayDay.getTime()) / 86400000);
 

@@ -707,6 +707,10 @@ model Product {
 
   name        String
   description String?
+  // Free-text size label (e.g. "M", "42", "One Size") -- optional since not
+  // every product is sized apparel. Shown to guests alongside the product
+  // on the RSVP shop.
+  size        String?
   // Minor currency units (cents), not a float, to avoid rounding drift --
   // same convention as Vendor.costCents.
   priceCents  Int

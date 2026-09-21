@@ -1,13 +1,23 @@
 import type { CurrencyCode, CurrencyTotal } from "@/types";
 
+// Event dates (and similar "calendar date" values from the API) are
+// date-only concepts with no real time-of-day -- they're captured from a
+// plain <input type="date">, which JS parses as UTC midnight (e.g.
+// "2026-06-12" -> 2026-06-12T00:00:00.000Z), and Prisma round-trips them
+// the same way. Formatting that with the *local* timezone (the default for
+// toLocaleDateString) rolls it back a calendar day for anyone west of UTC
+// -- e.g. a US planner in EST sees "June 11" for a June 12 event, while a
+// UK planner (UTC/BST, never far enough behind) doesn't notice. Forcing
+// timeZone: "UTC" here reads the date back the same way it was written, so
+// it displays identically for every viewer regardless of their own clock.
 export function formatDate(value: string | null | undefined) {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 }
 
 export function formatDateShort(value: string | null | undefined) {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 export function formatDateTimeLocalInput(value: string | null | undefined) {

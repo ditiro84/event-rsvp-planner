@@ -24,6 +24,7 @@ import { formatDate, formatFileSize, formatRelativeTime } from "@/lib/format";
 import { formatOrderItems, formatShippingAddress, ordersForGuest } from "@/lib/orders";
 import { getApiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { slugify } from "@/lib/slug";
 import type { EventRecord, OrderRecord, RsvpStatus } from "@/types";
 
 const TABS: { label: string; value: RsvpStatus | undefined; statKey: "confirmed" | "pending" | "declined" | "maybe" | undefined }[] = [
@@ -51,7 +52,11 @@ export function RsvpTab({ event }: { event: EventRecord }) {
   // PublicRsvpPage.tsx passing guestId into ShopSection).
   const { data: orders } = useOrders(event.id);
 
-  const rsvpUrl = `${window.location.origin}/rsvp/${event.rsvpToken}`;
+  // The slug segment is cosmetic only -- see lib/slug.ts and the route
+  // comments in App.tsx -- so guests recognize the event name in the link
+  // instead of seeing a bare token and mistaking it for spam. The token
+  // right after it is still the real lookup key.
+  const rsvpUrl = `${window.location.origin}/rsvp/${slugify(event.name)}/${event.rsvpToken}`;
 
   function copyLink() {
     navigator.clipboard.writeText(rsvpUrl);
@@ -306,7 +311,10 @@ function GuestOrdersCell({ orders }: { orders: OrderRecord[] }) {
   const detailParts = orders
     .map((o) => o.shippingAddress && formatShippingAddress(o.shippingAddress))
     .filter((v): v is string => !!v);
-  const tooltipLabel = detailParts.length > 0 ? `${itemsLabel} — ${detailParts.join("; ")}` : itemsLabel;
+  const anyGuestMarkedPaid = orders.some((o) => o.guestMarkedPaid && o.status === "MANUAL");
+  const tooltipLabel = [itemsLabel, detailParts.join("; "), anyGuestMarkedPaid ? "Guest says paid — verify before fulfilling" : null]
+    .filter(Boolean)
+    .join(" — ");
 
   return (
     <Tooltip label={tooltipLabel} side="top">

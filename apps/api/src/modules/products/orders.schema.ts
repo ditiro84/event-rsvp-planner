@@ -29,6 +29,10 @@ export const createCheckoutSchema = z
     // -- combined client-side from the dial-code select + number input, see
     // ShopSection.tsx.
     shippingPhone: z.string().trim().min(1).max(30).optional(),
+    // Guest self-reported "I've already paid" -- see the field's comment on
+    // Order in schema.prisma. Only ever surfaced in the UI when there's no
+    // payment processor connected, but harmless to accept regardless.
+    guestMarkedPaid: z.boolean().optional(),
     items: z.array(checkoutItemSchema).min(1, "Your cart is empty").max(50),
     // Which connected payout provider to route this checkout through, when
     // the event has more than one connected for the cart's currency (e.g.

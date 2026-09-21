@@ -71,7 +71,15 @@ export default function App() {
           <Route path="/articles/:slug" element={<ArticleDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          {/* The :slug segment is a cosmetic, human-readable copy of the
+              event name (see lib/slug.ts) -- it makes the link recognizable
+              to a guest instead of a bare token, but PublicRsvpPage only
+              ever reads the token param, never the slug, so it's ignored
+              for lookup purposes. Both slug and no-slug forms are kept so
+              links already sent out before this existed keep working. */}
+          <Route path="/rsvp/invite/:slug/:invitationToken" element={<PublicRsvpPage />} />
           <Route path="/rsvp/invite/:invitationToken" element={<PublicRsvpPage />} />
+          <Route path="/rsvp/:slug/:token" element={<PublicRsvpPage />} />
           <Route path="/rsvp/:token" element={<PublicRsvpPage />} />
           <Route path="/tickets/:slug" element={<PublicTicketEventPage />} />
           <Route path="/staff/:passToken" element={<StaffCheckInPage />} />

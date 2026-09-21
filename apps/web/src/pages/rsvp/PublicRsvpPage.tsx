@@ -12,6 +12,8 @@ import { formatDate } from "@/lib/format";
 import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
 import { ShopSection } from "./ShopSection";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { extractCardTheme, type CardTheme } from "@/lib/cardTheme";
+import { CardThemeContext, buildCardThemeStyles } from "@/lib/cardThemeContext";
 
 const schema = z
   .object({
@@ -92,6 +94,38 @@ export default function PublicRsvpPage() {
     { guestId: string; firstName: string; lastName: string; email: string; rsvpStatus: string } | null
   >(null);
 
+  // Colours (and the card image itself, for a blurred ambient background)
+  // pulled from the event's invitation card, so the whole guest page can
+  // pick up the card's look -- see lib/cardTheme.ts for the extraction and
+  // lib/cardThemeContext.tsx for how it's shared with ShopSection below.
+  // Only attempted for image cards (invitationCardIsImage); a PDF card is
+  // left alone and the page just keeps its default brand/coral look.
+  const [theme, setTheme] = useState<CardTheme | null>(null);
+
+  useEffect(() => {
+    if (!event?.invitationCardIsImage) return;
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    extractCardTheme(invitationCardUrl).then((result) => {
+      if (cancelled) {
+        if (result) URL.revokeObjectURL(result.imageUrl);
+        return;
+      }
+      if (result) createdUrl = result.imageUrl;
+      setTheme(result);
+    });
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+    // invitationCardUrl is derived from token/invitationToken, which don't
+    // change without a full remount, so it's intentionally left out here to
+    // avoid re-extracting on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.invitationCardIsImage]);
+
+  const themeStyles = buildCardThemeStyles(theme);
+
   const {
     register,
     handleSubmit,
@@ -161,25 +195,39 @@ export default function PublicRsvpPage() {
   if (submitted) {
     const copy = CONFIRMATION_COPY[submitted.rsvpStatus] ?? CONFIRMATION_COPY.CONFIRMED;
     return (
-      <div className="min-h-screen bg-canvas px-4 pb-16 pt-16">
-        <div className="mx-auto max-w-lg">
-          <div className="rounded-xl2 border border-slate-200 bg-white p-8 text-center shadow-card">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-success-500" />
-            <h1 className="mt-4 font-display text-xl font-semibold text-slate-900">{copy.title(submitted.firstName)}</h1>
-            <p className="mt-2 text-sm text-slate-500">{copy.body}</p>
+      <CardThemeContext.Provider value={theme}>
+        <div className="relative min-h-screen bg-canvas px-4 pb-16 pt-16">
+          {/* Blurred, faded card image as an ambient full-page backdrop --
+              carries over whatever pattern/colour the card has (including
+              "flowery" designs) without trying to reproduce it, since only
+              the actual image can do that; the extracted primary/secondary
+              colours below handle the parts of the page a photo can't. */}
+          {theme && (
+            <div
+              aria-hidden
+              className="fixed inset-0 -z-10 bg-cover bg-center opacity-25 blur-2xl"
+              style={{ backgroundImage: `url(${theme.imageUrl})` }}
+            />
+          )}
+          <div className="mx-auto max-w-lg">
+            <div className="rounded-xl2 border border-slate-200 bg-white/95 p-8 text-center shadow-card backdrop-blur-sm">
+              <CheckCircle2 className="mx-auto h-12 w-12 text-success-500" />
+              <h1 className="mt-4 font-display text-xl font-semibold text-slate-900">{copy.title(submitted.firstName)}</h1>
+              <p className="mt-2 text-sm text-slate-500">{copy.body}</p>
+            </div>
+            {/* Shown right after confirming, not just before -- a guest who
+                just RSVP'd is the most likely to be curious about merch,
+                and this way they don't have to refresh the page to see it
+                again. */}
+            <ShopSection
+              rsvpToken={event.rsvpToken}
+              guestName={`${submitted.firstName} ${submitted.lastName}`.trim()}
+              guestEmail={submitted.email || undefined}
+              guestId={submitted.guestId}
+            />
           </div>
-          {/* Shown right after confirming, not just before -- a guest who
-              just RSVP'd is the most likely to be curious about merch,
-              and this way they don't have to refresh the page to see it
-              again. */}
-          <ShopSection
-            rsvpToken={event.rsvpToken}
-            guestName={`${submitted.firstName} ${submitted.lastName}`.trim()}
-            guestEmail={submitted.email || undefined}
-            guestId={submitted.guestId}
-          />
         </div>
-      </div>
+      </CardThemeContext.Provider>
     );
   }
 
@@ -194,63 +242,98 @@ export default function PublicRsvpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas pb-16">
-      {event.imageUrl ? (
-        <div className="h-48 w-full overflow-hidden sm:h-64">
-          <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
-        </div>
-      ) : (
-        // Duotone gradient (brand -> coral) instead of a flat brand fill --
-        // matches the app's two-color accent system and gives the hero more
-        // life when there's no cover photo to carry the color.
-        <div className="h-28 w-full bg-gradient-to-br from-brand-600 via-brand-500 to-coral-500 sm:h-36" />
-      )}
-      <div className="mx-auto max-w-lg px-4 pt-8">
-        <div className="text-center">
-          <div className="mx-auto -mt-16 flex h-20 w-20 items-center justify-center rounded-full border-4 border-canvas bg-gradient-to-br from-brand-50 to-coral-50 shadow-card ring-4 ring-white">
-            <PartyPopper className="h-8 w-8 text-brand-600" />
+    <CardThemeContext.Provider value={theme}>
+      <div className="relative min-h-screen bg-canvas pb-16">
+        {/* Blurred, faded card image as an ambient full-page backdrop --
+            this is what carries over "flowery"/decorative details from the
+            card that extracted colours alone can't reproduce. The extracted
+            primary/secondary colours (via themeStyles below) then theme the
+            hero, title, badges, and buttons on top of it. Falls back to
+            nothing (plain bg-canvas) when there's no theme. */}
+        {theme && (
+          <div
+            aria-hidden
+            className="fixed inset-0 -z-10 bg-cover bg-center opacity-25 blur-2xl"
+            style={{ backgroundImage: `url(${theme.imageUrl})` }}
+          />
+        )}
+        {event.imageUrl ? (
+          <div className="h-48 w-full overflow-hidden sm:h-64">
+            <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
           </div>
-          <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-coral-500 bg-clip-text text-transparent sm:text-4xl">
-            {event.name}
-          </h1>
-          <div className="mt-3 flex flex-col items-center gap-2 text-sm text-slate-600">
-            <span className="flex items-center gap-2">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
-                <CalendarHeart className="h-3.5 w-3.5" />
-              </span>
-              {formatDate(event.date)}
-              {event.startTime ? ` at ${event.startTime}` : ""}
-            </span>
-            {event.venueName && (
+        ) : (
+          // Duotone gradient (brand -> coral) instead of a flat brand fill --
+          // matches the app's two-color accent system and gives the hero more
+          // life when there's no cover photo to carry the color. When a card
+          // theme is available, its two colours replace the default gradient
+          // via inline style (className stays as a fallback for when it isn't).
+          <div
+            className="h-28 w-full bg-gradient-to-br from-brand-600 via-brand-500 to-coral-500 sm:h-36"
+            style={themeStyles.heroGradient}
+          />
+        )}
+        <div className="mx-auto max-w-lg px-4 pt-8">
+          <div className="text-center">
+            <div
+              className="mx-auto -mt-16 flex h-20 w-20 items-center justify-center rounded-full border-4 border-canvas bg-gradient-to-br from-brand-50 to-coral-50 shadow-card ring-4 ring-white"
+              style={theme ? { backgroundImage: "none", backgroundColor: `${theme.primary}1a` } : undefined}
+            >
+              <PartyPopper className="h-8 w-8 text-brand-600" style={theme ? { color: theme.primary } : undefined} />
+            </div>
+            <h1
+              className="mt-4 font-display text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-coral-500 bg-clip-text text-transparent sm:text-4xl"
+              style={themeStyles.titleGradient}
+            >
+              {event.name}
+            </h1>
+            <div className="mt-3 flex flex-col items-center gap-2 text-sm text-slate-600">
               <span className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-coral-50 text-coral-600">
-                  <MapPin className="h-3.5 w-3.5" />
+                <span
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600"
+                  style={themeStyles.tint("primary")}
+                >
+                  <CalendarHeart className="h-3.5 w-3.5" />
                 </span>
-                {event.venueName}
-                {event.venueAddress ? `, ${event.venueAddress}` : ""}
+                {formatDate(event.date)}
+                {event.startTime ? ` at ${event.startTime}` : ""}
               </span>
+              {event.venueName && (
+                <span className="flex items-center gap-2">
+                  <span
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-coral-50 text-coral-600"
+                    style={themeStyles.tint("secondary")}
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                  </span>
+                  {event.venueName}
+                  {event.venueAddress ? `, ${event.venueAddress}` : ""}
+                </span>
+              )}
+            </div>
+            {event.customMessage && <p className="mt-4 text-sm text-slate-600">{event.customMessage}</p>}
+            {guestPrefill && (
+              <p className="mt-3 text-xs text-slate-400">
+                This invite was sent to {guestPrefill.firstName} {guestPrefill.lastName} — feel free to update any details below.
+              </p>
+            )}
+            {event.hasInvitationCard && (
+              <a
+                href={invitationCardUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 hover:brightness-90"
+                style={themeStyles.primaryFill}
+              >
+                <FileText className="h-5 w-5" />
+                View invitation card
+              </a>
             )}
           </div>
-          {event.customMessage && <p className="mt-4 text-sm text-slate-600">{event.customMessage}</p>}
-          {guestPrefill && (
-            <p className="mt-3 text-xs text-slate-400">
-              This invite was sent to {guestPrefill.firstName} {guestPrefill.lastName} — feel free to update any details below.
-            </p>
-          )}
-          {event.hasInvitationCard && (
-            <a
-              href={invitationCardUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700"
-            >
-              <FileText className="h-5 w-5" />
-              View invitation card
-            </a>
-          )}
-        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4 rounded-xl2 border border-slate-200 bg-white p-5 shadow-card">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="mt-8 space-y-4 rounded-xl2 border border-slate-200 bg-white/95 p-5 shadow-card backdrop-blur-sm"
+          >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="First name" htmlFor="firstName" error={errors.firstName?.message}>
               <Input id="firstName" {...register("firstName")} error={!!errors.firstName} />
@@ -318,17 +401,23 @@ export default function PublicRsvpPage() {
             </Field>
           )}
 
-          <Button type="submit" className="w-full" isLoading={isSubmitting}>
+          <Button
+            type="submit"
+            className="w-full hover:brightness-90"
+            style={themeStyles.primaryFill}
+            isLoading={isSubmitting}
+          >
             Submit RSVP
           </Button>
         </form>
 
-        <ShopSection
-          rsvpToken={event.rsvpToken}
-          guestName={guestPrefill ? `${guestPrefill.firstName} ${guestPrefill.lastName}`.trim() : undefined}
-          guestEmail={guestPrefill?.email ?? undefined}
-        />
+          <ShopSection
+            rsvpToken={event.rsvpToken}
+            guestName={guestPrefill ? `${guestPrefill.firstName} ${guestPrefill.lastName}`.trim() : undefined}
+            guestEmail={guestPrefill?.email ?? undefined}
+          />
+        </div>
       </div>
-    </div>
+    </CardThemeContext.Provider>
   );
 }

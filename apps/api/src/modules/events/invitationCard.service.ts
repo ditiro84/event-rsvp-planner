@@ -108,3 +108,13 @@ export async function eventHasInvitationCard(eventId: string) {
   const count = await prisma.eventInvitationCard.count({ where: { eventId } });
   return count > 0;
 }
+
+// Just the mime type -- used by the public RSVP page to decide whether it's
+// worth attempting to colour-theme the page from the card (only supported
+// for image cards; a PDF would need rasterizing first, see
+// PublicRsvpPage.tsx / lib/cardTheme.ts). Returns null when there's no card
+// at all, distinct from a card whose type just isn't an image.
+export async function getInvitationCardMimeType(eventId: string) {
+  const card = await prisma.eventInvitationCard.findUnique({ where: { eventId }, select: { mimeType: true } });
+  return card?.mimeType ?? null;
+}

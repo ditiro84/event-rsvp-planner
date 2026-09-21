@@ -24,18 +24,22 @@ export function formatOrderItems(items: OrderItemRecord[]): string {
 // MANUAL = captured with no payment processor connected, see
 // OrderStatus.MANUAL in schema.prisma -- the planner collects payment
 // themselves, so this reads as a pending/awaiting-action state rather than
-// a hard failure like CANCELLED.
-export function orderStatusLabel(status: OrderStatus): string {
-  if (status === "PAID") return "Paid";
-  if (status === "MANUAL") return "Awaiting payment";
-  if (status === "PENDING") return "Pending";
-  return "Cancelled";
-}
-
-export function orderStatusBadgeVariant(status: OrderStatus): "success" | "warning" | "danger" {
-  if (status === "PAID") return "success";
-  if (status === "MANUAL") return "warning";
-  return "danger";
+// a hard failure like CANCELLED. When the guest has also ticked "I've
+// already paid" at checkout (guestMarkedPaid), that's surfaced as its own
+// distinct label/colour -- it's a claim to verify, not a confirmed payment,
+// so it stays visually distinct from the real (processor-confirmed) Paid.
+export function orderStatusDisplay(order: Pick<OrderRecord, "status" | "guestMarkedPaid">): {
+  label: string;
+  variant: "success" | "warning" | "info" | "danger";
+} {
+  if (order.status === "PAID") return { label: "Paid", variant: "success" };
+  if (order.status === "MANUAL") {
+    return order.guestMarkedPaid
+      ? { label: "Guest says paid", variant: "info" }
+      : { label: "Awaiting payment", variant: "warning" };
+  }
+  if (order.status === "PENDING") return { label: "Pending", variant: "warning" };
+  return { label: "Cancelled", variant: "danger" };
 }
 
 // Orders placed for a given guest -- matched by Guest.id, which the guest's

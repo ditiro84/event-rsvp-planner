@@ -120,6 +120,7 @@ export function useCheckout(rsvpToken: string) {
       shippingPostcode?: string;
       shippingCountry?: string;
       shippingPhone?: string;
+      guestMarkedPaid?: boolean;
       items: { productId: string; quantity: number; selectedSize?: string }[];
       provider?: PayoutProvider;
     }) => {

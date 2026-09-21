@@ -10,6 +10,7 @@ import { Field, Input, Select } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
 import { COUNTRIES } from "@/lib/countries";
+import { useCardThemeStyles } from "@/lib/cardThemeContext";
 import type { CurrencyCode, PayoutProvider, PublicShopProduct } from "@/types";
 
 const PROVIDER_LABELS: Record<PayoutProvider, string> = {
@@ -36,6 +37,7 @@ function ProductRow({
   onSizeChange: (size: string) => void;
 }) {
   const soldOut = product.stockQuantity === 0;
+  const themeStyles = useCardThemeStyles();
   return (
     <div className="py-3">
       <div className="flex items-center gap-3">
@@ -92,6 +94,7 @@ function ProductRow({
             onClick={onAdd}
             disabled={disabled}
             className="shrink-0 rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40"
+            style={themeStyles.outline("primary")}
           >
             Add
           </button>
@@ -186,6 +189,11 @@ export function ShopSection({
   const { data, isLoading } = usePublicShop(rsvpToken);
   const checkout = useCheckout(rsvpToken);
   const [searchParams, setSearchParams] = useSearchParams();
+  // Picked up from CardThemeContext -- see PublicRsvpPage.tsx, which
+  // computes the theme from the event's invitation card and provides it to
+  // this whole subtree. Falls back to the app's default brand/coral look
+  // everywhere below when there's no theme (theme === null).
+  const themeStyles = useCardThemeStyles();
 
   // Keyed by productId. size is guest-entered per line item -- see
   // OrderItem.selectedSize in schema.prisma.
@@ -205,6 +213,10 @@ export function ShopSection({
   const [country, setCountry] = useState("");
   const [dialCode, setDialCode] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  // Guest self-report, only meaningful (and only shown) when there's no
+  // payment processor connected -- see the field's comment on Order in
+  // schema.prisma for why this never auto-confirms payment on its own.
+  const [guestMarkedPaid, setGuestMarkedPaid] = useState(false);
 
   const orderParam = searchParams.get("order");
   const paypalOrderId = orderParam === "paypal_return" ? searchParams.get("token") : null;
@@ -259,6 +271,7 @@ export function ShopSection({
     setCountry("");
     setDialCode("");
     setPhoneNumber("");
+    setGuestMarkedPaid(false);
   }
 
   async function handleCheckout(e: FormEvent) {
@@ -292,6 +305,7 @@ export function ShopSection({
           : {}),
         items: cartItems.map((i) => ({ productId: i.product.id, quantity: i.quantity, selectedSize: i.size.trim() || undefined })),
         provider: provider || undefined,
+        guestMarkedPaid: availableProviders.length === 0 ? guestMarkedPaid : undefined,
       });
       if (checkoutUrl) {
         // A processor is connected -- hand off to its hosted checkout page
@@ -348,10 +362,20 @@ export function ShopSection({
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <ShoppingBag className="h-5 w-5 text-brand-600" />
+          <ShoppingBag className="h-5 w-5 text-brand-600" style={themeStyles.theme ? { color: themeStyles.theme.primary } : undefined} />
           <h2 className="font-display text-lg font-semibold text-slate-900">Event Shop</h2>
         </div>
-        {cartCount > 0 && <Badge variant="brand">{cartCount} in cart</Badge>}
+        {cartCount > 0 &&
+          (themeStyles.theme ? (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+              style={themeStyles.tint("primary")}
+            >
+              {cartCount} in cart
+            </span>
+          ) : (
+            <Badge variant="brand">{cartCount} in cart</Badge>
+          ))}
       </div>
       <p className="mt-1 text-sm text-slate-500">Buy merchandise for this event — pick up at the event or have it shipped to you.</p>
 
@@ -423,6 +447,7 @@ export function ShopSection({
                         ? "border-brand-600 bg-brand-50 text-brand-700"
                         : "border-slate-200 text-slate-500 hover:bg-slate-50"
                     }`}
+                    style={deliveryMethod === "AT_EVENT" ? themeStyles.outline("primary") : undefined}
                   >
                     <MapPin className="h-3.5 w-3.5" />
                     Pickup at event
@@ -435,6 +460,7 @@ export function ShopSection({
                         ? "border-brand-600 bg-brand-50 text-brand-700"
                         : "border-slate-200 text-slate-500 hover:bg-slate-50"
                     }`}
+                    style={deliveryMethod === "SHIPPING" ? themeStyles.outline("secondary") : undefined}
                   >
                     <Truck className="h-3.5 w-3.5" />
                     Ship to me
@@ -533,11 +559,40 @@ export function ShopSection({
                   </Select>
                 </Field>
               )}
+
+              {/* Only meaningful when there's no in-app processor -- the
+                  guest is paying the host directly (see the item
+                  description above), so this is a self-report the host
+                  still needs to verify, not a real payment confirmation. */}
+              {availableProviders.length === 0 && (
+                <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={guestMarkedPaid}
+                    onChange={(e) => setGuestMarkedPaid(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                    style={themeStyles.theme ? { accentColor: themeStyles.theme.primary } : undefined}
+                  />
+                  <span>
+                    <span className="font-medium text-slate-900">I've already sent payment</span>
+                    <span className="block text-xs text-slate-500">
+                      Optional -- tick this if you've already paid the host directly (e.g. via Zelle).
+                    </span>
+                  </span>
+                </label>
+              )}
+
               <div className="flex gap-2">
                 <Button type="button" variant="secondary" size="sm" onClick={clearCart}>
                   Clear cart
                 </Button>
-                <Button type="submit" size="sm" isLoading={checkout.isPending} className="flex-1">
+                <Button
+                  type="submit"
+                  size="sm"
+                  isLoading={checkout.isPending}
+                  className="flex-1 hover:brightness-90"
+                  style={themeStyles.primaryFill}
+                >
                   {availableProviders.length > 0
                     ? `Pay ${formatMoney(cartTotal, cartCurrency ?? "USD")}`
                     : `Submit order — ${formatMoney(cartTotal, cartCurrency ?? "USD")}`}

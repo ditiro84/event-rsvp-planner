@@ -255,6 +255,9 @@ export interface PublicEvent {
   allowAccessibilityInfo: boolean;
   allowSpecialRequests: boolean;
   hasInvitationCard: boolean;
+  // Whether the uploaded card is an image (vs a PDF) -- only images are
+  // used for the page's colour theme, see lib/cardTheme.ts.
+  invitationCardIsImage: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -551,6 +554,10 @@ export interface OrderRecord {
   status: OrderStatus;
   total: number;
   deliveryMethod: string;
+  // Guest self-reported "I've already paid" -- a note for the planner to
+  // verify, never a real payment confirmation on its own. See the field's
+  // comment on Order in schema.prisma.
+  guestMarkedPaid: boolean;
   // Only present when deliveryMethod is "SHIPPING" -- see orders.service.ts serializeOrder.
   shippingAddress: OrderShippingAddress | null;
   createdAt: string;

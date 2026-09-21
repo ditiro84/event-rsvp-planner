@@ -1002,6 +1002,12 @@ model Order {
   // 900000") -- so a courier or the planner can reach the guest about
   // delivery without needing to guess a country code from the address.
   shippingPhone        String?
+  // Guest self-reported "I've already sent payment" (e.g. via Zelle) --
+  // shown only at checkout when no payout processor is connected for this
+  // order (see ShopSection.tsx), and only ever a note for the planner to
+  // verify, never trusted to flip status to PAID on its own since it isn't
+  // a real payment confirmation.
+  guestMarkedPaid      Boolean @default(false)
 
   stripeCheckoutSessionId String? @unique
   stripePaymentIntentId   String?

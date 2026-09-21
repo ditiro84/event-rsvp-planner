@@ -24,6 +24,7 @@ export function serializeOrder(order: any) {
     currency: order.currency,
     total: order.totalCents / 100,
     deliveryMethod: order.deliveryMethod,
+    guestMarkedPaid: order.guestMarkedPaid,
     // Nested rather than five flat fields so the frontend can treat "no
     // shipping address" as a single null check -- only ever populated when
     // deliveryMethod is SHIPPING (see createCheckoutSession below).
@@ -185,6 +186,7 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
     shippingPostcode: input.deliveryMethod === "SHIPPING" ? input.shippingPostcode ?? null : null,
     shippingCountry: input.deliveryMethod === "SHIPPING" ? input.shippingCountry ?? null : null,
     shippingPhone: input.deliveryMethod === "SHIPPING" ? input.shippingPhone ?? null : null,
+    guestMarkedPaid: input.guestMarkedPaid ?? false,
   };
 
   const payoutAccounts = await prisma.eventPayoutAccount.findMany({ where: { eventId: event.id, currency } });

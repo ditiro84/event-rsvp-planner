@@ -45,12 +45,15 @@ export function InviteModal({
 
   const link = getLink.data;
 
-  // link.url looks like "<PUBLIC_APP_URL>/rsvp/invite/<token>" -- pull the
-  // token back out to build a direct link to the public card-serving
-  // endpoint (WhatsApp's wa.me links can only pre-fill text, not attach
-  // files, so this is how a card reaches WhatsApp invites).
+  // link.url looks like "<PUBLIC_APP_URL>/rsvp/invite/<slug>/<token>" (the
+  // slug is a cosmetic, human-readable copy of the event name -- see
+  // lib/slug.ts -- so the token is always the LAST path segment, not
+  // necessarily everything after "/invite/"). Pull just the token back out
+  // to build a direct link to the public card-serving endpoint (WhatsApp's
+  // wa.me links can only pre-fill text, not attach files, so this is how a
+  // card reaches WhatsApp invites).
   const invitationCardUrl = link
-    ? `${apiBaseUrl}/rsvp/invite/${link.url.split("/invite/").pop()}/invitation-card`
+    ? `${apiBaseUrl}/rsvp/invite/${link.url.split("/").filter(Boolean).pop()}/invitation-card`
     : null;
 
   async function handleCopy() {

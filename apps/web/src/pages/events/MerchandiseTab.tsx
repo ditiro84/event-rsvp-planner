@@ -12,7 +12,7 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
-import { formatOrderItems, formatShippingAddress, orderStatusBadgeVariant, orderStatusLabel } from "@/lib/orders";
+import { formatOrderItems, formatShippingAddress, orderStatusDisplay } from "@/lib/orders";
 import { ProductFormModal } from "./ProductFormModal";
 import { PayoutsSection } from "./PayoutsSection";
 import type { EventRecord, ProductRecord } from "@/types";
@@ -244,7 +244,10 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
                       ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-5 py-3.5 text-center">
-                      <Badge variant={orderStatusBadgeVariant(order.status)}>{orderStatusLabel(order.status)}</Badge>
+                      {(() => {
+                        const { label, variant } = orderStatusDisplay(order);
+                        return <Badge variant={variant}>{label}</Badge>;
+                      })()}
                     </td>
                     <td className="px-5 py-3.5 text-slate-600">
                       {order.deliveryMethod === "SHIPPING" && order.shippingAddress ? (

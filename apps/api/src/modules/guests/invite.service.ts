@@ -7,6 +7,7 @@ import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { checkInGuest, getOwnedGuest } from "./guests.service";
 import { eventHasInvitationCard, getInvitationCardBytesForEvent } from "../events/invitationCard.service";
 import { formatFromHeader } from "../../utils/email";
+import { slugify } from "../../lib/slug";
 
 // Finds or creates the guest's personalized invitation (a stable token that
 // never changes once created, so a QR code or link sent out remains valid
@@ -23,13 +24,18 @@ export async function getOrCreateInvitation(userId: string, guestId: string) {
   return { guest, invitation };
 }
 
-export function buildInviteUrl(invitationToken: string) {
-  return `${env.publicAppUrl}/rsvp/invite/${invitationToken}`;
+// The event-name segment is purely cosmetic (see lib/slug.ts) -- the actual
+// guest lookup is always by invitationToken, the last path segment (see
+// rsvp.routes.ts / App.tsx, which both still match the plain
+// /rsvp/invite/:token form too, so links generated before this existed keep
+// working).
+export function buildInviteUrl(invitationToken: string, eventName: string) {
+  return `${env.publicAppUrl}/rsvp/invite/${slugify(eventName)}/${invitationToken}`;
 }
 
 export async function getInviteLink(userId: string, guestId: string) {
   const { guest, invitation } = await getOrCreateInvitation(userId, guestId);
-  const url = buildInviteUrl(invitation.token);
+  const url = buildInviteUrl(invitation.token, guest.event.name);
   const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 400 });
   const hasInvitationCard = await eventHasInvitationCard(guest.eventId);
   return {
@@ -48,7 +54,7 @@ export async function getInviteLink(userId: string, guestId: string) {
 // sequentially rather than Promise.all since eventInvitation.create needs a
 // per-guest existence check first; fine for a print job's guest-list size.
 export async function getGuestsWithInviteLinks(userId: string, eventId: string) {
-  await getOwnedEventOrCollaborator(userId, eventId);
+  const event = await getOwnedEventOrCollaborator(userId, eventId);
 
   const guests = await prisma.guest.findMany({
     where: { eventId },
@@ -65,7 +71,7 @@ export async function getGuestsWithInviteLinks(userId: string, eventId: string) 
     results.push({
       firstName: guest.firstName,
       lastName: guest.lastName,
-      inviteUrl: buildInviteUrl(invitation.token),
+      inviteUrl: buildInviteUrl(invitation.token, event.name),
     });
   }
   return results;
@@ -154,12 +160,18 @@ export async function sendInviteEmail(userId: string, guestId: string) {
     throw new BadRequestError("Event not found.");
   }
 
-  const url = buildInviteUrl(invitation.token);
+  const url = buildInviteUrl(invitation.token, event.name);
   const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 360 });
   const qrBase64 = qrDataUrl.split(",")[1];
 
   const eventDetails = [
-    event.date ? new Date(event.date).toLocaleDateString(undefined, { dateStyle: "long" }) : null,
+    // event.date is a date-only value stored as UTC midnight (see the
+    // formatDate comment in apps/web/src/lib/format.ts for the full
+    // explanation) -- this runs server-side, so without pinning the
+    // timeZone it would use the server's own local time rather than the
+    // date as written, which can roll it back a calendar day. Force UTC so
+    // the invite email always states the date exactly as the planner set it.
+    event.date ? new Date(event.date).toLocaleDateString(undefined, { dateStyle: "long", timeZone: "UTC" }) : null,
     event.venueName,
   ]
     .filter(Boolean)

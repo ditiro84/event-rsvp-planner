@@ -20,7 +20,7 @@ interface StatCardProps {
   // the Vendors "Total Cost" and Analytics "Vendor Spend" cards.
   value: React.ReactNode;
   hint?: string;
-  accent?: "default" | "green" | "amber" | "red" | "purple" | "coral";
+  accent?: "default" | "green" | "amber" | "red" | "purple" | "coral" | "blue" | "rose" | "teal" | "orange";
   icon?: React.ReactNode;
 }
 
@@ -31,6 +31,12 @@ const accentClasses: Record<NonNullable<StatCardProps["accent"]>, string> = {
   red: "text-danger-600",
   purple: "text-brand-600",
   coral: "text-coral-600",
+  // Three extra accents (not part of the brand/coral/semantic set) -- used
+  // to give per-tab stat cards their own colour, see lib/tabTheme.ts.
+  blue: "text-sky-600",
+  rose: "text-rose-600",
+  teal: "text-teal-600",
+  orange: "text-orange-600",
 };
 
 const iconAccentClasses: Record<NonNullable<StatCardProps["accent"]>, string> = {
@@ -40,6 +46,10 @@ const iconAccentClasses: Record<NonNullable<StatCardProps["accent"]>, string> = 
   red: "bg-danger-50 text-danger-600",
   purple: "bg-brand-50 text-brand-600",
   coral: "bg-coral-50 text-coral-600",
+  blue: "bg-sky-50 text-sky-600",
+  rose: "bg-rose-50 text-rose-600",
+  teal: "bg-teal-50 text-teal-600",
+  orange: "bg-orange-50 text-orange-600",
 };
 
 export function StatCard({ label, value, hint, accent = "default", icon }: StatCardProps) {

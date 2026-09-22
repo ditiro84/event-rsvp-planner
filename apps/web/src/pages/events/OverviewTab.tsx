@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/EmptyState";
+import { getTabTheme } from "@/lib/tabTheme";
 import type { EventRecord } from "@/types";
 
 // Short call-to-action label per insight destination, matching the
@@ -70,6 +71,7 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
       value: stats.totalGuests,
       hint: "Total invited guests",
       to: `/events/${event.id}/guests`,
+      themeKey: "guests",
     },
     {
       label: "RSVP Management",
@@ -77,6 +79,7 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
       value: stats.confirmed,
       hint: "Confirmed attendees",
       to: `/events/${event.id}/rsvp`,
+      themeKey: "rsvp",
     },
     {
       label: "Seating Planner",
@@ -84,6 +87,7 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
       value: stats.assignedGuests,
       hint: "Guests assigned to tables",
       to: `/events/${event.id}/seating`,
+      themeKey: "seating",
     },
     {
       label: "Check-In",
@@ -91,6 +95,7 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
       value: stats.checkedIn > 0 ? stats.checkedIn : "Not Started",
       hint: "Live registration tracking",
       to: `/events/${event.id}/checkin`,
+      themeKey: "checkin",
     },
   ];
 
@@ -156,32 +161,37 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
       <div>
         <h2 className="mb-4 text-lg font-bold text-slate-900">Quick Access Command Panels</h2>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {quickCards.map((qc, qcIndex) => (
-            <Card key={qc.label} className="flex flex-col gap-4 p-6">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-500">{qc.label}</span>
-                <span
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                    qcIndex % 2 === 0 ? "bg-brand-50" : "bg-coral-50"
-                  }`}
+          {/* Each card uses its destination tab's own signature colour
+              (see lib/tabTheme.ts) instead of alternating between just
+              brand/coral -- since these cards literally link to Guests /
+              RSVP / Seating / Check-in, matching their colour is both more
+              varied AND doubles as a visual preview of what each tab's
+              theme looks like. */}
+          {quickCards.map((qc) => {
+            const theme = getTabTheme(qc.themeKey);
+            return (
+              <Card key={qc.label} className="flex flex-col gap-4 p-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-500">{qc.label}</span>
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${theme.iconBg}`}>
+                    <qc.icon className={`h-4 w-4 ${theme.iconText}`} />
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[28px] font-bold leading-tight text-slate-900">{qc.value}</p>
+                  <p className="text-[13px] text-slate-400">{qc.hint}</p>
+                </div>
+                <div className="h-px w-full bg-slate-100" />
+                <button
+                  onClick={() => navigate(qc.to)}
+                  className={`flex items-center gap-1 self-start text-[13px] font-semibold ${theme.iconText} hover:underline`}
                 >
-                  <qc.icon className={`h-4 w-4 ${qcIndex % 2 === 0 ? "text-brand-600" : "text-coral-600"}`} />
-                </span>
-              </div>
-              <div>
-                <p className="text-[28px] font-bold leading-tight text-slate-900">{qc.value}</p>
-                <p className="text-[13px] text-slate-400">{qc.hint}</p>
-              </div>
-              <div className="h-px w-full bg-slate-100" />
-              <button
-                onClick={() => navigate(qc.to)}
-                className="flex items-center gap-1 self-start text-[13px] font-semibold text-brand-600 hover:text-brand-700"
-              >
-                Go to planner
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            </Card>
-          ))}
+                  Go to planner
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
@@ -190,8 +200,8 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard label="Vegetarian" value={stats.vegetarian} accent="coral" />
           <StatCard label="Vegan" value={stats.vegan} accent="coral" />
-          <StatCard label="Dietary requirements" value={stats.withDietaryRequirements} />
-          <StatCard label="Accessibility needs" value={stats.withAccessibilityRequirements} />
+          <StatCard label="Dietary requirements" value={stats.withDietaryRequirements} accent="purple" />
+          <StatCard label="Accessibility needs" value={stats.withAccessibilityRequirements} accent="purple" />
         </div>
       </div>
     </div>

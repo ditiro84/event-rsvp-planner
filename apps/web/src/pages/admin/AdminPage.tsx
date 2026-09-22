@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
 import { ExportMenu } from "@/components/ui/ExportMenu";
 import { cn } from "@/lib/cn";
+import { getTabTheme } from "@/lib/tabTheme";
 import { EVENT_TYPE_LABELS, formatDate, formatMoney, formatRelativeTime } from "@/lib/format";
 import type { ExportColumn } from "@/lib/exportData";
 import type {
@@ -38,15 +39,21 @@ const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("subscribers");
+  const theme = getTabTheme("admin");
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-[32px] font-bold text-slate-950">Admin</h1>
-        <p className="mt-1 text-[15px] text-slate-500">
-          Support tools -- view and assist any subscriber's event. Every change you make here is logged in the audit
-          trail below.
-        </p>
+      <div className="flex items-center gap-3">
+        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", theme.iconBg, theme.iconText)}>
+          <ShieldCheck className="h-5 w-5" />
+        </span>
+        <div>
+          <h1 className="font-display text-[32px] font-bold text-slate-950">Admin</h1>
+          <p className="mt-1 text-[15px] text-slate-500">
+            Support tools -- view and assist any subscriber's event. Every change you make here is logged in the
+            audit trail below.
+          </p>
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-slate-200">
@@ -56,7 +63,9 @@ export default function AdminPage() {
             onClick={() => setTab(t.id)}
             className={cn(
               "flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium",
-              tab === t.id ? "border-brand-600 text-brand-700" : "border-transparent text-slate-500 hover:text-slate-800"
+              tab === t.id
+                ? cn(theme.navActiveBorder, theme.navActiveText)
+                : "border-transparent text-slate-500 hover:text-slate-800"
             )}
           >
             <t.icon className="h-4 w-4" />

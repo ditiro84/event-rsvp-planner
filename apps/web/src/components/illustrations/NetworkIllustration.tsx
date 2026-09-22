@@ -35,7 +35,23 @@ export function NetworkIllustration({ className }: { className?: string }) {
           <stop offset="0%" stopColor="#7c5cff" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#7c5cff" stopOpacity="0" />
         </radialGradient>
+        {/* Two extra soft glows, off-center, so the panel reads as a genuine
+            colour mix rather than a single violet glow -- coral echoes the
+            app's "money-moment" accent, teal is the Guests tab signature
+            (see lib/tabTheme.ts), together making this dark hero panel feel
+            considered rather than monochrome. */}
+        <radialGradient id="coralGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#d85a30" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#d85a30" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="tealGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#0d9488" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#0d9488" stopOpacity="0" />
+        </radialGradient>
       </defs>
+
+      <circle cx="80" cy="340" r="130" fill="url(#coralGlow)" />
+      <circle cx="360" cy="70" r="120" fill="url(#tealGlow)" />
 
       <g transform="translate(210 210)">
         <circle r="190" fill="none" stroke="#7c5cff" strokeOpacity="0.15" />
@@ -45,14 +61,17 @@ export function NetworkIllustration({ className }: { className?: string }) {
         <line x1="-170" y1="0" x2="170" y2="0" stroke="#7c5cff" strokeOpacity="0.12" />
         <line x1="0" y1="-170" x2="0" y2="170" stroke="#7c5cff" strokeOpacity="0.12" />
 
+        {/* Each ring of nodes now carries its own colour (coral / teal /
+            white) instead of every node being plain white, so the
+            illustration itself contributes to the panel's colour mix. */}
         {nodesFar.map(([x, y], i) => (
-          <circle key={`far-${i}`} cx={x} cy={y} r="3" fill="#ffffff" fillOpacity="0.5" />
+          <circle key={`far-${i}`} cx={x} cy={y} r="3" fill="#f5a081" fillOpacity="0.85" />
         ))}
         {nodesMid.map(([x, y], i) => (
-          <circle key={`mid-${i}`} cx={x} cy={y} r="5" fill="#ffffff" fillOpacity="0.6" />
+          <circle key={`mid-${i}`} cx={x} cy={y} r="5" fill="#5eead4" fillOpacity="0.85" />
         ))}
         {nodesNear.map(([x, y], i) => (
-          <circle key={`near-${i}`} cx={x} cy={y} r="4" fill="#ffffff" fillOpacity="0.75" />
+          <circle key={`near-${i}`} cx={x} cy={y} r="4" fill="#ffffff" fillOpacity="0.85" />
         ))}
 
         <circle r="70" fill="url(#stageGlow)" />

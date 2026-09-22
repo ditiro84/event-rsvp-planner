@@ -20,6 +20,7 @@ import { QrScanner } from "@/components/ui/QrScanner";
 import { cn } from "@/lib/cn";
 import { formatRelativeTime } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
+import { getTabTheme } from "@/lib/tabTheme";
 import type { Guest } from "@/types";
 
 // A scanned QR either encodes the full invite URL (.../rsvp/invite/<token>)
@@ -129,6 +130,8 @@ export function CheckInTab({ eventId }: { eventId: string }) {
     setSearch("");
   }
 
+  const theme = getTabTheme("checkin");
+
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       <div className="flex flex-1 flex-col gap-5">
@@ -138,7 +141,7 @@ export function CheckInTab({ eventId }: { eventId: string }) {
               onClick={() => handleModeChange("search")}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
-                mode === "search" ? "bg-white text-brand-700 shadow-soft" : "text-slate-500 hover:text-slate-800"
+                mode === "search" ? cn("bg-white shadow-soft", theme.iconText) : "text-slate-500 hover:text-slate-800"
               )}
             >
               <Search className="h-4 w-4" />
@@ -148,7 +151,7 @@ export function CheckInTab({ eventId }: { eventId: string }) {
               onClick={() => handleModeChange("scan")}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
-                mode === "scan" ? "bg-white text-brand-700 shadow-soft" : "text-slate-500 hover:text-slate-800"
+                mode === "scan" ? cn("bg-white shadow-soft", theme.iconText) : "text-slate-500 hover:text-slate-800"
               )}
             >
               <QrCode className="h-4 w-4" />
@@ -301,7 +304,10 @@ export function CheckInTab({ eventId }: { eventId: string }) {
 
       <div className="flex w-full flex-col gap-5 lg:w-[380px]">
         <Card className="p-6">
-          <h3 className="mb-5 text-base font-bold text-slate-900">Capacity Analytics</h3>
+          <div className="mb-5 flex items-center gap-2">
+            <UserCheck className={cn("h-4 w-4", theme.iconText)} />
+            <h3 className="text-base font-bold text-slate-900">Capacity Analytics</h3>
+          </div>
           <div className="flex items-center gap-5">
             <RadialProgress value={stats?.checkedIn ?? 0} max={stats?.confirmed ?? 0} size={72} strokeWidth={8} accent="brand" bare />
             <div>
@@ -325,7 +331,7 @@ export function CheckInTab({ eventId }: { eventId: string }) {
         <Card className="flex flex-1 flex-col gap-4 p-6">
           <div className="flex items-center justify-between">
             <h3 className="text-[15px] font-bold text-slate-900">Recent Check-ins</h3>
-            <span className="text-xs font-semibold text-brand-600">Live Feed</span>
+            <span className={cn("text-xs font-semibold", theme.iconText)}>Live Feed</span>
           </div>
           {recentCheckIns.length === 0 ? (
             <p className="text-sm text-slate-400">No check-ins yet.</p>

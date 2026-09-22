@@ -26,6 +26,7 @@ import { getApiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { slugify } from "@/lib/slug";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { getTabTheme } from "@/lib/tabTheme";
 import type { EventRecord, OrderRecord, RsvpStatus } from "@/types";
 
 const TABS: { label: string; value: RsvpStatus | undefined; statKey: "confirmed" | "pending" | "declined" | "maybe" | undefined }[] = [
@@ -105,14 +106,21 @@ export function RsvpTab({ event }: { event: EventRecord }) {
     ? Math.min(100, Math.max(0, 100 - ((daysLeft ?? 0) / 30) * 100))
     : 0;
 
+  const theme = getTabTheme("rsvp");
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">RSVP Management</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Monitor guest response status, dietary requirements, and coordinate party limits.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", theme.iconBg, theme.iconText)}>
+            <Send className="h-4.5 w-4.5" />
+          </span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">RSVP Management</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Monitor guest response status, dietary requirements, and coordinate party limits.
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
           <Badge variant={data.rsvpOpen ? "success" : "neutral"}>{data.rsvpOpen ? "Live Invitation" : "RSVPs Closed"}</Badge>

@@ -10,6 +10,8 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { getApiErrorMessage } from "@/lib/api";
 import { formatMoney, formatMoneyBreakdownParts, formatMoneyBreakdownSymbols } from "@/lib/format";
+import { cn } from "@/lib/cn";
+import { getTabTheme } from "@/lib/tabTheme";
 import { VendorFormModal } from "./VendorFormModal";
 import type { VendorRecord, VendorStatus } from "@/types";
 
@@ -58,12 +60,19 @@ export function VendorsTab({ eventId }: { eventId: string }) {
   if (isError) return <ErrorState title="We couldn't load vendors" onRetry={() => refetch()} />;
   if (isLoading || !vendors) return <Spinner />;
 
+  const theme = getTabTheme("vendors");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-xl font-bold text-slate-950">Vendors</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Track caterers, venues, and every other vendor for this event.</p>
+        <div className="flex items-center gap-3">
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", theme.iconBg, theme.iconText)}>
+            <Store className="h-4.5 w-4.5" />
+          </span>
+          <div>
+            <h1 className="font-display text-xl font-bold text-slate-950">Vendors</h1>
+            <p className="mt-0.5 text-sm text-slate-500">Track caterers, venues, and every other vendor for this event.</p>
+          </div>
         </div>
         <Button
           onClick={() => {
@@ -77,7 +86,7 @@ export function VendorsTab({ eventId }: { eventId: string }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total Vendors" value={summary?.totalVendors ?? vendors.length} accent="coral" icon={<Store className="h-4 w-4" />} />
+        <StatCard label="Total Vendors" value={summary?.totalVendors ?? vendors.length} accent="blue" icon={<Store className="h-4 w-4" />} />
         <StatCard
           label="Booked / Confirmed"
           value={summary?.bookedCount ?? 0}
@@ -99,7 +108,7 @@ export function VendorsTab({ eventId }: { eventId: string }) {
               </div>
             )
           }
-          accent="purple"
+          accent="blue"
           icon={
             costSymbols ? (
               <span className="text-sm font-bold leading-none" aria-hidden="true">

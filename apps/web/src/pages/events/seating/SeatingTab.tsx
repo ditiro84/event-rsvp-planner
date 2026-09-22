@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type Konva from "konva";
 import { toast } from "sonner";
-import { FileText, Magnet, Plus, RotateCcw as ResetViewIcon, Undo2, Redo2, ZoomIn, ZoomOut } from "lucide-react";
+import { Armchair, FileText, Magnet, Plus, RotateCcw as ResetViewIcon, Undo2, Redo2, ZoomIn, ZoomOut } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
 import { getApiErrorMessage } from "@/lib/api";
+import { getTabTheme } from "@/lib/tabTheme";
 import {
   useAssignGuest,
   useCreateLayoutObject,
@@ -372,9 +373,15 @@ export function SeatingTab({ eventId }: { eventId: string }) {
   const canUndo = undoStack.length > 0 && !isTimeTraveling;
   const canRedo = redoStack.length > 0 && !isTimeTraveling;
 
+  const theme = getTabTheme("seating");
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2 rounded-xl2 border border-slate-200/80 bg-white p-3 shadow-soft">
+        <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", theme.iconBg, theme.iconText)}>
+          <Armchair className="h-4 w-4" />
+        </span>
+        <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
         <Button size="sm" onClick={() => setShowAddTable(true)}>
           <Plus className="h-4 w-4" />
           Add table

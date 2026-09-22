@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -28,6 +28,7 @@ import { UserMenu } from "@/components/layout/UserMenu";
 import { getApiErrorMessage } from "@/lib/api";
 import { EVENT_TYPE_LABELS, formatDateShort } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { getTabTheme } from "@/lib/tabTheme";
 import { EventFormModal } from "@/pages/events/EventFormModal";
 
 interface EventSection {
@@ -67,6 +68,7 @@ const GLOBAL_SECTIONS = [
 // genuinely are.
 export function DashboardLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { eventId } = useParams<{ eventId: string }>();
   const { data: event } = useEvent(eventId);
   const { user } = useAuth();
@@ -106,6 +108,18 @@ export function DashboardLayout() {
 
   const inEvent = !!eventId && !!event;
 
+  // Which section's colour wash to paint behind <main> -- matches the same
+  // key used for the nav underline/active text above, so the background
+  // and the active tab always agree. Falls back to "overview"/"events" via
+  // getTabTheme's own fallback if nothing matches (e.g. a brand-new route).
+  const activeThemeKey = inEvent
+    ? eventSections.find((s) => location.pathname.startsWith(`/events/${eventId}/${s.to}`))?.to
+    : globalSections.find((s) => location.pathname === s.to || location.pathname.startsWith(`${s.to}/`))?.to.replace(
+        "/",
+        ""
+      );
+  const pageTheme = getTabTheme(activeThemeKey ?? "overview");
+
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white">
@@ -119,51 +133,62 @@ export function DashboardLayout() {
             </NavLink>
 
             <nav className="hidden h-full items-center gap-1 md:flex">
+              {/* Each section picks up its own signature colour for the
+                  active-state text + underline bar (see lib/tabTheme.ts) --
+                  previously every tab used the same brand purple, so
+                  switching sections didn't feel visually distinct from one
+                  another. */}
               {!inEvent &&
-                globalSections.map((section) => (
-                  <NavLink
-                    key={section.to}
-                    to={section.to}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex h-full flex-col items-center justify-center gap-0 px-4 text-[15px] font-medium text-slate-600 hover:text-slate-900",
-                        isActive && "font-semibold text-brand-600"
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <span className="flex flex-1 items-center">{section.label}</span>
-                        <span className={cn("h-[3px] w-full rounded-t-[3px]", isActive ? "bg-brand-600" : "bg-transparent")} />
-                      </>
-                    )}
-                  </NavLink>
-                ))}
-
-              {inEvent &&
-                eventSections.map((section) => (
-                  <Tooltip key={section.to} label={section.hint}>
+                globalSections.map((section) => {
+                  const theme = getTabTheme(section.to.replace("/", ""));
+                  return (
                     <NavLink
-                      to={`/events/${eventId}/${section.to}`}
+                      key={section.to}
+                      to={section.to}
                       className={({ isActive }) =>
                         cn(
                           "flex h-full flex-col items-center justify-center gap-0 px-4 text-[15px] font-medium text-slate-600 hover:text-slate-900",
-                          isActive && "font-semibold text-brand-600"
+                          isActive && cn("font-semibold", theme.navActiveText)
                         )
                       }
                     >
                       {({ isActive }) => (
                         <>
-                          <span className="flex flex-1 items-center gap-2">
-                            <section.icon className="h-4 w-4" />
-                            {section.label}
-                          </span>
-                          <span className={cn("h-[3px] w-full rounded-t-[3px]", isActive ? "bg-brand-600" : "bg-transparent")} />
+                          <span className="flex flex-1 items-center">{section.label}</span>
+                          <span className={cn("h-[3px] w-full rounded-t-[3px]", isActive ? theme.navActiveBar : "bg-transparent")} />
                         </>
                       )}
                     </NavLink>
-                  </Tooltip>
-                ))}
+                  );
+                })}
+
+              {inEvent &&
+                eventSections.map((section) => {
+                  const theme = getTabTheme(section.to);
+                  return (
+                    <Tooltip key={section.to} label={section.hint}>
+                      <NavLink
+                        to={`/events/${eventId}/${section.to}`}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex h-full flex-col items-center justify-center gap-0 px-4 text-[15px] font-medium text-slate-600 hover:text-slate-900",
+                            isActive && cn("font-semibold", theme.navActiveText)
+                          )
+                        }
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <span className="flex flex-1 items-center gap-2">
+                              <section.icon className="h-4 w-4" />
+                              {section.label}
+                            </span>
+                            <span className={cn("h-[3px] w-full rounded-t-[3px]", isActive ? theme.navActiveBar : "bg-transparent")} />
+                          </>
+                        )}
+                      </NavLink>
+                    </Tooltip>
+                  );
+                })}
             </nav>
           </div>
 
@@ -193,7 +218,7 @@ export function DashboardLayout() {
               <p className="truncate text-sm font-semibold text-slate-900">{event.name}</p>
               <span className="hidden text-xs text-slate-400 sm:inline">{formatDateShort(event.date)}</span>
               {viewingAsAdmin && (
-                <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+                <span className="flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Support view -- editing as admin
                 </span>
@@ -232,8 +257,12 @@ export function DashboardLayout() {
 
         {mobileNavOpen && (
           <nav className="flex flex-col gap-1 border-t border-slate-100 bg-white px-4 py-2 md:hidden">
-            {(!inEvent ? globalSections : eventSections.map((s) => ({ to: `/events/${eventId}/${s.to}`, label: s.label }))).map(
-              (section) => (
+            {(!inEvent
+              ? globalSections.map((s) => ({ to: s.to, label: s.label, themeKey: s.to.replace("/", "") }))
+              : eventSections.map((s) => ({ to: `/events/${eventId}/${s.to}`, label: s.label, themeKey: s.to }))
+            ).map((section) => {
+              const theme = getTabTheme(section.themeKey);
+              return (
                 <NavLink
                   key={section.to}
                   to={section.to}
@@ -241,14 +270,14 @@ export function DashboardLayout() {
                   className={({ isActive }) =>
                     cn(
                       "rounded-lg px-3 py-2 text-sm font-medium",
-                      isActive ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-50"
+                      isActive ? cn(theme.iconBg, theme.navActiveText) : "text-slate-600 hover:bg-slate-50"
                     )
                   }
                 >
                   {section.label}
                 </NavLink>
-              )
-            )}
+              );
+            })}
             <div className="mt-1 border-t border-slate-100 pt-2">
               <UserMenu />
             </div>
@@ -256,7 +285,7 @@ export function DashboardLayout() {
         )}
       </header>
 
-      <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8 lg:px-12">
+      <main className={cn("flex-1 px-4 py-6 transition-colors sm:px-8 sm:py-8 lg:px-12", pageTheme.pageBg)}>
         <Outlet />
       </main>
 

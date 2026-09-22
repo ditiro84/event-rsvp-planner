@@ -13,6 +13,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
 import { formatOrderItems, formatShippingAddress, orderStatusDisplay } from "@/lib/orders";
+import { cn } from "@/lib/cn";
+import { getTabTheme } from "@/lib/tabTheme";
 import { ProductFormModal } from "./ProductFormModal";
 import { PayoutsSection } from "./PayoutsSection";
 import type { EventRecord, ProductRecord } from "@/types";
@@ -55,20 +57,27 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
   if (isError) return <ErrorState title="We couldn't load the shop" onRetry={() => refetch()} />;
   if (isLoading || !products) return <Spinner />;
 
+  const theme = getTabTheme("merchandise");
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-bold text-slate-950">Event Merchandise</h1>
-            <Badge variant={event.merchandiseEnabled ? "success" : "neutral"}>
-              {event.merchandiseEnabled ? "Shop Open to Guests" : "Shop Closed"}
-            </Badge>
+        <div className="flex items-start gap-3">
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", theme.iconBg, theme.iconText)}>
+            <ShoppingCart className="h-4.5 w-4.5" />
+          </span>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="font-display text-2xl font-bold text-slate-950">Event Merchandise</h1>
+              <Badge variant={event.merchandiseEnabled ? "success" : "neutral"}>
+                {event.merchandiseEnabled ? "Shop Open to Guests" : "Shop Closed"}
+              </Badge>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              Guests can browse and buy merchandise when they RSVP. Connect a payout account below so guests can
+              check out.
+            </p>
           </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Guests can browse and buy merchandise when they RSVP. Connect a payout account below so guests can check
-            out.
-          </p>
         </div>
         <div className="flex shrink-0 gap-2.5">
           <Button variant="secondary" onClick={handleToggleShop} isLoading={updateEvent.isPending}>
@@ -109,10 +118,10 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
         <StatCard
           label="Total Sales"
           value={`$${(summary?.totalSales ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-          accent="purple"
+          accent="coral"
           icon={<ShoppingCart className="h-4 w-4" />}
         />
-        <StatCard label="Orders" value={summary?.orderCount ?? 0} icon={<ShoppingCart className="h-4 w-4" />} />
+        <StatCard label="Orders" value={summary?.orderCount ?? 0} accent="coral" icon={<ShoppingCart className="h-4 w-4" />} />
         <StatCard label="Items Sold" value={summary?.itemsSold ?? 0} accent="coral" icon={<Package className="h-4 w-4" />} />
       </div>
 

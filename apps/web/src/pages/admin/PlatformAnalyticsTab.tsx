@@ -51,12 +51,12 @@ export function PlatformAnalyticsTab() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Subscribers" value={data.totalSubscribers} accent="coral" icon={<Users className="h-4 w-4" />} />
-        <StatCard label="Total Events" value={data.totalEvents} icon={<CalendarHeart className="h-4 w-4" />} />
+        <StatCard label="Total Events" value={data.totalEvents} accent="orange" icon={<CalendarHeart className="h-4 w-4" />} />
         <StatCard
           label="RSVP Confirmation Rate"
           value={pct(data.confirmationRate)}
           hint={`${data.rsvpConfirmed} of ${data.totalGuests} guests`}
-          accent="purple"
+          accent="orange"
           icon={<CheckCircle2 className="h-4 w-4" />}
         />
         <StatCard label="Orders Paid" value={data.totalOrdersPaid} accent="green" icon={<ShoppingCart className="h-4 w-4" />} />

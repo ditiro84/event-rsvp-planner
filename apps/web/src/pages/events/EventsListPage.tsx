@@ -219,16 +219,24 @@ function EventCard({
   needsAttention: boolean;
 }) {
   const { guestSummary: g } = event;
-  // Alternate the icon tile between brand and coral -- without an event
-  // category to color-code by (unlike the public ticket page), index
-  // alternation is the simplest way to keep a grid of cards from reading
-  // as one repeated purple square.
-  const tileClasses = index % 2 === 0 ? "bg-brand-100 text-brand-500" : "bg-coral-100 text-coral-500";
-  // Same alternation as the icon tile, carried onto a top accent bar so the
-  // card reads as colorful at a glance, not just via the small corner icon.
-  const accentBarClasses =
-    index % 2 === 0 ? "bg-gradient-to-r from-brand-500 to-brand-300" : "bg-gradient-to-r from-coral-500 to-coral-300";
-  const iconBadgeClasses = index % 2 === 0 ? "bg-brand-50 text-brand-600" : "bg-coral-50 text-coral-600";
+  // Cycle through a wider set of signature colours per card -- without an
+  // event category to color-code by (unlike the public ticket page), index
+  // rotation is the simplest way to keep a grid of cards from reading as
+  // just one repeated colour. Previously this alternated brand/coral only
+  // (a "2 colour system"); this rotates through 6 tasteful colours instead
+  // so consecutive cards, and the grid as a whole, genuinely pop.
+  const CARD_PALETTE = [
+    { tile: "bg-brand-100 text-brand-500", bar: "bg-gradient-to-r from-brand-500 to-brand-300", badge: "bg-brand-50 text-brand-600" },
+    { tile: "bg-coral-100 text-coral-500", bar: "bg-gradient-to-r from-coral-500 to-coral-300", badge: "bg-coral-50 text-coral-600" },
+    { tile: "bg-teal-100 text-teal-600", bar: "bg-gradient-to-r from-teal-500 to-teal-300", badge: "bg-teal-50 text-teal-600" },
+    { tile: "bg-sky-100 text-sky-600", bar: "bg-gradient-to-r from-sky-500 to-sky-300", badge: "bg-sky-50 text-sky-600" },
+    { tile: "bg-fuchsia-100 text-fuchsia-600", bar: "bg-gradient-to-r from-fuchsia-500 to-fuchsia-300", badge: "bg-fuchsia-50 text-fuchsia-600" },
+    { tile: "bg-indigo-100 text-indigo-600", bar: "bg-gradient-to-r from-indigo-500 to-indigo-300", badge: "bg-indigo-50 text-indigo-600" },
+  ];
+  const palette = CARD_PALETTE[index % CARD_PALETTE.length];
+  const tileClasses = palette.tile;
+  const accentBarClasses = palette.bar;
+  const iconBadgeClasses = palette.badge;
   return (
     <Card className={`overflow-hidden p-0 ${muted ? "opacity-70" : ""}`}>
       <div className={`h-1.5 w-full ${accentBarClasses}`} />

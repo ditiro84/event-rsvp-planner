@@ -21,6 +21,8 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { getApiErrorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/cn";
+import { getTabTheme } from "@/lib/tabTheme";
 import type { EventCollaboratorInviteRecord, EventCollaboratorRecord, EventStaffPassRecord } from "@/types";
 
 function nameInitials(name: string) {
@@ -72,19 +74,26 @@ export function TeamTab({ eventId }: { eventId: string }) {
     toast.success("Link copied");
   }
 
+  const theme = getTabTheme("team");
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-xl font-bold text-slate-950">Team & Access</h1>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Give other people working on this event a way in -- without handing over ownership.
-        </p>
+      <div className="flex items-center gap-3">
+        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", theme.iconBg, theme.iconText)}>
+          <ShieldCheck className="h-4.5 w-4.5" />
+        </span>
+        <div>
+          <h1 className="font-display text-xl font-bold text-slate-950">Team & Access</h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Give other people working on this event a way in -- without handing over ownership.
+          </p>
+        </div>
       </div>
 
       <Card className="p-5">
         <div className="mb-1 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-slate-400" />
+            <Users className={cn("h-4 w-4", theme.iconText)} />
             <h2 className="text-lg font-bold text-slate-900">Staff Collaborators</h2>
           </div>
           <Button size="sm" onClick={() => setShowInvite(true)}>

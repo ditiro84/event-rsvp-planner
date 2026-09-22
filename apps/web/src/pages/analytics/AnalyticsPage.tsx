@@ -4,6 +4,8 @@ import { StatCard } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
 import { formatDate, formatMoneyBreakdownParts, formatMoneyBreakdownSymbols } from "@/lib/format";
+import { cn } from "@/lib/cn";
+import { getTabTheme } from "@/lib/tabTheme";
 
 function pct(value: number) {
   return `${Math.round(value * 100)}%`;
@@ -18,11 +20,18 @@ export default function AnalyticsPage() {
   const vendorSpendParts = formatMoneyBreakdownParts(data.vendorSpendByCurrency);
   const vendorSpendSymbols = formatMoneyBreakdownSymbols(data.vendorSpendByCurrency);
 
+  const theme = getTabTheme("analytics");
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-[32px] font-bold text-slate-950">Analytics</h1>
-        <p className="mt-1 text-[15px] text-slate-500">A cross-event view of RSVPs, check-ins, and vendor spend.</p>
+      <div className="flex items-center gap-3">
+        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", theme.iconBg, theme.iconText)}>
+          <BarChart3 className="h-5 w-5" />
+        </span>
+        <div>
+          <h1 className="font-display text-[32px] font-bold text-slate-950">Analytics</h1>
+          <p className="mt-1 text-[15px] text-slate-500">A cross-event view of RSVPs, check-ins, and vendor spend.</p>
+        </div>
       </div>
 
       {data.totalEvents === 0 ? (
@@ -34,7 +43,7 @@ export default function AnalyticsPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Events" value={data.totalEvents} hint={`${data.upcomingEvents} upcoming`} icon={<CalendarHeart className="h-4 w-4" />} />
+            <StatCard label="Total Events" value={data.totalEvents} hint={`${data.upcomingEvents} upcoming`} accent="blue" icon={<CalendarHeart className="h-4 w-4" />} />
             <StatCard label="Total Guests" value={data.totalGuests} accent="coral" icon={<Users className="h-4 w-4" />} />
             <StatCard
               label="Confirmation Rate"
@@ -53,9 +62,10 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <StatCard label="Vendors" value={data.totalVendors} hint={`${data.vendorsBooked} booked or confirmed`} icon={<Store className="h-4 w-4" />} />
+            <StatCard label="Vendors" value={data.totalVendors} hint={`${data.vendorsBooked} booked or confirmed`} accent="blue" icon={<Store className="h-4 w-4" />} />
             <StatCard
               label="Vendor Spend"
+              accent="blue"
               value={
                 vendorSpendParts.length === 0 ? (
                   "—"
@@ -79,7 +89,7 @@ export default function AnalyticsPage() {
                 )
               }
             />
-            <StatCard label="Response Rate" value={pct(data.responseRate)} hint="Confirmed, declined, or maybe" />
+            <StatCard label="Response Rate" value={pct(data.responseRate)} hint="Confirmed, declined, or maybe" accent="blue" />
           </div>
 
           <div>

@@ -23,8 +23,13 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="flex flex-col gap-4">
+          {/* Each clause picks up its own colour instead of a single accent
+              on the middle phrase -- a small readable echo of the app's
+              wider per-tab colour system (see lib/tabTheme.ts) right at the
+              entry point, rather than the previous mostly-monochrome hero. */}
           <p className="font-display text-[36px] font-medium leading-[1.25] text-white">
-            Plan beautifully. <span className="text-brand-500">Seat confidently.</span> Celebrate effortlessly.
+            <span className="text-brand-400">Plan beautifully.</span> <span className="text-[#f5a081]">Seat confidently.</span>{" "}
+            <span className="text-[#5eead4]">Celebrate effortlessly.</span>
           </p>
           <p className="max-w-lg text-base leading-[1.6] text-white/70">
             Empowering modern hosts, premium venues, and experience designers with seamless floor plan structures,

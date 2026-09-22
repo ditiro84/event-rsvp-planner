@@ -29,6 +29,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
 import { getApiErrorMessage } from "@/lib/api";
+import { getTabTheme } from "@/lib/tabTheme";
 import { GuestFormModal } from "./GuestFormModal";
 import { CsvImportModal } from "./CsvImportModal";
 import { InviteModal } from "./InviteModal";
@@ -183,11 +184,15 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
   ];
 
   const stats = dashboard?.stats;
+  const theme = getTabTheme("guests");
 
   return (
     <div>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="flex items-center gap-3">
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", theme.iconBg, theme.iconText)}>
+            <Users className="h-4.5 w-4.5" />
+          </span>
           <h2 className="text-lg font-bold text-slate-900">{sorted.length} Guests</h2>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -10,6 +10,8 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
+import { cn } from "@/lib/cn";
+import { getTabTheme } from "@/lib/tabTheme";
 import { TicketTypeFormModal } from "./TicketTypeFormModal";
 import { PublishSettingsPanel } from "./PublishSettingsPanel";
 import { TicketScanPanel } from "./TicketScanPanel";
@@ -43,11 +45,16 @@ export function TicketsTab({ event }: { event: EventRecord }) {
 
   const totalCapacity = ticketTypes.reduce((sum, t) => sum + (t.quantityTotal ?? 0), 0);
   const totalSold = ticketTypes.reduce((sum, t) => sum + t.quantitySold, 0);
+  const theme = getTabTheme("tickets");
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="flex items-start gap-3">
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", theme.iconBg, theme.iconText)}>
+            <Ticket className="h-4.5 w-4.5" />
+          </span>
+          <div>
           <div className="flex items-center gap-3">
             <h1 className="font-display text-2xl font-bold text-slate-950">Tickets</h1>
             <Badge variant={event.isPublic ? "success" : "neutral"}>{event.isPublic ? "Public" : "Not published"}</Badge>
@@ -56,6 +63,7 @@ export function TicketsTab({ event }: { event: EventRecord }) {
             Sell admission to the public -- separate from the private RSVP guest list. Set up ticket types below,
             then publish the event so anyone can buy.
           </p>
+          </div>
         </div>
         <Button
           onClick={() => {
@@ -77,11 +85,12 @@ export function TicketsTab({ event }: { event: EventRecord }) {
       <TicketScanPanel eventId={event.id} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Ticket Types" value={ticketTypes.length} icon={<Ticket className="h-4 w-4" />} />
+        <StatCard label="Ticket Types" value={ticketTypes.length} accent="purple" icon={<Ticket className="h-4 w-4" />} />
         <StatCard label="Tickets Sold" value={totalSold} accent="purple" icon={<Users className="h-4 w-4" />} />
         <StatCard
           label="Total Capacity"
           value={totalCapacity > 0 ? totalCapacity : "Unlimited"}
+          accent="purple"
           icon={<Tag className="h-4 w-4" />}
         />
       </div>

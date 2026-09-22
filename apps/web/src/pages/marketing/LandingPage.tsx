@@ -95,6 +95,20 @@ function serviceImage(title: string, index: number) {
   return (SERVICE_PHOTOS.find((p) => p.match.test(title)) ?? SERVICE_PHOTOS[index % SERVICE_PHOTOS.length]).url;
 }
 
+// Solid-fill colour rotation for the Services grid icon tiles and the "How
+// it works" step badges below -- previously both alternated brand/coral
+// only (a flat 2-colour system); cycling through 6 keeps a grid of 5-6
+// tiles from reading as one repeated colour while staying within the same
+// tasteful palette used across the planner dashboard (see lib/tabTheme.ts).
+const MARKETING_PALETTE = [
+  "bg-brand-600",
+  "bg-coral-500",
+  "bg-teal-600",
+  "bg-sky-600",
+  "bg-fuchsia-600",
+  "bg-indigo-600",
+];
+
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
   const primaryHref = !isLoading && user ? "/events" : "/register";
@@ -168,7 +182,7 @@ export default function LandingPage() {
               {(services ?? []).map((service, serviceIndex) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const Icon = (Icons as any)[service.icon] ?? Icons.Sparkles;
-                const tileClasses = serviceIndex % 2 === 0 ? "bg-brand-600 text-white" : "bg-coral-500 text-white";
+                const tileClasses = `${MARKETING_PALETTE[serviceIndex % MARKETING_PALETTE.length]} text-white`;
                 return (
                   <Card
                     key={service.id}
@@ -214,9 +228,7 @@ export default function LandingPage() {
                     className="h-56 w-full rounded-xl2 object-cover shadow-card"
                   />
                   <span
-                    className={`-mt-5 flex h-10 w-10 items-center justify-center rounded-full font-display text-base font-bold text-white shadow-elevated ${
-                      index % 2 === 0 ? "bg-brand-600" : "bg-coral-500"
-                    }`}
+                    className={`-mt-5 flex h-10 w-10 items-center justify-center rounded-full font-display text-base font-bold text-white shadow-elevated ${MARKETING_PALETTE[index % MARKETING_PALETTE.length]}`}
                   >
                     {index + 1}
                   </span>

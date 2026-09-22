@@ -1,7 +1,14 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { validateBody, validateParams } from "../../middleware/validate";
-import { capturePaypalOrderSchema, createCheckoutSchema, rsvpTokenParamsSchema } from "./orders.schema";
+import { validateBody, validateParams, validateQuery } from "../../middleware/validate";
+import {
+  capturePaypalOrderSchema,
+  createCheckoutSchema,
+  guestOrdersQuerySchema,
+  orderIdParamsSchema,
+  rsvpTokenParamsSchema,
+  updateOrderDeliverySchema,
+} from "./orders.schema";
 import { productIdParamsSchema } from "./products.schema";
 import * as controller from "./orders.controller";
 
@@ -39,6 +46,20 @@ router.post(
   validateParams(rsvpTokenParamsSchema),
   validateBody(capturePaypalOrderSchema),
   controller.capturePaypal
+);
+router.get(
+  "/:token/orders",
+  readRateLimit,
+  validateParams(rsvpTokenParamsSchema),
+  validateQuery(guestOrdersQuerySchema),
+  controller.myOrders
+);
+router.patch(
+  "/:token/orders/:orderId/delivery",
+  checkoutRateLimit,
+  validateParams(orderIdParamsSchema),
+  validateBody(updateOrderDeliverySchema),
+  controller.updateDelivery
 );
 
 export default router;

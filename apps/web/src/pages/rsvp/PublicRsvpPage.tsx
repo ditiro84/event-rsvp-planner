@@ -466,6 +466,7 @@ export default function PublicRsvpPage() {
             rsvpToken={event.rsvpToken}
             guestName={guestPrefill ? `${guestPrefill.firstName} ${guestPrefill.lastName}`.trim() : undefined}
             guestEmail={guestPrefill?.email ?? undefined}
+            guestId={guestPrefill?.guestId}
           />
         </div>
         </div>

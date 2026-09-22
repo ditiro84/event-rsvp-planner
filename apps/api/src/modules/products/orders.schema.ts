@@ -61,6 +61,54 @@ export const rsvpTokenParamsSchema = z.object({
   token: z.string().min(1),
 });
 
+// Guest-facing "my orders" lookup -- guestId is client-supplied and
+// unverified, same trust model as createCheckoutSchema's guestId above:
+// good enough to scope a read to "orders this browser session knows it
+// placed", not a real ownership proof.
+export const guestOrdersQuerySchema = z.object({
+  guestId: z.string().trim().min(1, "guestId is required"),
+});
+export type GuestOrdersQuery = z.infer<typeof guestOrdersQuerySchema>;
+
+export const orderIdParamsSchema = z.object({
+  token: z.string().min(1),
+  orderId: z.string().min(1),
+});
+
+// Lets a returning guest fix a typo'd address or add delivery details after
+// the fact, without touching what they actually bought -- see
+// updateOrderDelivery in orders.service.ts. Deliberately a much smaller
+// surface than createCheckoutSchema: no items, no guestName/guestEmail, no
+// payment fields, so there's no way to use this endpoint to change what was
+// purchased or who it's attributed to.
+export const updateOrderDeliverySchema = z
+  .object({
+    guestId: z.string().trim().min(1, "guestId is required"),
+    deliveryMethod: z.enum(["AT_EVENT", "SHIPPING"]),
+    shippingAddressLine1: z.string().trim().min(1).max(200).optional(),
+    shippingAddressLine2: z.string().trim().max(200).optional(),
+    shippingCity: z.string().trim().min(1).max(120).optional(),
+    shippingPostcode: z.string().trim().min(1).max(30).optional(),
+    shippingCountry: z.string().trim().length(2, "Select a country").optional(),
+    shippingPhone: z.string().trim().min(1).max(30).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.deliveryMethod !== "SHIPPING") return;
+    const required: Array<[keyof typeof data, string]> = [
+      ["shippingAddressLine1", "Address is required"],
+      ["shippingCity", "City is required"],
+      ["shippingPostcode", "Postcode is required"],
+      ["shippingCountry", "Country is required"],
+      ["shippingPhone", "Phone number is required"],
+    ];
+    for (const [field, message] of required) {
+      if (!data[field]) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message });
+      }
+    }
+  });
+export type UpdateOrderDeliveryInput = z.infer<typeof updateOrderDeliverySchema>;
+
 export const capturePaypalOrderSchema = z.object({
   paypalOrderId: z.string().min(1),
 });

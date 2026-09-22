@@ -152,6 +152,12 @@ export async function getInvitePrefill(invitationToken: string) {
   return {
     event: await publicEventShape(invitation.event),
     guestPrefill: {
+      // Included so the frontend can look up this guest's existing
+      // merchandise orders (see shop.routes.ts GET /:token/orders) and
+      // offer to edit delivery details instead of only a fresh checkout --
+      // safe to expose here since it's already how this invitation link
+      // identifies the guest server-side (invitation.guest.id above).
+      guestId: invitation.guest.id,
       firstName: invitation.guest.firstName,
       lastName: invitation.guest.lastName,
       email: invitation.guest.email,

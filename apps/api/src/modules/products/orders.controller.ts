@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ok } from "../../lib/apiResponse";
-import { capturePaypalOrderSchema, createCheckoutSchema } from "./orders.schema";
+import { capturePaypalOrderSchema, createCheckoutSchema, guestOrdersQuerySchema, updateOrderDeliverySchema } from "./orders.schema";
 import * as ordersService from "./orders.service";
 import * as productsService from "./products.service";
 
@@ -44,5 +44,20 @@ export async function checkout(req: Request, res: Response) {
 export async function capturePaypal(req: Request, res: Response) {
   const input = capturePaypalOrderSchema.parse(req.body);
   const order = await ordersService.capturePaypalCheckout(req.params.token, input.paypalOrderId);
+  return ok(res, { order });
+}
+
+// Lets a returning guest see order(s) they've already placed for this
+// event, so the frontend can offer "edit delivery details" instead of only
+// a fresh checkout -- see orders.service.ts getGuestOrders.
+export async function myOrders(req: Request, res: Response) {
+  const { guestId } = guestOrdersQuerySchema.parse(req.query);
+  const orders = await ordersService.getGuestOrders(req.params.token, guestId);
+  return ok(res, { orders });
+}
+
+export async function updateDelivery(req: Request, res: Response) {
+  const input = updateOrderDeliverySchema.parse(req.body);
+  const order = await ordersService.updateOrderDelivery(req.params.token, req.params.orderId, input);
   return ok(res, { order });
 }

@@ -145,3 +145,44 @@ export function useCapturePaypal(rsvpToken: string) {
     },
   });
 }
+
+// Orders a returning guest has already placed for this event -- lets
+// ShopSection offer "edit delivery details" instead of only a fresh
+// checkout. guestId is the same client-known value checkout already sends
+// (see useCheckout above), not a real session -- see the guestId comment on
+// getGuestOrders in orders.service.ts.
+export function useMyOrders(rsvpToken: string | undefined, guestId: string | undefined) {
+  return useQuery({
+    queryKey: ["shop", rsvpToken, "orders", guestId],
+    queryFn: async () => {
+      const res = await api.get(`/shop/${rsvpToken}/orders`, { params: { guestId } });
+      return res.data.data.orders as OrderRecord[];
+    },
+    enabled: !!rsvpToken && !!guestId,
+  });
+}
+
+export function useUpdateOrderDelivery(rsvpToken: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      guestId,
+      ...input
+    }: {
+      orderId: string;
+      guestId: string;
+      deliveryMethod: "AT_EVENT" | "SHIPPING";
+      shippingAddressLine1?: string;
+      shippingAddressLine2?: string;
+      shippingCity?: string;
+      shippingPostcode?: string;
+      shippingCountry?: string;
+      shippingPhone?: string;
+    }) => {
+      const res = await api.patch(`/shop/${rsvpToken}/orders/${orderId}/delivery`, { guestId, ...input });
+      return res.data.data.order as OrderRecord;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["shop", rsvpToken, "orders"] }),
+  });
+}

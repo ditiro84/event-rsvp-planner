@@ -278,6 +278,70 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
   }
 }
 
+// Lets a returning guest see the merchandise order(s) they've already
+// placed for this event, keyed the same way checkout accepts a guestId --
+// an unverified client-supplied value, not a real session (see
+// createCheckoutSchema's guestId comment). That's an acceptable trust level
+// here: the worst a guest without the right guestId can do is see nothing,
+// since there's no enumeration surface (orderId isn't guessable, and this
+// only ever returns orders matching the guestId the caller already has).
+// PENDING orders are excluded -- those are mid-checkout, not something
+// placed yet -- and only MERCHANDISE orders are returned, since ticket
+// orders have nothing to ship.
+export async function getGuestOrders(rsvpToken: string, guestId: string) {
+  const event = await prisma.event.findUnique({ where: { rsvpToken }, select: { id: true } });
+  if (!event) throw new NotFoundError("This RSVP link is invalid");
+
+  const orders = await prisma.order.findMany({
+    where: { eventId: event.id, guestId, kind: "MERCHANDISE", status: { not: "PENDING" } },
+    include: { items: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return orders.map(serializeOrder);
+}
+
+// Lets a returning guest fix up delivery details (address/phone, or switch
+// between shipping and event pickup) on an order they've already placed,
+// instead of placing a brand-new duplicate order for the same items -- see
+// updateOrderDeliverySchema's comment for why this deliberately can't touch
+// items, quantities, or who the order is attributed to. Ownership is
+// checked the same way getGuestOrders reads it: the caller's guestId has to
+// match the order's stored guestId.
+export async function updateOrderDelivery(
+  rsvpToken: string,
+  orderId: string,
+  input: { guestId: string; deliveryMethod: "AT_EVENT" | "SHIPPING"; shippingAddressLine1?: string; shippingAddressLine2?: string; shippingCity?: string; shippingPostcode?: string; shippingCountry?: string; shippingPhone?: string }
+) {
+  const event = await prisma.event.findUnique({ where: { rsvpToken }, select: { id: true } });
+  if (!event) throw new NotFoundError("This RSVP link is invalid");
+
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
+  if (!order || order.eventId !== event.id || order.kind !== "MERCHANDISE") {
+    throw new NotFoundError("Order not found");
+  }
+  if (!order.guestId || order.guestId !== input.guestId) {
+    throw new NotFoundError("Order not found");
+  }
+  if (order.status === "PENDING" || order.status === "CANCELLED") {
+    throw new BadRequestError("This order can't be edited");
+  }
+
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      deliveryMethod: input.deliveryMethod,
+      shippingAddressLine1: input.deliveryMethod === "SHIPPING" ? input.shippingAddressLine1 ?? null : null,
+      shippingAddressLine2: input.deliveryMethod === "SHIPPING" ? input.shippingAddressLine2 ?? null : null,
+      shippingCity: input.deliveryMethod === "SHIPPING" ? input.shippingCity ?? null : null,
+      shippingPostcode: input.deliveryMethod === "SHIPPING" ? input.shippingPostcode ?? null : null,
+      shippingCountry: input.deliveryMethod === "SHIPPING" ? input.shippingCountry ?? null : null,
+      shippingPhone: input.deliveryMethod === "SHIPPING" ? input.shippingPhone ?? null : null,
+    },
+    include: { items: true },
+  });
+  return serializeOrder(updated);
+}
+
 // successUrl/cancelUrl are passed in by the caller rather than computed here
 // -- the merchandise checkout (createCheckoutSession above) points back at
 // the RSVP page, the public ticket checkout (tickets/checkout.service.ts)

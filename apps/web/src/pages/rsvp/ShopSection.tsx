@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { CheckCircle2, MapPin, Minus, Package, Plus, ShoppingBag, Truck, XCircle } from "lucide-react";
-import { useCapturePaypal, useCheckout, usePublicShop, publicProductImageUrl } from "@/hooks/useProducts";
+import { CheckCircle2, MapPin, Minus, Package, Pencil, ShoppingBag, Plus, Truck, XCircle } from "lucide-react";
+import {
+  useCapturePaypal,
+  useCheckout,
+  useMyOrders,
+  usePublicShop,
+  useUpdateOrderDelivery,
+  publicProductImageUrl,
+} from "@/hooks/useProducts";
 import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,8 +17,9 @@ import { Field, Input, Select } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
 import { COUNTRIES } from "@/lib/countries";
+import { formatOrderItems, formatShippingAddress } from "@/lib/orders";
 import { useCardThemeStyles } from "@/lib/cardThemeContext";
-import type { CurrencyCode, PayoutProvider, PublicShopProduct } from "@/types";
+import type { CurrencyCode, OrderRecord, PayoutProvider, PublicShopProduct } from "@/types";
 
 const PROVIDER_LABELS: Record<PayoutProvider, string> = {
   STRIPE_CONNECT: "Card (Stripe)",
@@ -171,6 +179,268 @@ function PaypalReturnBanner({ rsvpToken, paypalOrderId, onDone }: { rsvpToken: s
       <button onClick={onDone} className="ml-auto text-xs font-medium text-danger-700 hover:underline">
         Dismiss
       </button>
+    </div>
+  );
+}
+
+// Editable delivery state shared by both the checkout form (a brand-new
+// order) and ExistingOrderCard's edit form (an order already placed) --
+// pulled out so the two never drift apart on the actual fields collected.
+interface DeliveryFieldsValue {
+  deliveryMethod: "AT_EVENT" | "SHIPPING";
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  postcode: string;
+  country: string;
+  dialCode: string;
+  phoneNumber: string;
+}
+
+function DeliveryFields({
+  idPrefix,
+  value,
+  onChange,
+}: {
+  idPrefix: string;
+  value: DeliveryFieldsValue;
+  onChange: (patch: Partial<DeliveryFieldsValue>) => void;
+}) {
+  const themeStyles = useCardThemeStyles();
+  const { deliveryMethod, addressLine1, addressLine2, city, postcode, country, dialCode, phoneNumber } = value;
+
+  return (
+    <>
+      <Field label="Delivery">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onChange({ deliveryMethod: "AT_EVENT" })}
+            className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+              deliveryMethod === "AT_EVENT"
+                ? "border-brand-600 bg-brand-50 text-brand-700"
+                : "border-slate-200 text-slate-500 hover:bg-slate-50"
+            }`}
+            style={deliveryMethod === "AT_EVENT" ? themeStyles.outline("primary") : undefined}
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            Pickup at event
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ deliveryMethod: "SHIPPING" })}
+            className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+              deliveryMethod === "SHIPPING"
+                ? "border-brand-600 bg-brand-50 text-brand-700"
+                : "border-slate-200 text-slate-500 hover:bg-slate-50"
+            }`}
+            style={deliveryMethod === "SHIPPING" ? themeStyles.outline("tertiary") : undefined}
+          >
+            <Truck className="h-3.5 w-3.5" />
+            Ship to me
+          </button>
+        </div>
+      </Field>
+
+      {deliveryMethod === "SHIPPING" && (
+        <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+          <Field label="Address line 1" htmlFor={`${idPrefix}-address1`}>
+            <Input
+              id={`${idPrefix}-address1`}
+              value={addressLine1}
+              onChange={(e) => onChange({ addressLine1: e.target.value })}
+              required
+            />
+          </Field>
+          <Field label="Address line 2 (optional)" htmlFor={`${idPrefix}-address2`}>
+            <Input
+              id={`${idPrefix}-address2`}
+              value={addressLine2}
+              onChange={(e) => onChange({ addressLine2: e.target.value })}
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="City" htmlFor={`${idPrefix}-city`}>
+              <Input id={`${idPrefix}-city`} value={city} onChange={(e) => onChange({ city: e.target.value })} required />
+            </Field>
+            <Field label="Postcode" htmlFor={`${idPrefix}-postcode`}>
+              <Input
+                id={`${idPrefix}-postcode`}
+                value={postcode}
+                onChange={(e) => onChange({ postcode: e.target.value })}
+                required
+              />
+            </Field>
+          </div>
+          <Field label="Country" htmlFor={`${idPrefix}-country`}>
+            <Select
+              id={`${idPrefix}-country`}
+              value={country}
+              onChange={(e) => {
+                const code = e.target.value;
+                // Default the dial code to match -- can still be
+                // overridden below (e.g. shipping to a friend's address
+                // abroad but giving their own phone number).
+                const match = COUNTRIES.find((c) => c.code === code);
+                onChange({ country: code, dialCode: match ? match.dialCode : dialCode });
+              }}
+              required
+            >
+              <option value="">Select a country</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Phone number" htmlFor={`${idPrefix}-phone-number`}>
+            <div className="flex gap-2">
+              <Select
+                id={`${idPrefix}-phone-dial-code`}
+                aria-label="Country code"
+                value={dialCode}
+                onChange={(e) => onChange({ dialCode: e.target.value })}
+                className="w-28 shrink-0"
+                required
+              >
+                <option value="">Code</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.dialCode}>
+                    {c.dialCode} {c.name}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                id={`${idPrefix}-phone-number`}
+                type="tel"
+                inputMode="tel"
+                placeholder="7700 900000"
+                value={phoneNumber}
+                onChange={(e) => onChange({ phoneNumber: e.target.value })}
+                required
+              />
+            </div>
+          </Field>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Splits a stored "full international format" phone (e.g. "+44 7700
+// 900000", see Order.shippingPhone's comment in schema.prisma) back into
+// the dial-code + number pair DeliveryFields edits separately. Best-effort:
+// falls back to putting everything in the number field if there's no space
+// to split on.
+function splitPhone(phone: string | null): { dialCode: string; phoneNumber: string } {
+  if (!phone) return { dialCode: "", phoneNumber: "" };
+  const spaceIdx = phone.indexOf(" ");
+  if (spaceIdx <= 0) return { dialCode: "", phoneNumber: phone };
+  return { dialCode: phone.slice(0, spaceIdx), phoneNumber: phone.slice(spaceIdx + 1) };
+}
+
+// One order a returning guest has already placed, with an inline "Edit
+// delivery details" flow -- items/quantities are shown read-only (see the
+// scope note on updateOrderDeliverySchema in orders.schema.ts: this only
+// ever touches delivery, never what was actually purchased).
+function ExistingOrderCard({ order, guestId, rsvpToken }: { order: OrderRecord; guestId: string; rsvpToken: string }) {
+  const updateDelivery = useUpdateOrderDelivery(rsvpToken);
+  const [editing, setEditing] = useState(false);
+  const { dialCode: initialDialCode, phoneNumber: initialPhoneNumber } = splitPhone(order.shippingAddress?.phone ?? null);
+  const [value, setValue] = useState<DeliveryFieldsValue>({
+    deliveryMethod: order.deliveryMethod === "SHIPPING" ? "SHIPPING" : "AT_EVENT",
+    addressLine1: order.shippingAddress?.line1 ?? "",
+    addressLine2: order.shippingAddress?.line2 ?? "",
+    city: order.shippingAddress?.city ?? "",
+    postcode: order.shippingAddress?.postcode ?? "",
+    country: order.shippingAddress?.country ?? "",
+    dialCode: initialDialCode,
+    phoneNumber: initialPhoneNumber,
+  });
+
+  async function handleSave(e: FormEvent) {
+    e.preventDefault();
+    if (
+      value.deliveryMethod === "SHIPPING" &&
+      (!value.addressLine1.trim() || !value.city.trim() || !value.postcode.trim() || !value.country || !value.dialCode || !value.phoneNumber.trim())
+    ) {
+      toast.error("Fill in your shipping address and phone number");
+      return;
+    }
+    try {
+      await updateDelivery.mutateAsync({
+        orderId: order.id,
+        guestId,
+        deliveryMethod: value.deliveryMethod,
+        ...(value.deliveryMethod === "SHIPPING"
+          ? {
+              shippingAddressLine1: value.addressLine1,
+              shippingAddressLine2: value.addressLine2 || undefined,
+              shippingCity: value.city,
+              shippingPostcode: value.postcode,
+              shippingCountry: value.country,
+              shippingPhone: `${value.dialCode} ${value.phoneNumber}`.trim(),
+            }
+          : {}),
+      });
+      toast.success("Delivery details updated");
+      setEditing(false);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+      <p className="text-sm font-medium text-slate-900">{formatOrderItems(order.items)}</p>
+      {!editing ? (
+        <>
+          <p className="mt-1 text-xs text-slate-500">
+            {order.shippingAddress ? formatShippingAddress(order.shippingAddress) : "Collecting at the event"}
+          </p>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
+          >
+            <Pencil className="h-3 w-3" />
+            Edit delivery details
+          </button>
+        </>
+      ) : (
+        <form onSubmit={handleSave} className="mt-3 space-y-3">
+          <DeliveryFields idPrefix={`order-${order.id}`} value={value} onChange={(patch) => setValue((v) => ({ ...v, ...patch }))} />
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" isLoading={updateDelivery.isPending} className="flex-1">
+              Save
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+// Shown when a returning guest (identified by guestId -- see the prop's
+// comment on ShopSection below) already has merchandise order(s) for this
+// event, so they can fix up delivery details instead of placing a
+// duplicate order for the same items.
+function ExistingOrders({ rsvpToken, guestId }: { rsvpToken: string; guestId?: string }) {
+  const { data: orders } = useMyOrders(rsvpToken, guestId);
+  if (!guestId || !orders || orders.length === 0) return null;
+
+  return (
+    <div className="mb-5 border-b border-slate-100 pb-5">
+      <h3 className="text-sm font-semibold text-slate-900">Your order{orders.length > 1 ? "s" : ""}</h3>
+      <div className="mt-2 space-y-2">
+        {orders.map((order) => (
+          <ExistingOrderCard key={order.id} order={order} guestId={guestId} rsvpToken={rsvpToken} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -379,6 +649,8 @@ export function ShopSection({
       </div>
       <p className="mt-1 text-sm text-slate-500">Buy merchandise for this event — pick up at the event or have it shipped to you.</p>
 
+      <ExistingOrders rsvpToken={rsvpToken} guestId={guestId} />
+
       <div className="mt-3 divide-y divide-slate-100">
         {products.map((product) => (
           <ProductRow
@@ -437,111 +709,20 @@ export function ShopSection({
                 />
               </Field>
 
-              <Field label="Delivery">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryMethod("AT_EVENT")}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
-                      deliveryMethod === "AT_EVENT"
-                        ? "border-brand-600 bg-brand-50 text-brand-700"
-                        : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                    }`}
-                    style={deliveryMethod === "AT_EVENT" ? themeStyles.outline("primary") : undefined}
-                  >
-                    <MapPin className="h-3.5 w-3.5" />
-                    Pickup at event
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryMethod("SHIPPING")}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
-                      deliveryMethod === "SHIPPING"
-                        ? "border-brand-600 bg-brand-50 text-brand-700"
-                        : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                    }`}
-                    style={deliveryMethod === "SHIPPING" ? themeStyles.outline("tertiary") : undefined}
-                  >
-                    <Truck className="h-3.5 w-3.5" />
-                    Ship to me
-                  </button>
-                </div>
-              </Field>
-
-              {deliveryMethod === "SHIPPING" && (
-                <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-                  <Field label="Address line 1" htmlFor="shop-address1">
-                    <Input
-                      id="shop-address1"
-                      value={addressLine1}
-                      onChange={(e) => setAddressLine1(e.target.value)}
-                      required
-                    />
-                  </Field>
-                  <Field label="Address line 2 (optional)" htmlFor="shop-address2">
-                    <Input id="shop-address2" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
-                  </Field>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="City" htmlFor="shop-city">
-                      <Input id="shop-city" value={city} onChange={(e) => setCity(e.target.value)} required />
-                    </Field>
-                    <Field label="Postcode" htmlFor="shop-postcode">
-                      <Input id="shop-postcode" value={postcode} onChange={(e) => setPostcode(e.target.value)} required />
-                    </Field>
-                  </div>
-                  <Field label="Country" htmlFor="shop-country">
-                    <Select
-                      id="shop-country"
-                      value={country}
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        setCountry(code);
-                        // Default the dial code to match -- guests can still
-                        // override it below (e.g. shipping to a friend's
-                        // address abroad but giving their own phone number).
-                        const match = COUNTRIES.find((c) => c.code === code);
-                        if (match) setDialCode(match.dialCode);
-                      }}
-                      required
-                    >
-                      <option value="">Select a country</option>
-                      {COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field label="Phone number" htmlFor="shop-phone-number">
-                    <div className="flex gap-2">
-                      <Select
-                        id="shop-phone-dial-code"
-                        aria-label="Country code"
-                        value={dialCode}
-                        onChange={(e) => setDialCode(e.target.value)}
-                        className="w-28 shrink-0"
-                        required
-                      >
-                        <option value="">Code</option>
-                        {COUNTRIES.map((c) => (
-                          <option key={c.code} value={c.dialCode}>
-                            {c.dialCode} {c.name}
-                          </option>
-                        ))}
-                      </Select>
-                      <Input
-                        id="shop-phone-number"
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="7700 900000"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </Field>
-                </div>
-              )}
+              <DeliveryFields
+                idPrefix="shop"
+                value={{ deliveryMethod, addressLine1, addressLine2, city, postcode, country, dialCode, phoneNumber }}
+                onChange={(patch) => {
+                  if (patch.deliveryMethod !== undefined) setDeliveryMethod(patch.deliveryMethod);
+                  if (patch.addressLine1 !== undefined) setAddressLine1(patch.addressLine1);
+                  if (patch.addressLine2 !== undefined) setAddressLine2(patch.addressLine2);
+                  if (patch.city !== undefined) setCity(patch.city);
+                  if (patch.postcode !== undefined) setPostcode(patch.postcode);
+                  if (patch.country !== undefined) setCountry(patch.country);
+                  if (patch.dialCode !== undefined) setDialCode(patch.dialCode);
+                  if (patch.phoneNumber !== undefined) setPhoneNumber(patch.phoneNumber);
+                }}
+              />
 
               {availableProviders.length > 1 && (
                 <Field label="Payment method" htmlFor="shop-provider">

@@ -372,6 +372,11 @@ export interface InviteLink {
 }
 
 export interface GuestPrefill {
+  // Only present on personalized invite links -- see getInvitePrefill in
+  // rsvp.service.ts. Lets ShopSection look up (and offer to edit delivery
+  // details on) orders this guest already placed, without waiting for them
+  // to resubmit the RSVP form first.
+  guestId?: string;
   firstName: string;
   lastName: string;
   email: string | null;

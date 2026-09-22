@@ -655,6 +655,12 @@ export interface AdminAuditLogEntry {
   eventName: string | null;
   method: string;
   summary: string;
+  // A small snapshot of exactly what this action affected -- see the
+  // comment on AdminAuditLog.details in schema.prisma. Shape varies by
+  // resource (guest/vendor/product/payout/event/subscriber), and a
+  // create/update vs. delete before this field existed both leave it null.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  details: Record<string, any> | null;
   createdAt: string;
 }
 

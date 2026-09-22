@@ -899,6 +899,14 @@ model AdminAuditLog {
   eventName   String?
   method      String
   summary     String
+  // A small, display-safe snapshot of exactly what this action affected --
+  // for a delete, the record as it looked right before it was removed
+  // (fetched by auditAdminEventActions.ts before the route handler runs,
+  // since the row is gone by the time the log entry is written); for a
+  // create/update, the resulting record straight from the API response.
+  // Never contains secrets (raw payment credentials, tokens): those never
+  // reach these models to begin with, see payouts.service.ts.
+  details Json?
 
   createdAt DateTime @default(now())
 

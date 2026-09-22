@@ -463,10 +463,62 @@ function EventsTab() {
   );
 }
 
+// Turns a raw details snapshot (see AdminAuditLogEntry.details) into
+// readable "Label: value" fragments, generically -- the shape varies per
+// resource (guest/vendor/product/payout/event/subscriber) so this doesn't
+// hardcode per-type layouts, just some light formatting conventions:
+// *Cents fields render as money (paired with a sibling `currency` key when
+// present), ISO date strings render via formatDate, booleans render as
+// Yes/No, and a nested object (e.g. editSubscriber's { before, after })
+// recurses one level with its key as a prefix.
+function humanizeDetailKey(key: string): string {
+  const spaced = key.replace(/Cents$/, "").replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatDetailValue(key: string, value: any, siblingCurrency?: string): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (key.endsWith("Cents") && typeof value === "number") {
+    return formatMoney(value / 100, (siblingCurrency as CurrencyCode | undefined) ?? "USD");
+  }
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) return formatDate(value);
+  if (key === "type" && typeof value === "string") return EVENT_TYPE_LABELS[value] ?? value;
+  return String(value);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function flattenDetails(obj: Record<string, any>, prefix = ""): string[] {
+  const currency = typeof obj.currency === "string" ? obj.currency : undefined;
+  const hasCentsField = Object.keys(obj).some((k) => k.endsWith("Cents"));
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined || value === "") continue;
+    if (key === "currency" && hasCentsField) continue; // shown inline with the amount instead
+    if (typeof value === "object" && !Array.isArray(value)) {
+      parts.push(...flattenDetails(value, `${prefix}${humanizeDetailKey(key)} `));
+      continue;
+    }
+    const formatted = formatDetailValue(key, value, currency);
+    if (formatted) parts.push(`${prefix}${humanizeDetailKey(key)}: ${formatted}`);
+  }
+  return parts;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function AuditDetails({ details }: { details: Record<string, any> | null }) {
+  if (!details) return <span className="text-slate-400">—</span>;
+  const parts = flattenDetails(details);
+  if (parts.length === 0) return <span className="text-slate-400">—</span>;
+  return <span>{parts.join(" · ")}</span>;
+}
+
 const auditLogColumns: ExportColumn<AdminAuditLogEntry>[] = [
   { header: "Admin", value: (e) => e.adminEmail },
   { header: "Action", value: (e) => e.summary },
   { header: "Event", value: (e) => e.eventName ?? "—" },
+  { header: "Details", value: (e) => (e.details ? flattenDetails(e.details).join("; ") : "—") },
   { header: "When", value: (e) => formatDate(e.createdAt) },
 ];
 
@@ -496,6 +548,7 @@ function AuditLogTab() {
               <th className="px-5 py-3">Admin</th>
               <th className="px-5 py-3">Action</th>
               <th className="px-5 py-3">Event</th>
+              <th className="px-5 py-3">Details</th>
               <th className="px-5 py-3">When</th>
             </tr>
           </thead>
@@ -505,6 +558,9 @@ function AuditLogTab() {
                 <td className="px-5 py-3.5 text-slate-600">{entry.adminEmail}</td>
                 <td className="px-5 py-3.5 font-medium text-slate-900">{entry.summary}</td>
                 <td className="px-5 py-3.5 text-slate-600">{entry.eventName ?? "—"}</td>
+                <td className="px-5 py-3.5 max-w-[360px] whitespace-normal text-xs text-slate-500">
+                  <AuditDetails details={entry.details} />
+                </td>
                 <td className="px-5 py-3.5 text-slate-500">{formatRelativeTime(entry.createdAt)}</td>
               </tr>
             ))}

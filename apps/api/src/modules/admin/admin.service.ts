@@ -245,10 +245,12 @@ export async function getPlatformAnalytics() {
 // default; hard delete is only offered when there's no payment history to
 // lose).
 
-async function writeAdminAuditLog(adminUserId: string, method: string, summary: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function writeAdminAuditLog(adminUserId: string, method: string, summary: string, details?: Record<string, any>) {
   const admin = await prisma.user.findUnique({ where: { id: adminUserId }, select: { email: true } });
   await prisma.adminAuditLog.create({
-    data: { adminUserId, adminEmail: admin?.email ?? "unknown", method, summary },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: { adminUserId, adminEmail: admin?.email ?? "unknown", method, summary, details: details as any },
   });
 }
 
@@ -267,7 +269,10 @@ export async function editSubscriber(adminUserId: string, targetUserId: string, 
     select: { id: true, name: true, email: true, role: true, createdAt: true, archivedAt: true },
   });
 
-  await writeAdminAuditLog(adminUserId, "PATCH", `Edited subscriber ${target.email}`);
+  await writeAdminAuditLog(adminUserId, "PATCH", `Edited subscriber ${target.email}`, {
+    before: { name: target.name, email: target.email },
+    after: { name: updated.name, email: updated.email },
+  });
   return updated;
 }
 
@@ -280,7 +285,7 @@ export async function archiveSubscriber(adminUserId: string, targetUserId: strin
   if (target.archivedAt) throw new BadRequestError("This subscriber is already archived");
 
   const archivedAt = new Date();
-  await prisma.$transaction([
+  const [, eventsArchived] = await prisma.$transaction([
     prisma.user.update({ where: { id: targetUserId }, data: { archivedAt } }),
     // Stamped with the SAME timestamp as the user, not just "now" again, so
     // restoreSubscriber can tell these events apart from one a planner might
@@ -291,7 +296,8 @@ export async function archiveSubscriber(adminUserId: string, targetUserId: strin
   await writeAdminAuditLog(
     adminUserId,
     "ARCHIVE",
-    `Archived subscriber ${target.email} (and their events -- RSVP/ticket pages closed to new activity)`
+    `Archived subscriber ${target.email} (and their events -- RSVP/ticket pages closed to new activity)`,
+    { email: target.email, name: target.name, eventsArchived: eventsArchived.count }
   );
 }
 
@@ -300,7 +306,7 @@ export async function restoreSubscriber(adminUserId: string, targetUserId: strin
   if (!target) throw new NotFoundError("Subscriber not found");
   if (!target.archivedAt) throw new BadRequestError("This subscriber isn't archived");
 
-  await prisma.$transaction([
+  const [, eventsRestored] = await prisma.$transaction([
     prisma.user.update({ where: { id: targetUserId }, data: { archivedAt: null } }),
     prisma.event.updateMany({
       where: { userId: targetUserId, archivedAt: target.archivedAt },
@@ -308,7 +314,11 @@ export async function restoreSubscriber(adminUserId: string, targetUserId: strin
     }),
   ]);
 
-  await writeAdminAuditLog(adminUserId, "RESTORE", `Restored subscriber ${target.email}`);
+  await writeAdminAuditLog(adminUserId, "RESTORE", `Restored subscriber ${target.email}`, {
+    email: target.email,
+    name: target.name,
+    eventsRestored: eventsRestored.count,
+  });
 }
 
 // Permanent, cascading delete -- refused whenever the subscriber has any
@@ -333,10 +343,20 @@ export async function hardDeleteSubscriber(adminUserId: string, targetUserId: st
     );
   }
 
+  // Counted before the delete below, since the cascade removes these rows
+  // too -- this is the only chance to record how much this action actually
+  // took with it.
+  const eventCount = await prisma.event.count({ where: { userId: targetUserId } });
+
   // onDelete: Cascade on Event.user (and everything cascading from Event in
   // turn) removes every event, guest, RSVP, order, etc. this subscriber
   // owns in the same operation.
   await prisma.user.delete({ where: { id: targetUserId } });
 
-  await writeAdminAuditLog(adminUserId, "DELETE", `Permanently deleted subscriber ${target.email} (${target.id})`);
+  await writeAdminAuditLog(adminUserId, "DELETE", `Permanently deleted subscriber ${target.email} (${target.id})`, {
+    email: target.email,
+    name: target.name,
+    createdAt: target.createdAt,
+    eventsDeleted: eventCount,
+  });
 }

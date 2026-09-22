@@ -61,12 +61,22 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
   }
 
   async function handleDisconnect(account: PayoutAccountRecord) {
-    if (!confirm(`Disconnect ${providerLabel(account.provider)} for ${account.currency}? Guests won't be able to check out in ${account.currency} through it anymore.`)) {
+    // Two different situations share this one action: a fully connected
+    // account guests are actively checking out through (disconnecting stops
+    // that), and a Stripe Connect account stuck at "Onboarding incomplete"
+    // (started, never finished -- see the branch below) that never accepted
+    // a single guest payment. The confirm copy should say which one this is
+    // rather than always warning about guests losing checkout, which isn't
+    // true for an incomplete one.
+    const message = account.connected
+      ? `Disconnect ${providerLabel(account.provider)} for ${account.currency}? Guests won't be able to check out in ${account.currency} through it anymore.`
+      : `Remove this incomplete ${providerLabel(account.provider)} connection for ${account.currency}? Nothing has gone live yet -- this just clears it so setup can start fresh.`;
+    if (!confirm(message)) {
       return;
     }
     try {
       await disconnect.mutateAsync(account.id);
-      toast.success("Payout account disconnected");
+      toast.success(account.connected ? "Payout account disconnected" : "Incomplete connection removed");
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -137,6 +147,22 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
                             >
                               Finish setup
                             </Button>
+                            {/* Otherwise an abandoned (or, for an admin
+                                viewing a subscriber's event, someone else's
+                                already-abandoned) onboarding attempt has no
+                                way to be cleared -- "Finish setup" is the
+                                only option forever, even for someone who
+                                never intends to. Uses the same disconnect
+                                action as a fully connected account (see
+                                handleDisconnect's account.connected branch
+                                for the different confirm copy). */}
+                            <button
+                              onClick={() => handleDisconnect(account)}
+                              aria-label={`Remove incomplete ${providerLabel(provider)} connection for ${currency.code}`}
+                              className="ml-1 rounded p-1 text-slate-400 hover:bg-danger-50 hover:text-danger-600"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </>
                         ) : (
                           <Button

@@ -140,7 +140,7 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
           </div>
           <p className="mb-5 text-sm text-warning-700">
             {onTrack
-              ? "No outstanding actions right now -- nice work staying ahead of things."
+              ? "No outstanding actions right now. Nice work staying ahead of things."
               : "Please address these urgent planner items to maintain your timeline."}
           </p>
           {actionItems.length > 0 && (

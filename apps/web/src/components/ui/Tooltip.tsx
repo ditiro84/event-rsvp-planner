@@ -3,12 +3,16 @@ import { cn } from "@/lib/cn";
 
 // Lightweight, CSS-only hover/focus hint -- no positioning library, no JS
 // state. Shows on mouse hover (group-hover) and keyboard focus
-// (group-focus-within) so it's usable without a mouse, and is
-// pointer-events-none so it never intercepts the click meant for the
-// wrapped trigger. Wrap a single icon button or nav item; for elements
-// that already show their own visible label (e.g. a labeled primary
-// button) a tooltip is usually redundant -- reach for this on icon-only
-// controls or to add a short explanation beyond a bare label.
+// (group-focus-visible, not group-focus-within) so it's usable without a
+// mouse, without also getting stuck open after a click: a clicked NavLink
+// keeps :focus (and so :focus-within) until something else takes focus,
+// which read as "the tooltip won't go away until I navigate elsewhere";
+// :focus-visible only matches keyboard focus, so a mouse click never
+// triggers it. Is pointer-events-none so it never intercepts the click
+// meant for the wrapped trigger. Wrap a single icon button or nav item;
+// for elements that already show their own visible label (e.g. a labeled
+// primary button) a tooltip is usually redundant -- reach for this on
+// icon-only controls or to add a short explanation beyond a bare label.
 export function Tooltip({
   label,
   children,
@@ -29,7 +33,7 @@ export function Tooltip({
       <span
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute z-50 max-w-[220px] whitespace-normal rounded-md bg-slate-900 px-2.5 py-1.5 text-center text-[11px] font-medium leading-snug text-white opacity-0 shadow-elevated transition-opacity duration-150 group-hover/tooltip:opacity-100 group-focus-within/tooltip:opacity-100",
+          "pointer-events-none absolute z-50 max-w-[220px] whitespace-normal rounded-md bg-slate-900 px-2.5 py-1.5 text-center text-[11px] font-medium leading-snug text-white opacity-0 shadow-elevated transition-opacity duration-150 group-hover/tooltip:opacity-100 group-focus-visible/tooltip:opacity-100",
           side === "bottom" ? "left-1/2 top-full mt-2 -translate-x-1/2" : "left-1/2 bottom-full mb-2 -translate-x-1/2"
         )}
       >

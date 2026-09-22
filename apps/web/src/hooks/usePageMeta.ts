@@ -9,7 +9,7 @@ const SITE_URL = "https://www.gadaova.com";
 export const DEFAULT_META = {
   title: "Gadaova - Event RSVP & Seating Planner",
   description:
-    "Plan events guests will remember. Manage guest lists, RSVPs, seating, door check-in, vendors, and payments in one dashboard -- free to start, with support for USD, GBP, and NGN.",
+    "Plan events guests will remember. Manage guest lists, RSVPs, seating, door check-in, vendors, and payments in one dashboard. Free to start, with support for USD, GBP, and NGN.",
   image: `${SITE_URL}/og-image.png`,
   url: `${SITE_URL}/`,
 };

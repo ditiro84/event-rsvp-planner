@@ -576,7 +576,7 @@ export function ShopSection({
                   <span>
                     <span className="font-medium text-slate-900">I've already sent payment</span>
                     <span className="block text-xs text-slate-500">
-                      Optional -- tick this if you've already paid the host directly (e.g. via Zelle).
+                      Optional: tick this if you've already paid the host directly (e.g. via Zelle).
                     </span>
                   </span>
                 </label>

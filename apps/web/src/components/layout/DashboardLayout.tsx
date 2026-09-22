@@ -229,7 +229,7 @@ export function DashboardLayout() {
               {viewingAsAdmin && (
                 <span className="flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Support view -- editing as admin
+                  Support view: editing as admin
                 </span>
               )}
               {viewingAsCollaborator && (

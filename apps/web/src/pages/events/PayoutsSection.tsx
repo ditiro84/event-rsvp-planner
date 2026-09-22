@@ -194,7 +194,7 @@ function PaystackConnectModal({ eventId, open, onClose }: { eventId: string; ope
   async function onSubmit(values: PaystackFormValues) {
     try {
       const result = await connectPaystack.mutateAsync(values);
-      toast.success(`Connected -- account holder: ${result.accountName}`);
+      toast.success(`Connected. Account holder: ${result.accountName}`);
       reset();
       onClose();
     } catch (err) {
@@ -274,7 +274,7 @@ function PaypalConnectModal({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <p className="text-sm text-slate-500">
           Guest payments in {currency} will route to this PayPal account. Our platform fee may not apply on PayPal
-          orders until we've completed PayPal's partner enrollment -- the planner keeps 100% in the meantime.
+          orders until we've completed PayPal's partner enrollment. The planner keeps 100% in the meantime.
         </p>
         <Field label="PayPal email" htmlFor="pp-email" error={errors.email?.message}>
           <Input id="pp-email" type="email" placeholder="you@example.com" {...register("email")} error={!!errors.email} />

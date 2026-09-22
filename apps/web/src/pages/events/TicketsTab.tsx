@@ -60,7 +60,7 @@ export function TicketsTab({ event }: { event: EventRecord }) {
             <Badge variant={event.isPublic ? "success" : "neutral"}>{event.isPublic ? "Public" : "Not published"}</Badge>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Sell admission to the public -- separate from the private RSVP guest list. Set up ticket types below,
+            Sell admission to the public, separate from the private RSVP guest list. Set up ticket types below,
             then publish the event so anyone can buy.
           </p>
           </div>

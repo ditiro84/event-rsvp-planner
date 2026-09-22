@@ -111,7 +111,7 @@ export function PlatformAnalyticsTab() {
           <div className="space-y-4">
             <Card className="p-5">
               <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-                Orders by currency &amp; provider -- amounts aren't blended across currencies, see the table below for
+                Orders by currency &amp; provider. Amounts aren't blended across currencies; see the table below for
                 actual revenue figures.
               </p>
               <CategoryChart data={revenueCategories} chartType={revenueChartType} totalLabel="Orders" />

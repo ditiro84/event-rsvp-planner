@@ -85,7 +85,7 @@ export function TeamTab({ eventId }: { eventId: string }) {
         <div>
           <h1 className="font-display text-xl font-bold text-slate-950">Team & Access</h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            Give other people working on this event a way in -- without handing over ownership.
+            Give other people working on this event a way in, without handing over ownership.
           </p>
         </div>
       </div>
@@ -186,7 +186,7 @@ export function TeamTab({ eventId }: { eventId: string }) {
           </Button>
         </div>
         <p className="mb-4 text-sm text-slate-500">
-          A named, no-account link for day-of check-in duty only -- hand it to a door staffer and revoke it the
+          A named, no-account link for day-of check-in duty only. Hand it to a door staffer and revoke it the
           moment their shift ends, without touching anyone else's access.
         </p>
 
@@ -327,7 +327,7 @@ function CreateStaffPassModal({ open, onClose, eventId }: { open: boolean; onClo
       const pass = await createPass.mutateAsync(values.name);
       const url = `${window.location.origin}/staff/${pass.token}`;
       await navigator.clipboard.writeText(url);
-      toast.success("Pass created -- link copied to clipboard");
+      toast.success("Pass created. Link copied to clipboard");
       reset();
       onClose();
     } catch (err) {
@@ -339,11 +339,11 @@ function CreateStaffPassModal({ open, onClose, eventId }: { open: boolean; onClo
     <Modal open={open} onClose={onClose} title="Create a door check-in pass">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <p className="text-sm text-slate-500">
-          Name it after the person who'll use it (e.g. "Chidi -- door"). They don't need an account -- just the link
+          Name it after the person who'll use it (e.g. "Chidi - door"). They don't need an account, just the link
           this creates, which only lets them scan guests and tickets in at the door.
         </p>
         <Field label="Pass name" htmlFor="pass-name" error={errors.name?.message}>
-          <Input id="pass-name" placeholder="e.g. Chidi -- door" {...register("name")} error={!!errors.name} />
+          <Input id="pass-name" placeholder="e.g. Chidi - door" {...register("name")} error={!!errors.name} />
         </Field>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>

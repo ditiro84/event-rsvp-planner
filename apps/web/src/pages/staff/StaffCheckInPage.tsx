@@ -117,7 +117,7 @@ export default function StaffCheckInPage() {
           <h1 className="mt-1 text-lg font-bold text-slate-900">{context.eventName}</h1>
           <p className="mt-0.5 text-sm text-slate-500">
             {formatDate(context.eventDate)}
-            {context.venueName ? ` -- ${context.venueName}` : ""}
+            {context.venueName ? ` · ${context.venueName}` : ""}
           </p>
           <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
             <span className="text-sm text-slate-500">Signed in as</span>

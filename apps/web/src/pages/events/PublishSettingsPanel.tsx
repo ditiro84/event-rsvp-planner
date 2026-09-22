@@ -53,7 +53,7 @@ export function PublishSettingsPanel({ event }: { event: EventRecord }) {
   async function handleTogglePublic() {
     try {
       await updateEvent.mutateAsync({ isPublic: !event.isPublic });
-      toast.success(event.isPublic ? "Event unpublished" : "Event is now public -- tickets can go on sale");
+      toast.success(event.isPublic ? "Event unpublished" : "Event is now public. Tickets can go on sale.");
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -85,7 +85,7 @@ export function PublishSettingsPanel({ event }: { event: EventRecord }) {
         <Badge variant={event.isPublic ? "success" : "neutral"}>{event.isPublic ? "Public" : "Not published"}</Badge>
       </div>
       <p className="mb-4 text-sm text-slate-500">
-        Make this event discoverable at its own public page where anyone can buy tickets -- separate from the
+        Make this event discoverable at its own public page where anyone can buy tickets, separate from the
         private RSVP flow above. Good for nightclub nights, boat cruises, concerts, and other ticketed events.
       </p>
 
@@ -140,7 +140,7 @@ export function PublishSettingsPanel({ event }: { event: EventRecord }) {
             <Input id="pub-minage" type="number" min="0" max="100" value={minAge} onChange={(e) => setMinAge(e.target.value)} />
           </Field>
         </div>
-        <Field label="Public description" htmlFor="pub-description" hint="Shown on the public ticket page -- separate from the private RSVP message.">
+        <Field label="Public description" htmlFor="pub-description" hint="Shown on the public ticket page, separate from the private RSVP message.">
           <Textarea id="pub-description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
 

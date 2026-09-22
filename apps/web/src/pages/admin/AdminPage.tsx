@@ -81,7 +81,7 @@ export default function AdminPage() {
         <div>
           <h1 className="font-display text-[32px] font-bold text-slate-950">Admin</h1>
           <p className="mt-1 text-[15px] text-slate-500">
-            Support tools -- view and assist any subscriber's event. Every change you make here is logged in the
+            Support tools for viewing and assisting any subscriber's event. Every change you make here is logged in the
             audit trail below.
           </p>
         </div>
@@ -206,7 +206,7 @@ const ACTION_COPY: Record<SubscriberActionKind, { title: string; body: (email: s
   archive: {
     title: "Archive subscriber",
     body: (email) =>
-      `${email} will be locked out and their events' RSVP and ticket pages will stop accepting new guests or purchases. Nothing is deleted -- everything (including this) can be restored later.`,
+      `${email} will be locked out and their events' RSVP and ticket pages will stop accepting new guests or purchases. Nothing is deleted; everything (including this) can be restored later.`,
     confirmLabel: "Archive subscriber",
   },
   restore: {
@@ -375,7 +375,7 @@ function SubscribersTab() {
                       )}
                       <button
                         type="button"
-                        title={u.canHardDelete ? "Delete permanently" : "Can't permanently delete -- this subscriber has paid orders on record. Archive instead."}
+                        title={u.canHardDelete ? "Delete permanently" : "Can't permanently delete: this subscriber has paid orders on record. Archive instead."}
                         disabled={!u.canHardDelete}
                         onClick={() => setAction({ kind: "delete", subscriber: u })}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
@@ -543,7 +543,7 @@ function PaymentLogsTab() {
     return (
       <EmptyState
         title="No payment activity yet"
-        description="Every Stripe, Paystack, and PayPal payment attempt -- successful or not -- will show up here."
+        description="Every Stripe, Paystack, and PayPal payment attempt, successful or not, will show up here."
       />
     );
   }
@@ -624,7 +624,7 @@ function EmailLogsTab() {
     return (
       <EmptyState
         title="No email activity yet"
-        description="Every invite and RSVP reminder email attempt -- successful or not -- will show up here."
+        description="Every invite and RSVP reminder email attempt, successful or not, will show up here."
       />
     );
   }

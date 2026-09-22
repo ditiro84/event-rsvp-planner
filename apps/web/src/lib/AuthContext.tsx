@@ -5,7 +5,9 @@ import type { User } from "@/types";
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  // Returns the logged-in user so callers (LoginPage) can route based on
+  // role without waiting for a re-render to see the updated context value.
+  login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -28,7 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
     setAuthToken(res.data.data.token);
-    setUser(res.data.data.user);
+    const loggedInUser = res.data.data.user as User;
+    setUser(loggedInUser);
+    return loggedInUser;
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {

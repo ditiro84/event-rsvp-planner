@@ -4,6 +4,7 @@ import { AdminRoute, ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Spinner } from "@/components/ui/Spinner";
+import { useAuth } from "@/lib/AuthContext";
 
 // Route-level code splitting: the initial bundle only needs enough to show
 // the login screen or the dashboard shell. Everything else loads on first
@@ -61,6 +62,16 @@ function RouteFallback() {
   );
 }
 
+// Landing spot for any unmatched URL (bad link, stale bookmark, typo).
+// Role-aware so an admin bounces to Admin rather than an empty "My Events"
+// list they're not meant to use day to day -- see DashboardLayout's nav.
+function DefaultRedirect() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <RouteFallback />;
+  if (!user) return <Navigate to="/login" replace />;
+  return <Navigate to={user.role === "ADMIN" ? "/admin" : "/events"} replace />;
+}
+
 export default function App() {
   return (
     <>
@@ -104,7 +115,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/events" replace />} />
+          <Route path="*" element={<DefaultRedirect />} />
         </Routes>
       </Suspense>
       <InstallPrompt />

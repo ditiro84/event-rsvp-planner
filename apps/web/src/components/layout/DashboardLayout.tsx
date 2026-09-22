@@ -76,8 +76,13 @@ export function DashboardLayout() {
   const [showEdit, setShowEdit] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const globalSections =
-    user?.role === "ADMIN" ? [...GLOBAL_SECTIONS, { to: "/admin", label: "Admin" }] : GLOBAL_SECTIONS;
+  // Admin accounts are support tooling (see AdminPage's own description),
+  // not planners -- they get only the Admin tab, not the workspace nav a
+  // real subscriber uses. Any event an admin views is reached via Admin >
+  // Events drill-in (see events.service.ts's getOwnedEvent admin bypass),
+  // never through a "My Events" list of their own.
+  const isAdmin = user?.role === "ADMIN";
+  const globalSections = isAdmin ? [{ to: "/admin", label: "Admin" }] : GLOBAL_SECTIONS;
   // True when a staff collaborator (not the owner, not an admin) is viewing
   // this event -- see EventCollaborator in schema.prisma. Distinct from
   // viewingAsAdmin below: the event's own isCollaborator flag is computed
@@ -100,7 +105,7 @@ export function DashboardLayout() {
     try {
       await deleteEvent.mutateAsync(event.id);
       toast.success("Event deleted");
-      navigate("/events");
+      navigate(isAdmin ? "/admin" : "/events");
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -211,7 +216,11 @@ export function DashboardLayout() {
         {inEvent && (
           <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-4 py-2.5 sm:px-8 lg:px-12">
             <div className="flex min-w-0 items-center gap-3">
-              <NavLink to="/events" aria-label="Back to My Events" className="shrink-0 text-slate-400 hover:text-slate-600">
+              <NavLink
+                to={isAdmin ? "/admin" : "/events"}
+                aria-label={isAdmin ? "Back to Admin" : "Back to My Events"}
+                className="shrink-0 text-slate-400 hover:text-slate-600"
+              >
                 <ArrowLeft className="h-4 w-4" />
               </NavLink>
               <Badge variant="brand">{EVENT_TYPE_LABELS[event.type] ?? event.type}</Badge>

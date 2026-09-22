@@ -33,8 +33,11 @@ export default function LoginPage() {
 
   async function onSubmit(values: FormValues) {
     try {
-      await login(values.email, values.password);
-      navigate("/events");
+      const loggedInUser = await login(values.email, values.password);
+      // Admin accounts are support tooling, not planners -- send them
+      // straight to Admin instead of an empty "My Events" list (see
+      // DashboardLayout's nav, which hides My Events/Analytics for them).
+      navigate(loggedInUser.role === "ADMIN" ? "/admin" : "/events");
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }

@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Copy, FileText, MessageCircle, ShoppingBag, Search, Send, Trash2, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, Copy, FileText, Mail, MessageCircle, ShoppingBag, Search, Send, Trash2, Truck, Upload } from "lucide-react";
 import { usePlannerRsvpDashboard, useToggleRsvpOpen } from "@/hooks/useRsvp";
 import { useGuests, type GuestFilters } from "@/hooks/useGuests";
 import { useBulkSendInviteEmails } from "@/hooks/useInvites";
@@ -18,10 +18,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Badge, RsvpStatusBadge } from "@/components/ui/Badge";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { formatDate, formatFileSize, formatRelativeTime } from "@/lib/format";
-import { formatOrderItems, formatShippingAddress, ordersForGuest } from "@/lib/orders";
+import { formatOrderItems, ordersForGuest } from "@/lib/orders";
 import { getApiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { slugify } from "@/lib/slug";
@@ -44,6 +43,11 @@ export function RsvpTab({ event }: { event: EventRecord }) {
 
   const [statusFilter, setStatusFilter] = useState<RsvpStatus | undefined>(undefined);
   const [search, setSearch] = useState("");
+  // Which guest's row is expanded to show their order/delivery details in
+  // full -- replaces an earlier hover tooltip on the Merchandise cell (easy
+  // to miss, and unusable on a touch device). See MerchandiseTab.tsx's
+  // matching expandedOrderId, same pattern.
+  const [expandedGuestId, setExpandedGuestId] = useState<string | null>(null);
   const filters: GuestFilters = { status: statusFilter, search: search || undefined };
   const { data: guests } = useGuests(event.id, filters);
   const { data: allGuests } = useGuests(event.id, {});
@@ -272,30 +276,53 @@ export function RsvpTab({ event }: { event: EventRecord }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {guests.map((guest) => (
-                  <tr key={guest.id}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar firstName={guest.firstName} lastName={guest.lastName} size="sm" />
-                        <span className="font-semibold text-slate-900">
-                          {guest.firstName} {guest.lastName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{guest.email || "—"}</td>
-                    <td className="px-4 py-3">
-                      <RsvpStatusBadge status={guest.rsvpStatus} />
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{guest.rsvpRespondedAt ? formatDate(guest.rsvpRespondedAt) : "—"}</td>
-                    <td className="px-4 py-3 font-semibold text-slate-900">{1 + guest.additionalGuestsCount}</td>
-                    <td className="px-4 py-3 text-slate-600">{guest.dietaryRequirements || "—"}</td>
-                    {event.merchandiseEnabled && (
-                      <td className="px-4 py-3 text-slate-600">
-                        <GuestOrdersCell orders={ordersForGuest(orders, guest.id)} />
-                      </td>
-                    )}
-                  </tr>
-                ))}
+                {guests.map((guest) => {
+                  const guestOrders = ordersForGuest(orders, guest.id);
+                  const hasOrders = event.merchandiseEnabled && guestOrders.length > 0;
+                  const expanded = hasOrders && expandedGuestId === guest.id;
+                  return (
+                    <Fragment key={guest.id}>
+                      <tr
+                        onClick={hasOrders ? () => setExpandedGuestId(expanded ? null : guest.id) : undefined}
+                        className={hasOrders ? "cursor-pointer hover:bg-slate-50" : undefined}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            {hasOrders &&
+                              (expanded ? (
+                                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                              ))}
+                            <Avatar firstName={guest.firstName} lastName={guest.lastName} size="sm" />
+                            <span className="font-semibold text-slate-900">
+                              {guest.firstName} {guest.lastName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{guest.email || "—"}</td>
+                        <td className="px-4 py-3">
+                          <RsvpStatusBadge status={guest.rsvpStatus} />
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{guest.rsvpRespondedAt ? formatDate(guest.rsvpRespondedAt) : "—"}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-900">{1 + guest.additionalGuestsCount}</td>
+                        <td className="px-4 py-3 text-slate-600">{guest.dietaryRequirements || "—"}</td>
+                        {event.merchandiseEnabled && (
+                          <td className="px-4 py-3 text-slate-600">
+                            <GuestOrdersSummary orders={guestOrders} />
+                          </td>
+                        )}
+                      </tr>
+                      {expanded && (
+                        <tr className="bg-slate-50/60">
+                          <td colSpan={7} className="px-4 py-4">
+                            <GuestOrdersDetails orders={guestOrders} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -322,30 +349,70 @@ export function RsvpTab({ event }: { event: EventRecord }) {
   );
 }
 
-// What this guest bought (if anything), with a tooltip covering items,
-// sizes, and delivery/phone details -- the guest-facing shop collects all
-// of this alongside the RSVP itself now (see ShopSection.tsx), so it's
-// useful to see right here rather than only on the Merchandise tab's
-// separate Orders table.
-function GuestOrdersCell({ orders }: { orders: OrderRecord[] }) {
+// What this guest bought (if anything) -- just the item list, truncated;
+// click the row for the full items/delivery/phone breakdown (see
+// GuestOrdersDetails below, and MerchandiseTab.tsx's matching pattern).
+// The guest-facing shop collects all of this alongside the RSVP itself now
+// (see ShopSection.tsx), so it's useful to see right here rather than only
+// on the Merchandise tab's separate Orders table.
+function GuestOrdersSummary({ orders }: { orders: OrderRecord[] }) {
   if (orders.length === 0) return <span className="text-slate-400">—</span>;
-
   const itemsLabel = orders.map((o) => formatOrderItems(o.items)).join("; ");
-  const detailParts = orders
-    .map((o) => o.shippingAddress && formatShippingAddress(o.shippingAddress))
-    .filter((v): v is string => !!v);
-  const anyGuestMarkedPaid = orders.some((o) => o.guestMarkedPaid && o.status === "MANUAL");
-  const tooltipLabel = [itemsLabel, detailParts.join("; "), anyGuestMarkedPaid ? "Guest says paid — verify before fulfilling" : null]
-    .filter(Boolean)
-    .join(" — ");
-
   return (
-    <Tooltip label={tooltipLabel} side="top">
-      <span className="inline-flex cursor-help items-center gap-1 truncate text-brand-700">
-        <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{itemsLabel}</span>
-      </span>
-    </Tooltip>
+    <span className="inline-flex items-center gap-1 truncate text-brand-700">
+      <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{itemsLabel}</span>
+    </span>
+  );
+}
+
+// Full order details for one guest, shown in an expanded row when the
+// planner clicks it -- items (with sizes), delivery method/address/phone,
+// and the guest's own "I already paid" claim if they made one. A guest can
+// have more than one order (e.g. added to their cart on a later visit), so
+// this lists each separately rather than merging them into one line the
+// way the collapsed summary above does.
+function GuestOrdersDetails({ orders }: { orders: OrderRecord[] }) {
+  if (orders.length === 0) return null;
+  return (
+    <div className="space-y-4">
+      {orders.map((order) => (
+        <div key={order.id} className={orders.length > 1 ? "border-b border-slate-200 pb-4 last:border-0 last:pb-0" : undefined}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Items</p>
+              <p className="text-sm text-slate-700">{formatOrderItems(order.items)}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                <Mail className="h-3.5 w-3.5 shrink-0" />
+                {order.guestEmail || "No email on file"}
+              </p>
+              {order.guestMarkedPaid && order.status === "MANUAL" && (
+                <p className="mt-1 text-xs font-medium text-warning-700">Guest says paid -- verify before fulfilling.</p>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Delivery</p>
+              {order.deliveryMethod === "SHIPPING" && order.shippingAddress ? (
+                <div className="flex items-start gap-1.5 text-sm text-slate-700">
+                  <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div>
+                    {[order.shippingAddress.line1, order.shippingAddress.line2, order.shippingAddress.city, order.shippingAddress.postcode]
+                      .filter(Boolean)
+                      .map((line, i) => (
+                        <p key={i}>{line}</p>
+                      ))}
+                    {order.shippingAddress.country && <p>{order.shippingAddress.country}</p>}
+                    {order.shippingAddress.phone && <p className="mt-1 text-slate-500">{order.shippingAddress.phone}</p>}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-700">Collecting at the event -- no shipping needed.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

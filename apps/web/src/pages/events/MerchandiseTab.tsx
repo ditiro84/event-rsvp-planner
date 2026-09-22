@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { toast } from "sonner";
-import { Package, Pencil, Plus, ShoppingCart, Store, Trash2, Truck } from "lucide-react";
+import { ChevronDown, ChevronRight, Mail, Package, Pencil, Plus, ShoppingCart, Store, Trash2, Truck } from "lucide-react";
 import { useDeleteProduct, useOrders, useOrdersSummary, useProducts, productImagePath } from "@/hooks/useProducts";
 import { useUpdateEvent } from "@/hooks/useEvents";
 import { Card, StatCard } from "@/components/ui/Card";
@@ -12,18 +12,58 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/api";
-import { formatOrderItems, formatShippingAddress, orderStatusDisplay } from "@/lib/orders";
+import { formatOrderItems, orderStatusDisplay } from "@/lib/orders";
 import { cn } from "@/lib/cn";
 import { getTabTheme } from "@/lib/tabTheme";
 import { ProductFormModal } from "./ProductFormModal";
 import { PayoutsSection } from "./PayoutsSection";
-import type { EventRecord, ProductRecord } from "@/types";
+import type { EventRecord, OrderRecord, ProductRecord } from "@/types";
 
 function stockBadge(product: ProductRecord) {
   if (product.stockQuantity === null) return <Badge variant="success">In Stock</Badge>;
   if (product.stockQuantity === 0) return <Badge variant="danger">Sold Out</Badge>;
   if (product.stockQuantity <= 5) return <Badge variant="warning">{product.stockQuantity} remaining</Badge>;
   return <Badge variant="success">In Stock</Badge>;
+}
+
+// Full contact + delivery details for one order -- shown in an expanded
+// row when the planner clicks a guest's name (replaces an earlier hover
+// tooltip on the Delivery Method badge, which was easy to miss and
+// unusable on a touch device). Address lines render one per line rather
+// than the comma-joined form formatShippingAddress uses elsewhere (that
+// one's built for a single-line tooltip/export cell; this has room to
+// spread out).
+function OrderDetails({ order }: { order: OrderRecord }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Contact</p>
+        <p className="flex items-center gap-1.5 text-sm text-slate-700">
+          <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+          {order.guestEmail || "No email on file"}
+        </p>
+      </div>
+      <div>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Delivery</p>
+        {order.deliveryMethod === "SHIPPING" && order.shippingAddress ? (
+          <div className="flex items-start gap-1.5 text-sm text-slate-700">
+            <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+            <div>
+              {[order.shippingAddress.line1, order.shippingAddress.line2, order.shippingAddress.city, order.shippingAddress.postcode]
+                .filter(Boolean)
+                .map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              {order.shippingAddress.country && <p>{order.shippingAddress.country}</p>}
+              {order.shippingAddress.phone && <p className="mt-1 text-slate-500">{order.shippingAddress.phone}</p>}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-700">Collecting at the event -- no shipping needed.</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function MerchandiseTab({ event }: { event: EventRecord }) {
@@ -34,6 +74,12 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
   const updateEvent = useUpdateEvent(event.id);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRecord | undefined>();
+  // Which order's row is expanded to show full contact/delivery details --
+  // replaces an earlier hover tooltip (easy to miss, and unusable on
+  // touch), so a click on the guest's name/row toggles a details row
+  // instead. One at a time, not a Set, since there's no reason to compare
+  // two orders' details side by side here.
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   async function handleDelete(product: ProductRecord) {
     if (!confirm(`Remove "${product.name}"? This cannot be undone.`)) return;
@@ -242,36 +288,57 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {orders.slice(0, 10).map((order) => (
-                  <tr key={order.id}>
-                    <td className="px-5 py-3.5">
-                      <p className="font-semibold text-slate-900">{order.guestName}</p>
-                      <p className="text-xs text-slate-400">{formatDate(order.createdAt)}</p>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-600">{formatOrderItems(order.items)}</td>
-                    <td className="px-5 py-3.5 text-right font-bold text-slate-900">
-                      ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-5 py-3.5 text-center">
-                      {(() => {
-                        const { label, variant } = orderStatusDisplay(order);
-                        return <Badge variant={variant}>{label}</Badge>;
-                      })()}
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-600">
-                      {order.deliveryMethod === "SHIPPING" && order.shippingAddress ? (
-                        <Tooltip label={formatShippingAddress(order.shippingAddress)} side="top">
-                          <span className="inline-flex cursor-help items-center gap-1 text-brand-700">
-                            <Truck className="h-3.5 w-3.5" />
-                            Shipping
+                {orders.slice(0, 10).map((order) => {
+                  const expanded = expandedOrderId === order.id;
+                  return (
+                    <Fragment key={order.id}>
+                      <tr
+                        onClick={() => setExpandedOrderId(expanded ? null : order.id)}
+                        aria-expanded={expanded}
+                        className="cursor-pointer hover:bg-slate-50"
+                      >
+                        <td className="px-5 py-3.5">
+                          <span className="flex items-center gap-1.5 font-semibold text-slate-900">
+                            {expanded ? (
+                              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            )}
+                            {order.guestName}
                           </span>
-                        </Tooltip>
-                      ) : (
-                        "At Event"
+                          <p className="pl-5 text-xs text-slate-400">{formatDate(order.createdAt)}</p>
+                        </td>
+                        <td className="px-5 py-3.5 text-slate-600">{formatOrderItems(order.items)}</td>
+                        <td className="px-5 py-3.5 text-right font-bold text-slate-900">
+                          ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-5 py-3.5 text-center">
+                          {(() => {
+                            const { label, variant } = orderStatusDisplay(order);
+                            return <Badge variant={variant}>{label}</Badge>;
+                          })()}
+                        </td>
+                        <td className="px-5 py-3.5 text-slate-600">
+                          {order.deliveryMethod === "SHIPPING" ? (
+                            <span className="inline-flex items-center gap-1 text-brand-700">
+                              <Truck className="h-3.5 w-3.5" />
+                              Shipping
+                            </span>
+                          ) : (
+                            "At Event"
+                          )}
+                        </td>
+                      </tr>
+                      {expanded && (
+                        <tr key={`${order.id}-details`} className="bg-slate-50/60">
+                          <td colSpan={5} className="px-5 py-4">
+                            <OrderDetails order={order} />
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </Card>

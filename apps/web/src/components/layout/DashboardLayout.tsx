@@ -130,7 +130,7 @@ export function DashboardLayout() {
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white">
         <div className="flex h-[72px] items-center justify-between px-4 sm:px-8 lg:px-12">
           <div className="flex h-full min-w-0 items-center gap-6 lg:gap-12">
-            <NavLink to="/events" className="flex shrink-0 items-center gap-2">
+            <NavLink to={isAdmin ? "/admin" : "/events"} className="flex shrink-0 items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
                 <Sparkles className="h-4 w-4 text-white" />
               </span>

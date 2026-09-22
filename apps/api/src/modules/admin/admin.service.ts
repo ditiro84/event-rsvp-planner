@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
-import { AuditLogQuery, EmailEventsQuery, PaymentEventsQuery } from "./admin.schema";
+import { AuditLogQuery, EditSubscriberInput, EmailEventsQuery, PaymentEventsQuery } from "./admin.schema";
+import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors";
 
 // Cross-subscriber views for support -- unlike everything under
 // /api/events/:eventId (which reuses the exact same planner-facing
@@ -8,25 +9,50 @@ import { AuditLogQuery, EmailEventsQuery, PaymentEventsQuery } from "./admin.sch
 // ever sees their own users.findMany({ id: userId }) / events.findMany({
 // userId }), never a cross-account list.
 
-export async function listAllUsers() {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      _count: { select: { events: true } },
-    },
+// Subscribers with at least one real (PAID or MANUAL) order on any of their
+// events -- these are the ones hard Delete has to refuse, since deleting the
+// subscriber cascades to their events and orders (onDelete: Cascade in
+// schema.prisma), which would destroy real transaction/revenue records.
+// Archive is unaffected by this -- it never deletes anything.
+async function getUserIdsWithPaymentHistory(): Promise<Set<string>> {
+  const rows = await prisma.order.findMany({
+    where: { status: { in: ["PAID", "MANUAL"] } },
+    select: { event: { select: { userId: true } } },
+    distinct: ["eventId"],
   });
-  return users.map((u) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new Set(rows.map((r: any) => r.event.userId));
+}
+
+export async function listAllUsers() {
+  const [users, paymentUserIds] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        archivedAt: true,
+        _count: { select: { events: true } },
+      },
+    }),
+    getUserIdsWithPaymentHistory(),
+  ]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return users.map((u: any) => ({
     id: u.id,
     name: u.name,
     email: u.email,
     role: u.role,
     createdAt: u.createdAt,
+    archivedAt: u.archivedAt,
     eventCount: u._count.events,
+    // Whether the "permanently delete" action is available for this
+    // subscriber -- false once they have any paid/manual order on record,
+    // an admin account, or are already archived (archive first, always).
+    canHardDelete: u.role !== "ADMIN" && !paymentUserIds.has(u.id),
   }));
 }
 
@@ -208,4 +234,109 @@ export async function getPlatformAnalytics() {
     revenueByCurrencyAndProvider,
     trend,
   };
+}
+
+
+// --- Subscriber management (Admin > Subscribers) ----------------------------
+//
+// Edit is a plain field patch. Archive/Restore/Delete are more involved --
+// see the design notes on User.archivedAt / Event.archivedAt in
+// schema.prisma for the overall approach (archive is the safe, reversible
+// default; hard delete is only offered when there's no payment history to
+// lose).
+
+async function writeAdminAuditLog(adminUserId: string, method: string, summary: string) {
+  const admin = await prisma.user.findUnique({ where: { id: adminUserId }, select: { email: true } });
+  await prisma.adminAuditLog.create({
+    data: { adminUserId, adminEmail: admin?.email ?? "unknown", method, summary },
+  });
+}
+
+export async function editSubscriber(adminUserId: string, targetUserId: string, input: EditSubscriberInput) {
+  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!target) throw new NotFoundError("Subscriber not found");
+
+  if (input.email && input.email.toLowerCase() !== target.email.toLowerCase()) {
+    const existing = await prisma.user.findUnique({ where: { email: input.email } });
+    if (existing) throw new ConflictError("An account with this email already exists");
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: targetUserId },
+    data: { name: input.name, email: input.email },
+    select: { id: true, name: true, email: true, role: true, createdAt: true, archivedAt: true },
+  });
+
+  await writeAdminAuditLog(adminUserId, "PATCH", `Edited subscriber ${target.email}`);
+  return updated;
+}
+
+export async function archiveSubscriber(adminUserId: string, targetUserId: string) {
+  if (targetUserId === adminUserId) throw new BadRequestError("You can't archive your own account");
+
+  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!target) throw new NotFoundError("Subscriber not found");
+  if (target.role === "ADMIN") throw new BadRequestError("Admin accounts can't be archived");
+  if (target.archivedAt) throw new BadRequestError("This subscriber is already archived");
+
+  const archivedAt = new Date();
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: targetUserId }, data: { archivedAt } }),
+    // Stamped with the SAME timestamp as the user, not just "now" again, so
+    // restoreSubscriber can tell these events apart from one a planner might
+    // one day be able to archive individually.
+    prisma.event.updateMany({ where: { userId: targetUserId, archivedAt: null }, data: { archivedAt } }),
+  ]);
+
+  await writeAdminAuditLog(
+    adminUserId,
+    "ARCHIVE",
+    `Archived subscriber ${target.email} (and their events -- RSVP/ticket pages closed to new activity)`
+  );
+}
+
+export async function restoreSubscriber(adminUserId: string, targetUserId: string) {
+  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!target) throw new NotFoundError("Subscriber not found");
+  if (!target.archivedAt) throw new BadRequestError("This subscriber isn't archived");
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: targetUserId }, data: { archivedAt: null } }),
+    prisma.event.updateMany({
+      where: { userId: targetUserId, archivedAt: target.archivedAt },
+      data: { archivedAt: null },
+    }),
+  ]);
+
+  await writeAdminAuditLog(adminUserId, "RESTORE", `Restored subscriber ${target.email}`);
+}
+
+// Permanent, cascading delete -- refused whenever the subscriber has any
+// paid/manual order on record (see getUserIdsWithPaymentHistory above), so
+// this is really only ever available for accounts with no real transaction
+// history (test accounts, never-used signups, etc). Everything else must go
+// through archiveSubscriber instead.
+export async function hardDeleteSubscriber(adminUserId: string, targetUserId: string) {
+  if (targetUserId === adminUserId) throw new BadRequestError("You can't delete your own account");
+
+  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!target) throw new NotFoundError("Subscriber not found");
+  if (target.role === "ADMIN") throw new BadRequestError("Admin accounts can't be deleted");
+
+  const paidOrder = await prisma.order.findFirst({
+    where: { status: { in: ["PAID", "MANUAL"] }, event: { userId: targetUserId } },
+    select: { id: true },
+  });
+  if (paidOrder) {
+    throw new BadRequestError(
+      "This subscriber has paid orders on record, so they can't be permanently deleted -- archive them instead."
+    );
+  }
+
+  // onDelete: Cascade on Event.user (and everything cascading from Event in
+  // turn) removes every event, guest, RSVP, order, etc. this subscriber
+  // owns in the same operation.
+  await prisma.user.delete({ where: { id: targetUserId } });
+
+  await writeAdminAuditLog(adminUserId, "DELETE", `Permanently deleted subscriber ${target.email} (${target.id})`);
 }

@@ -36,6 +36,14 @@ export async function loginUser(input: LoginInput) {
     throw new UnauthorizedError("Invalid email or password");
   }
 
+  // Checked after password verification (not before) so a login attempt
+  // against an archived account doesn't leak its archived status to anyone
+  // who doesn't already know the password -- see admin.service.ts's
+  // archiveSubscriber.
+  if (user.archivedAt) {
+    throw new UnauthorizedError("This account has been archived. Contact support for help.");
+  }
+
   const token = signAuthToken({ userId: user.id });
   return {
     user: { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt },

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
   AdminAuditLogEntry,
@@ -65,6 +65,59 @@ export function usePlatformAnalytics() {
     queryFn: async () => {
       const res = await api.get("/admin/analytics");
       return res.data.data as PlatformAnalytics;
+    },
+  });
+}
+
+
+// --- Subscriber management (Admin > Subscribers) ----------------------------
+
+export function useEditSubscriber() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, input }: { userId: string; input: { name?: string; email?: string } }) => {
+      const res = await api.patch(`/admin/subscribers/${userId}`, input);
+      return res.data.data.user as AdminUserSummary;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+}
+
+export function useArchiveSubscriber() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.post(`/admin/subscribers/${userId}/archive`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "events"] });
+    },
+  });
+}
+
+export function useRestoreSubscriber() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.post(`/admin/subscribers/${userId}/restore`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "events"] });
+    },
+  });
+}
+
+export function useDeleteSubscriber() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.delete(`/admin/subscribers/${userId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "events"] });
     },
   });
 }

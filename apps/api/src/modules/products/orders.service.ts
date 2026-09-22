@@ -119,9 +119,10 @@ export const DEFAULT_PROVIDER_PREFERENCE = ["STRIPE_CONNECT", "PAYSTACK", "PAYPA
 export async function createCheckoutSession(rsvpToken: string, input: CreateCheckoutInput) {
   const event = await prisma.event.findUnique({
     where: { rsvpToken },
-    select: { id: true, name: true, merchandiseEnabled: true },
+    select: { id: true, name: true, merchandiseEnabled: true, archivedAt: true },
   });
   if (!event) throw new NotFoundError("This RSVP link is invalid");
+  if (event.archivedAt) throw new BadRequestError("This event's shop isn't open");
   if (!event.merchandiseEnabled) throw new BadRequestError("This event's shop isn't open");
   if (input.items.length === 0) throw new BadRequestError("Your cart is empty");
 

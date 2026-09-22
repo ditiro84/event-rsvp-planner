@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ok } from "../../lib/apiResponse";
-import { auditLogQuerySchema, emailEventsQuerySchema, paymentEventsQuerySchema } from "./admin.schema";
+import { auditLogQuerySchema, editSubscriberSchema, emailEventsQuerySchema, paymentEventsQuerySchema } from "./admin.schema";
 import * as service from "./admin.service";
 
 export async function listUsers(_req: Request, res: Response) {
@@ -34,4 +34,26 @@ export async function emailEvents(req: Request, res: Response) {
 export async function analytics(_req: Request, res: Response) {
   const data = await service.getPlatformAnalytics();
   return ok(res, data);
+}
+
+
+export async function editSubscriber(req: Request, res: Response) {
+  const input = editSubscriberSchema.parse(req.body);
+  const user = await service.editSubscriber(req.userId as string, req.params.userId, input);
+  return ok(res, { user });
+}
+
+export async function archiveSubscriber(req: Request, res: Response) {
+  await service.archiveSubscriber(req.userId as string, req.params.userId);
+  return ok(res, { archived: true });
+}
+
+export async function restoreSubscriber(req: Request, res: Response) {
+  await service.restoreSubscriber(req.userId as string, req.params.userId);
+  return ok(res, { restored: true });
+}
+
+export async function deleteSubscriber(req: Request, res: Response) {
+  await service.hardDeleteSubscriber(req.userId as string, req.params.userId);
+  return ok(res, { deleted: true });
 }

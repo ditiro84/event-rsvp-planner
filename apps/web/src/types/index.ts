@@ -628,7 +628,12 @@ export interface AdminUserSummary {
   email: string;
   role: UserRole;
   createdAt: string;
+  archivedAt: string | null;
   eventCount: number;
+  // Whether the "permanently delete" action is available -- false once the
+  // subscriber has any paid/manual order on record (see admin.service.ts's
+  // listAllUsers); archive is always available regardless of this flag.
+  canHardDelete: boolean;
 }
 
 export interface AdminEventSummary {

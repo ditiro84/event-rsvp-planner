@@ -13,6 +13,10 @@ const router = Router();
 router.use(requireAuth, requireAdmin);
 
 router.get("/users", controller.listUsers);
+router.patch("/subscribers/:userId", controller.editSubscriber);
+router.post("/subscribers/:userId/archive", controller.archiveSubscriber);
+router.post("/subscribers/:userId/restore", controller.restoreSubscriber);
+router.delete("/subscribers/:userId", controller.deleteSubscriber);
 router.get("/events", controller.listEvents);
 router.get("/audit-log", controller.auditLog);
 router.get("/payment-events", controller.paymentEvents);

@@ -8,7 +8,10 @@ import { SubmitRsvpInput } from "./rsvp.schema";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function checkRsvpIsOpen(event: any) {
   const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
-  if (!event.rsvpOpen || deadlinePassed) {
+  // event.archivedAt is set when an admin archives the owning subscriber
+  // (see admin.service.ts's archiveSubscriber) -- treated exactly like
+  // rsvpOpen=false so no new UI/messaging is needed here.
+  if (event.archivedAt || !event.rsvpOpen || deadlinePassed) {
     throw new BadRequestError("RSVPs are closed for this event");
   }
 }
@@ -33,7 +36,7 @@ async function publicEventShape(event: any) {
     venueAddress: event.venueAddress,
     imageUrl: event.imageUrl,
     customMessage: event.customMessage,
-    rsvpOpen: event.rsvpOpen && !deadlinePassed,
+    rsvpOpen: event.rsvpOpen && !deadlinePassed && !event.archivedAt,
     rsvpDeadline: event.rsvpDeadline,
     allowPlusOnes: event.allowPlusOnes,
     allowPlusOneNames: event.allowPlusOneNames,

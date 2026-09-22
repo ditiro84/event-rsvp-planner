@@ -43,7 +43,7 @@ export async function getPublicTicketEvent(slug: string) {
     where: { publicSlug: slug },
     include: { ticketTypes: { orderBy: { sortOrder: "asc" } } },
   });
-  if (!event || !event.isPublic) throw new NotFoundError("This event isn't available");
+  if (!event || !event.isPublic || event.archivedAt) throw new NotFoundError("This event isn't available");
 
   const payoutAccounts = await prisma.eventPayoutAccount.findMany({ where: { eventId: event.id } });
   const paymentOptionsByCurrency: Record<string, string[]> = {};
@@ -120,9 +120,9 @@ export async function getPublicTicketOrder(orderId: string) {
 export async function createTicketCheckoutSession(slug: string, input: CreateTicketCheckoutInput) {
   const event = await prisma.event.findUnique({
     where: { publicSlug: slug },
-    select: { id: true, name: true, isPublic: true },
+    select: { id: true, name: true, isPublic: true, archivedAt: true },
   });
-  if (!event || !event.isPublic) throw new NotFoundError("This event isn't available");
+  if (!event || !event.isPublic || event.archivedAt) throw new NotFoundError("This event isn't available");
   if (input.items.length === 0) throw new BadRequestError("Your cart is empty");
 
   const ticketTypeIds = input.items.map((i) => i.ticketTypeId);

@@ -1,0 +1,796 @@
+diff --git a/apps/api/prisma/migrations/0019_subscriber_archive/migration.sql b/apps/api/prisma/migrations/0019_subscriber_archive/migration.sql
+new file mode 100644
+index 0000000..dec1185
+--- /dev/null
++++ b/apps/api/prisma/migrations/0019_subscriber_archive/migration.sql
+@@ -0,0 +1,6 @@
++-- Admin subscriber management: archive/restore a subscriber (Admin >
++-- Subscribers). Archiving sets both timestamps together (same instant) so
++-- restore can match on it; see admin.service.ts's archiveSubscriber /
++-- restoreSubscriber.
++ALTER TABLE "users" ADD COLUMN "archivedAt" TIMESTAMP(3);
++ALTER TABLE "events" ADD COLUMN "archivedAt" TIMESTAMP(3);
+diff --git a/apps/api/prisma/schema.prisma b/apps/api/prisma/schema.prisma
+index 7814b6e..7bbc275 100644
+--- a/apps/api/prisma/schema.prisma
++++ b/apps/api/prisma/schema.prisma
+@@ -30,6 +30,12 @@ model User {
+   role         UserRole @default(PLANNER)
+   createdAt    DateTime @default(now())
+   updatedAt    DateTime @updatedAt
++  // Set when an admin archives this subscriber's account (Admin > Subscribers).
++  // Archived accounts can't log in; their events stop accepting new RSVPs,
++  // ticket sales, and shop orders (see archivedAt on Event below), but all
++  // existing data is left intact and restorable -- see admin.service.ts's
++  // archiveSubscriber/restoreSubscriber.
++  archivedAt   DateTime?
+ 
+   events        Event[]
+   notifications Notification[]
+@@ -152,6 +158,15 @@ model Event {
+   // set products up before going live.
+   merchandiseEnabled Boolean @default(false)
+ 
++  // Set (to the same timestamp as the owner's User.archivedAt) when an admin
++  // archives the owning subscriber -- see admin.service.ts's
++  // archiveSubscriber. While set, the public RSVP page and ticket page both
++  // report closed/unavailable (see rsvp.service.ts's checkRsvpIsOpen /
++  // publicEventShape and tickets/checkout.service.ts), same treatment as
++  // rsvpOpen=false, but existing guests/orders/data are untouched and this
++  // clears automatically if the subscriber is restored.
++  archivedAt DateTime?
++
+   @@index([userId])
+   @@map("events")
+ }
+diff --git a/apps/api/src/modules/admin/admin.controller.ts b/apps/api/src/modules/admin/admin.controller.ts
+index 38d00a5..0f7fbb7 100644
+--- a/apps/api/src/modules/admin/admin.controller.ts
++++ b/apps/api/src/modules/admin/admin.controller.ts
+@@ -1,6 +1,6 @@
+ import { Request, Response } from "express";
+ import { ok } from "../../lib/apiResponse";
+-import { auditLogQuerySchema, emailEventsQuerySchema, paymentEventsQuerySchema } from "./admin.schema";
++import { auditLogQuerySchema, editSubscriberSchema, emailEventsQuerySchema, paymentEventsQuerySchema } from "./admin.schema";
+ import * as service from "./admin.service";
+ 
+ export async function listUsers(_req: Request, res: Response) {
+@@ -35,3 +35,25 @@ export async function analytics(_req: Request, res: Response) {
+   const data = await service.getPlatformAnalytics();
+   return ok(res, data);
+ }
++
++
++export async function editSubscriber(req: Request, res: Response) {
++  const input = editSubscriberSchema.parse(req.body);
++  const user = await service.editSubscriber(req.userId as string, req.params.userId, input);
++  return ok(res, { user });
++}
++
++export async function archiveSubscriber(req: Request, res: Response) {
++  await service.archiveSubscriber(req.userId as string, req.params.userId);
++  return ok(res, { archived: true });
++}
++
++export async function restoreSubscriber(req: Request, res: Response) {
++  await service.restoreSubscriber(req.userId as string, req.params.userId);
++  return ok(res, { restored: true });
++}
++
++export async function deleteSubscriber(req: Request, res: Response) {
++  await service.hardDeleteSubscriber(req.userId as string, req.params.userId);
++  return ok(res, { deleted: true });
++}
+diff --git a/apps/api/src/modules/admin/admin.routes.ts b/apps/api/src/modules/admin/admin.routes.ts
+index 4f7124e..8eefd3c 100644
+--- a/apps/api/src/modules/admin/admin.routes.ts
++++ b/apps/api/src/modules/admin/admin.routes.ts
+@@ -13,6 +13,10 @@ const router = Router();
+ router.use(requireAuth, requireAdmin);
+ 
+ router.get("/users", controller.listUsers);
++router.patch("/subscribers/:userId", controller.editSubscriber);
++router.post("/subscribers/:userId/archive", controller.archiveSubscriber);
++router.post("/subscribers/:userId/restore", controller.restoreSubscriber);
++router.delete("/subscribers/:userId", controller.deleteSubscriber);
+ router.get("/events", controller.listEvents);
+ router.get("/audit-log", controller.auditLog);
+ router.get("/payment-events", controller.paymentEvents);
+diff --git a/apps/api/src/modules/admin/admin.schema.ts b/apps/api/src/modules/admin/admin.schema.ts
+index 3261153..8304f19 100644
+--- a/apps/api/src/modules/admin/admin.schema.ts
++++ b/apps/api/src/modules/admin/admin.schema.ts
+@@ -26,3 +26,13 @@ export const emailEventsQuerySchema = z.object({
+   limit: z.coerce.number().int().min(1).max(500).default(100),
+ });
+ export type EmailEventsQuery = z.infer<typeof emailEventsQuerySchema>;
++
++// Admin editing a subscriber's own account fields (Admin > Subscribers).
++// Both optional so a caller can patch just one field; at least one should
++// be provided in practice but the service layer doesn't require it (a
++// no-op edit is harmless).
++export const editSubscriberSchema = z.object({
++  name: z.string().trim().min(1, "Name can't be empty").optional(),
++  email: z.string().trim().email("Enter a valid email").optional(),
++});
++export type EditSubscriberInput = z.infer<typeof editSubscriberSchema>;
+diff --git a/apps/api/src/modules/admin/admin.service.ts b/apps/api/src/modules/admin/admin.service.ts
+index 51df611..5f710af 100644
+--- a/apps/api/src/modules/admin/admin.service.ts
++++ b/apps/api/src/modules/admin/admin.service.ts
+@@ -1,5 +1,6 @@
+ import { prisma } from "../../lib/prisma";
+-import { AuditLogQuery, EmailEventsQuery, PaymentEventsQuery } from "./admin.schema";
++import { AuditLogQuery, EditSubscriberInput, EmailEventsQuery, PaymentEventsQuery } from "./admin.schema";
++import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors";
+ 
+ // Cross-subscriber views for support -- unlike everything under
+ // /api/events/:eventId (which reuses the exact same planner-facing
+@@ -8,25 +9,50 @@ import { AuditLogQuery, EmailEventsQuery, PaymentEventsQuery } from "./admin.sch
+ // ever sees their own users.findMany({ id: userId }) / events.findMany({
+ // userId }), never a cross-account list.
+ 
+-export async function listAllUsers() {
+-  const users = await prisma.user.findMany({
+-    orderBy: { createdAt: "desc" },
+-    select: {
+-      id: true,
+-      name: true,
+-      email: true,
+-      role: true,
+-      createdAt: true,
+-      _count: { select: { events: true } },
+-    },
++// Subscribers with at least one real (PAID or MANUAL) order on any of their
++// events -- these are the ones hard Delete has to refuse, since deleting the
++// subscriber cascades to their events and orders (onDelete: Cascade in
++// schema.prisma), which would destroy real transaction/revenue records.
++// Archive is unaffected by this -- it never deletes anything.
++async function getUserIdsWithPaymentHistory(): Promise<Set<string>> {
++  const rows = await prisma.order.findMany({
++    where: { status: { in: ["PAID", "MANUAL"] } },
++    select: { event: { select: { userId: true } } },
++    distinct: ["eventId"],
+   });
+-  return users.map((u) => ({
++  // eslint-disable-next-line @typescript-eslint/no-explicit-any
++  return new Set(rows.map((r: any) => r.event.userId));
++}
++
++export async function listAllUsers() {
++  const [users, paymentUserIds] = await Promise.all([
++    prisma.user.findMany({
++      orderBy: { createdAt: "desc" },
++      select: {
++        id: true,
++        name: true,
++        email: true,
++        role: true,
++        createdAt: true,
++        archivedAt: true,
++        _count: { select: { events: true } },
++      },
++    }),
++    getUserIdsWithPaymentHistory(),
++  ]);
++  // eslint-disable-next-line @typescript-eslint/no-explicit-any
++  return users.map((u: any) => ({
+     id: u.id,
+     name: u.name,
+     email: u.email,
+     role: u.role,
+     createdAt: u.createdAt,
++    archivedAt: u.archivedAt,
+     eventCount: u._count.events,
++    // Whether the "permanently delete" action is available for this
++    // subscriber -- false once they have any paid/manual order on record,
++    // an admin account, or are already archived (archive first, always).
++    canHardDelete: u.role !== "ADMIN" && !paymentUserIds.has(u.id),
+   }));
+ }
+ 
+@@ -209,3 +235,108 @@ export async function getPlatformAnalytics() {
+     trend,
+   };
+ }
++
++
++// --- Subscriber management (Admin > Subscribers) ----------------------------
++//
++// Edit is a plain field patch. Archive/Restore/Delete are more involved --
++// see the design notes on User.archivedAt / Event.archivedAt in
++// schema.prisma for the overall approach (archive is the safe, reversible
++// default; hard delete is only offered when there's no payment history to
++// lose).
++
++async function writeAdminAuditLog(adminUserId: string, method: string, summary: string) {
++  const admin = await prisma.user.findUnique({ where: { id: adminUserId }, select: { email: true } });
++  await prisma.adminAuditLog.create({
++    data: { adminUserId, adminEmail: admin?.email ?? "unknown", method, summary },
++  });
++}
++
++export async function editSubscriber(adminUserId: string, targetUserId: string, input: EditSubscriberInput) {
++  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
++  if (!target) throw new NotFoundError("Subscriber not found");
++
++  if (input.email && input.email.toLowerCase() !== target.email.toLowerCase()) {
++    const existing = await prisma.user.findUnique({ where: { email: input.email } });
++    if (existing) throw new ConflictError("An account with this email already exists");
++  }
++
++  const updated = await prisma.user.update({
++    where: { id: targetUserId },
++    data: { name: input.name, email: input.email },
++    select: { id: true, name: true, email: true, role: true, createdAt: true, archivedAt: true },
++  });
++
++  await writeAdminAuditLog(adminUserId, "PATCH", `Edited subscriber ${target.email}`);
++  return updated;
++}
++
++export async function archiveSubscriber(adminUserId: string, targetUserId: string) {
++  if (targetUserId === adminUserId) throw new BadRequestError("You can't archive your own account");
++
++  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
++  if (!target) throw new NotFoundError("Subscriber not found");
++  if (target.role === "ADMIN") throw new BadRequestError("Admin accounts can't be archived");
++  if (target.archivedAt) throw new BadRequestError("This subscriber is already archived");
++
++  const archivedAt = new Date();
++  await prisma.$transaction([
++    prisma.user.update({ where: { id: targetUserId }, data: { archivedAt } }),
++    // Stamped with the SAME timestamp as the user, not just "now" again, so
++    // restoreSubscriber can tell these events apart from one a planner might
++    // one day be able to archive individually.
++    prisma.event.updateMany({ where: { userId: targetUserId, archivedAt: null }, data: { archivedAt } }),
++  ]);
++
++  await writeAdminAuditLog(
++    adminUserId,
++    "ARCHIVE",
++    `Archived subscriber ${target.email} (and their events -- RSVP/ticket pages closed to new activity)`
++  );
++}
++
++export async function restoreSubscriber(adminUserId: string, targetUserId: string) {
++  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
++  if (!target) throw new NotFoundError("Subscriber not found");
++  if (!target.archivedAt) throw new BadRequestError("This subscriber isn't archived");
++
++  await prisma.$transaction([
++    prisma.user.update({ where: { id: targetUserId }, data: { archivedAt: null } }),
++    prisma.event.updateMany({
++      where: { userId: targetUserId, archivedAt: target.archivedAt },
++      data: { archivedAt: null },
++    }),
++  ]);
++
++  await writeAdminAuditLog(adminUserId, "RESTORE", `Restored subscriber ${target.email}`);
++}
++
++// Permanent, cascading delete -- refused whenever the subscriber has any
++// paid/manual order on record (see getUserIdsWithPaymentHistory above), so
++// this is really only ever available for accounts with no real transaction
++// history (test accounts, never-used signups, etc). Everything else must go
++// through archiveSubscriber instead.
++export async function hardDeleteSubscriber(adminUserId: string, targetUserId: string) {
++  if (targetUserId === adminUserId) throw new BadRequestError("You can't delete your own account");
++
++  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
++  if (!target) throw new NotFoundError("Subscriber not found");
++  if (target.role === "ADMIN") throw new BadRequestError("Admin accounts can't be deleted");
++
++  const paidOrder = await prisma.order.findFirst({
++    where: { status: { in: ["PAID", "MANUAL"] }, event: { userId: targetUserId } },
++    select: { id: true },
++  });
++  if (paidOrder) {
++    throw new BadRequestError(
++      "This subscriber has paid orders on record, so they can't be permanently deleted -- archive them instead."
++    );
++  }
++
++  // onDelete: Cascade on Event.user (and everything cascading from Event in
++  // turn) removes every event, guest, RSVP, order, etc. this subscriber
++  // owns in the same operation.
++  await prisma.user.delete({ where: { id: targetUserId } });
++
++  await writeAdminAuditLog(adminUserId, "DELETE", `Permanently deleted subscriber ${target.email} (${target.id})`);
++}
+diff --git a/apps/api/src/modules/auth/auth.service.ts b/apps/api/src/modules/auth/auth.service.ts
+index bc77e49..644070d 100644
+--- a/apps/api/src/modules/auth/auth.service.ts
++++ b/apps/api/src/modules/auth/auth.service.ts
+@@ -36,6 +36,14 @@ export async function loginUser(input: LoginInput) {
+     throw new UnauthorizedError("Invalid email or password");
+   }
+ 
++  // Checked after password verification (not before) so a login attempt
++  // against an archived account doesn't leak its archived status to anyone
++  // who doesn't already know the password -- see admin.service.ts's
++  // archiveSubscriber.
++  if (user.archivedAt) {
++    throw new UnauthorizedError("This account has been archived. Contact support for help.");
++  }
++
+   const token = signAuthToken({ userId: user.id });
+   return {
+     user: { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt },
+diff --git a/apps/api/src/modules/products/orders.service.ts b/apps/api/src/modules/products/orders.service.ts
+index 1dd0381..d0fdd56 100644
+--- a/apps/api/src/modules/products/orders.service.ts
++++ b/apps/api/src/modules/products/orders.service.ts
+@@ -119,9 +119,10 @@ export const DEFAULT_PROVIDER_PREFERENCE = ["STRIPE_CONNECT", "PAYSTACK", "PAYPA
+ export async function createCheckoutSession(rsvpToken: string, input: CreateCheckoutInput) {
+   const event = await prisma.event.findUnique({
+     where: { rsvpToken },
+-    select: { id: true, name: true, merchandiseEnabled: true },
++    select: { id: true, name: true, merchandiseEnabled: true, archivedAt: true },
+   });
+   if (!event) throw new NotFoundError("This RSVP link is invalid");
++  if (event.archivedAt) throw new BadRequestError("This event's shop isn't open");
+   if (!event.merchandiseEnabled) throw new BadRequestError("This event's shop isn't open");
+   if (input.items.length === 0) throw new BadRequestError("Your cart is empty");
+ 
+diff --git a/apps/api/src/modules/rsvp/rsvp.service.ts b/apps/api/src/modules/rsvp/rsvp.service.ts
+index d6aa981..104fb66 100644
+--- a/apps/api/src/modules/rsvp/rsvp.service.ts
++++ b/apps/api/src/modules/rsvp/rsvp.service.ts
+@@ -8,7 +8,10 @@ import { SubmitRsvpInput } from "./rsvp.schema";
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ function checkRsvpIsOpen(event: any) {
+   const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
+-  if (!event.rsvpOpen || deadlinePassed) {
++  // event.archivedAt is set when an admin archives the owning subscriber
++  // (see admin.service.ts's archiveSubscriber) -- treated exactly like
++  // rsvpOpen=false so no new UI/messaging is needed here.
++  if (event.archivedAt || !event.rsvpOpen || deadlinePassed) {
+     throw new BadRequestError("RSVPs are closed for this event");
+   }
+ }
+@@ -33,7 +36,7 @@ async function publicEventShape(event: any) {
+     venueAddress: event.venueAddress,
+     imageUrl: event.imageUrl,
+     customMessage: event.customMessage,
+-    rsvpOpen: event.rsvpOpen && !deadlinePassed,
++    rsvpOpen: event.rsvpOpen && !deadlinePassed && !event.archivedAt,
+     rsvpDeadline: event.rsvpDeadline,
+     allowPlusOnes: event.allowPlusOnes,
+     allowPlusOneNames: event.allowPlusOneNames,
+diff --git a/apps/api/src/modules/tickets/checkout.service.ts b/apps/api/src/modules/tickets/checkout.service.ts
+index b8a3af0..113b96b 100644
+--- a/apps/api/src/modules/tickets/checkout.service.ts
++++ b/apps/api/src/modules/tickets/checkout.service.ts
+@@ -43,7 +43,7 @@ export async function getPublicTicketEvent(slug: string) {
+     where: { publicSlug: slug },
+     include: { ticketTypes: { orderBy: { sortOrder: "asc" } } },
+   });
+-  if (!event || !event.isPublic) throw new NotFoundError("This event isn't available");
++  if (!event || !event.isPublic || event.archivedAt) throw new NotFoundError("This event isn't available");
+ 
+   const payoutAccounts = await prisma.eventPayoutAccount.findMany({ where: { eventId: event.id } });
+   const paymentOptionsByCurrency: Record<string, string[]> = {};
+@@ -120,9 +120,9 @@ export async function getPublicTicketOrder(orderId: string) {
+ export async function createTicketCheckoutSession(slug: string, input: CreateTicketCheckoutInput) {
+   const event = await prisma.event.findUnique({
+     where: { publicSlug: slug },
+-    select: { id: true, name: true, isPublic: true },
++    select: { id: true, name: true, isPublic: true, archivedAt: true },
+   });
+-  if (!event || !event.isPublic) throw new NotFoundError("This event isn't available");
++  if (!event || !event.isPublic || event.archivedAt) throw new NotFoundError("This event isn't available");
+   if (input.items.length === 0) throw new BadRequestError("Your cart is empty");
+ 
+   const ticketTypeIds = input.items.map((i) => i.ticketTypeId);
+diff --git a/apps/web/src/hooks/useAdmin.ts b/apps/web/src/hooks/useAdmin.ts
+index e8ff45e..be0b751 100644
+--- a/apps/web/src/hooks/useAdmin.ts
++++ b/apps/web/src/hooks/useAdmin.ts
+@@ -1,4 +1,4 @@
+-import { useQuery } from "@tanstack/react-query";
++import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+ import { api } from "@/lib/api";
+ import type {
+   AdminAuditLogEntry,
+@@ -68,3 +68,56 @@ export function usePlatformAnalytics() {
+     },
+   });
+ }
++
++
++// --- Subscriber management (Admin > Subscribers) ----------------------------
++
++export function useEditSubscriber() {
++  const qc = useQueryClient();
++  return useMutation({
++    mutationFn: async ({ userId, input }: { userId: string; input: { name?: string; email?: string } }) => {
++      const res = await api.patch(`/admin/subscribers/${userId}`, input);
++      return res.data.data.user as AdminUserSummary;
++    },
++    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
++  });
++}
++
++export function useArchiveSubscriber() {
++  const qc = useQueryClient();
++  return useMutation({
++    mutationFn: async (userId: string) => {
++      await api.post(`/admin/subscribers/${userId}/archive`);
++    },
++    onSuccess: () => {
++      qc.invalidateQueries({ queryKey: ["admin", "users"] });
++      qc.invalidateQueries({ queryKey: ["admin", "events"] });
++    },
++  });
++}
++
++export function useRestoreSubscriber() {
++  const qc = useQueryClient();
++  return useMutation({
++    mutationFn: async (userId: string) => {
++      await api.post(`/admin/subscribers/${userId}/restore`);
++    },
++    onSuccess: () => {
++      qc.invalidateQueries({ queryKey: ["admin", "users"] });
++      qc.invalidateQueries({ queryKey: ["admin", "events"] });
++    },
++  });
++}
++
++export function useDeleteSubscriber() {
++  const qc = useQueryClient();
++  return useMutation({
++    mutationFn: async (userId: string) => {
++      await api.delete(`/admin/subscribers/${userId}`);
++    },
++    onSuccess: () => {
++      qc.invalidateQueries({ queryKey: ["admin", "users"] });
++      qc.invalidateQueries({ queryKey: ["admin", "events"] });
++    },
++  });
++}
+diff --git a/apps/web/src/pages/admin/AdminPage.tsx b/apps/web/src/pages/admin/AdminPage.tsx
+index afef60c..72a1689 100644
+--- a/apps/web/src/pages/admin/AdminPage.tsx
++++ b/apps/web/src/pages/admin/AdminPage.tsx
+@@ -1,14 +1,45 @@
+-import { useState } from "react";
++import { useEffect, useState } from "react";
+ import { useNavigate } from "react-router-dom";
+-import { BarChart3, ClipboardList, CreditCard, Mail, Newspaper, ShieldCheck, Sparkles, Users } from "lucide-react";
+-import { useAdminAuditLog, useAdminEmailEvents, useAdminEvents, useAdminPaymentEvents, useAdminUsers } from "@/hooks/useAdmin";
++import { useForm } from "react-hook-form";
++import { zodResolver } from "@hookform/resolvers/zod";
++import { z } from "zod";
++import { toast } from "sonner";
++import {
++  Archive,
++  ArchiveRestore,
++  BarChart3,
++  ClipboardList,
++  CreditCard,
++  Mail,
++  Newspaper,
++  Pencil,
++  ShieldCheck,
++  Sparkles,
++  Trash2,
++  Users,
++} from "lucide-react";
++import {
++  useAdminAuditLog,
++  useAdminEmailEvents,
++  useAdminEvents,
++  useAdminPaymentEvents,
++  useAdminUsers,
++  useArchiveSubscriber,
++  useDeleteSubscriber,
++  useEditSubscriber,
++  useRestoreSubscriber,
++} from "@/hooks/useAdmin";
+ import { Card } from "@/components/ui/Card";
+ import { Badge } from "@/components/ui/Badge";
+ import { Spinner } from "@/components/ui/Spinner";
+ import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
+ import { ExportMenu } from "@/components/ui/ExportMenu";
++import { Modal } from "@/components/ui/Modal";
++import { Button } from "@/components/ui/Button";
++import { Field, Input } from "@/components/ui/Input";
+ import { cn } from "@/lib/cn";
+ import { getTabTheme } from "@/lib/tabTheme";
++import { getApiErrorMessage } from "@/lib/api";
+ import { EVENT_TYPE_LABELS, formatDate, formatMoney, formatRelativeTime } from "@/lib/format";
+ import type { ExportColumn } from "@/lib/exportData";
+ import type {
+@@ -90,12 +121,187 @@ const subscriberColumns: ExportColumn<AdminUserSummary>[] = [
+   { header: "Name", value: (u) => u.name },
+   { header: "Email", value: (u) => u.email },
+   { header: "Role", value: (u) => (u.role === "ADMIN" ? "Admin" : "Planner") },
++  { header: "Status", value: (u) => (u.archivedAt ? "Archived" : "Active") },
+   { header: "Events", value: (u) => u.eventCount },
+   { header: "Joined", value: (u) => formatDate(u.createdAt) },
+ ];
+ 
++// --- Edit subscriber ---------------------------------------------------------
++
++const editSubscriberSchema = z.object({
++  name: z.string().min(1, "Name is required"),
++  email: z.string().email("Enter a valid email"),
++});
++type EditSubscriberFormValues = z.infer<typeof editSubscriberSchema>;
++
++function EditSubscriberModal({
++  open,
++  onClose,
++  subscriber,
++}: {
++  open: boolean;
++  onClose: () => void;
++  subscriber: AdminUserSummary | null;
++}) {
++  const editSubscriber = useEditSubscriber();
++  const {
++    register,
++    handleSubmit,
++    reset,
++    formState: { errors },
++  } = useForm<EditSubscriberFormValues>({ resolver: zodResolver(editSubscriberSchema) });
++
++  // Re-seed the form whenever a (different) subscriber is opened for
++  // editing -- keyed on the id so this doesn't re-fire (and stomp on
++  // in-progress edits) on every render while the modal is open.
++  useEffect(() => {
++    if (subscriber && open) reset({ name: subscriber.name, email: subscriber.email });
++    // Deliberately keyed on subscriber?.id (not the whole subscriber object)
++    // -- a background refetch of the subscriber list hands this component a
++    // new object reference with the same id, and re-seeding on that would
++    // silently wipe whatever the admin is mid-typing.
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [subscriber?.id, open, reset]);
++
++  if (!subscriber) return null;
++
++  async function onSubmit(values: EditSubscriberFormValues) {
++    if (!subscriber) return;
++    try {
++      await editSubscriber.mutateAsync({ userId: subscriber.id, input: values });
++      toast.success("Subscriber updated");
++      onClose();
++    } catch (err) {
++      toast.error(getApiErrorMessage(err));
++    }
++  }
++
++  return (
++    <Modal open={open} onClose={onClose} title="Edit subscriber" size="sm">
++      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
++        <Field label="Name" htmlFor="subscriber-name" error={errors.name?.message}>
++          <Input id="subscriber-name" {...register("name")} error={!!errors.name} />
++        </Field>
++        <Field label="Email" htmlFor="subscriber-email" error={errors.email?.message}>
++          <Input id="subscriber-email" type="email" {...register("email")} error={!!errors.email} />
++        </Field>
++        <div className="flex justify-end gap-2 pt-2">
++          <Button type="button" variant="secondary" onClick={onClose}>
++            Cancel
++          </Button>
++          <Button type="submit" isLoading={editSubscriber.isPending}>
++            Save changes
++          </Button>
++        </div>
++      </form>
++    </Modal>
++  );
++}
++
++// --- Archive / Restore / Delete confirmation ---------------------------------
++
++type SubscriberActionKind = "archive" | "restore" | "delete";
++
++const ACTION_COPY: Record<SubscriberActionKind, { title: string; body: (email: string) => string; confirmLabel: string }> = {
++  archive: {
++    title: "Archive subscriber",
++    body: (email) =>
++      `${email} will be locked out and their events' RSVP and ticket pages will stop accepting new guests or purchases. Nothing is deleted -- everything (including this) can be restored later.`,
++    confirmLabel: "Archive subscriber",
++  },
++  restore: {
++    title: "Restore subscriber",
++    body: (email) =>
++      `${email} will be able to log in again, and their events' RSVP/ticket pages will reopen to new activity (unless a planner had already closed them beforehand).`,
++    confirmLabel: "Restore subscriber",
++  },
++  delete: {
++    title: "Permanently delete subscriber",
++    body: (email) =>
++      `This permanently deletes ${email} and every event, guest, RSVP, order, and other record tied to their account. This cannot be undone. Type the subscriber's email to confirm.`,
++    confirmLabel: "Delete permanently",
++  },
++};
++
++function SubscriberActionModal({
++  open,
++  onClose,
++  kind,
++  subscriber,
++}: {
++  open: boolean;
++  onClose: () => void;
++  kind: SubscriberActionKind | null;
++  subscriber: AdminUserSummary | null;
++}) {
++  const [confirmText, setConfirmText] = useState("");
++  const archiveSubscriber = useArchiveSubscriber();
++  const restoreSubscriber = useRestoreSubscriber();
++  const deleteSubscriber = useDeleteSubscriber();
++
++  if (!kind || !subscriber) return null;
++  const copy = ACTION_COPY[kind];
++  const isDelete = kind === "delete";
++  const mutation = kind === "archive" ? archiveSubscriber : kind === "restore" ? restoreSubscriber : deleteSubscriber;
++
++  function handleClose() {
++    setConfirmText("");
++    onClose();
++  }
++
++  async function handleConfirm() {
++    if (!subscriber) return;
++    try {
++      await mutation.mutateAsync(subscriber.id);
++      toast.success(
++        kind === "archive" ? "Subscriber archived" : kind === "restore" ? "Subscriber restored" : "Subscriber deleted"
++      );
++      handleClose();
++    } catch (err) {
++      toast.error(getApiErrorMessage(err));
++    }
++  }
++
++  const canConfirm = !isDelete || confirmText.trim().toLowerCase() === subscriber.email.toLowerCase();
++
++  return (
++    <Modal open={open} onClose={handleClose} title={copy.title} size="sm">
++      <div className="space-y-4">
++        <p className="text-sm text-slate-600">{copy.body(subscriber.email)}</p>
++        {isDelete && (
++          <Field label={`Type "${subscriber.email}" to confirm`} htmlFor="confirm-email">
++            <Input
++              id="confirm-email"
++              value={confirmText}
++              onChange={(e) => setConfirmText(e.target.value)}
++              placeholder={subscriber.email}
++              autoComplete="off"
++            />
++          </Field>
++        )}
++        <div className="flex justify-end gap-2 pt-2">
++          <Button type="button" variant="secondary" onClick={handleClose}>
++            Cancel
++          </Button>
++          <Button
++            type="button"
++            variant={isDelete ? "danger" : "primary"}
++            isLoading={mutation.isPending}
++            disabled={!canConfirm}
++            onClick={handleConfirm}
++          >
++            {copy.confirmLabel}
++          </Button>
++        </div>
++      </div>
++    </Modal>
++  );
++}
++
+ function SubscribersTab() {
+   const { data, isLoading, isError, refetch } = useAdminUsers();
++  const [editing, setEditing] = useState<AdminUserSummary | null>(null);
++  const [action, setAction] = useState<{ kind: SubscriberActionKind; subscriber: AdminUserSummary } | null>(null);
+ 
+   if (isError) return <ErrorState title="We couldn't load subscribers" onRetry={() => refetch()} />;
+   if (isLoading || !data) return <Spinner />;
+@@ -115,23 +321,83 @@ function SubscribersTab() {
+               <th className="px-5 py-3">Role</th>
+               <th className="px-5 py-3">Events</th>
+               <th className="px-5 py-3">Joined</th>
++              <th className="px-5 py-3 text-right">Actions</th>
+             </tr>
+           </thead>
+           <tbody className="divide-y divide-slate-100">
+             {data.map((u) => (
+-              <tr key={u.id}>
+-                <td className="px-5 py-3.5 font-semibold text-slate-900">{u.name}</td>
++              <tr key={u.id} className={u.archivedAt ? "bg-slate-50/50" : undefined}>
++                <td className="px-5 py-3.5 font-semibold text-slate-900">
++                  {u.name}
++                  {u.archivedAt && (
++                    <span className="ml-2 align-middle">
++                      <Badge variant="neutral">Archived</Badge>
++                    </span>
++                  )}
++                </td>
+                 <td className="px-5 py-3.5 text-slate-600">{u.email}</td>
+                 <td className="px-5 py-3.5">
+                   <Badge variant={u.role === "ADMIN" ? "brand" : "neutral"}>{u.role === "ADMIN" ? "Admin" : "Planner"}</Badge>
+                 </td>
+                 <td className="px-5 py-3.5 text-slate-600">{u.eventCount}</td>
+                 <td className="px-5 py-3.5 text-slate-500">{formatDate(u.createdAt)}</td>
++                <td className="px-5 py-3.5">
++                  {u.role === "ADMIN" ? (
++                    <p className="text-right text-xs text-slate-400">Admin account</p>
++                  ) : (
++                    <div className="flex items-center justify-end gap-1">
++                      <button
++                        type="button"
++                        title="Edit"
++                        onClick={() => setEditing(u)}
++                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
++                      >
++                        <Pencil className="h-4 w-4" />
++                      </button>
++                      {u.archivedAt ? (
++                        <button
++                          type="button"
++                          title="Restore"
++                          onClick={() => setAction({ kind: "restore", subscriber: u })}
++                          className="rounded-lg p-1.5 text-slate-400 hover:bg-success-50 hover:text-success-600"
++                        >
++                          <ArchiveRestore className="h-4 w-4" />
++                        </button>
++                      ) : (
++                        <button
++                          type="button"
++                          title="Archive"
++                          onClick={() => setAction({ kind: "archive", subscriber: u })}
++                          className="rounded-lg p-1.5 text-slate-400 hover:bg-warning-50 hover:text-warning-600"
++                        >
++                          <Archive className="h-4 w-4" />
++                        </button>
++                      )}
++                      <button
++                        type="button"
++                        title={u.canHardDelete ? "Delete permanently" : "Can't permanently delete -- this subscriber has paid orders on record. Archive instead."}
++                        disabled={!u.canHardDelete}
++                        onClick={() => setAction({ kind: "delete", subscriber: u })}
++                        className="rounded-lg p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
++                      >
++                        <Trash2 className="h-4 w-4" />
++                      </button>
++                    </div>
++                  )}
++                </td>
+               </tr>
+             ))}
+           </tbody>
+         </table>
+       </Card>
++
++      <EditSubscriberModal open={!!editing} onClose={() => setEditing(null)} subscriber={editing} />
++      <SubscriberActionModal
++        open={!!action}
++        onClose={() => setAction(null)}
++        kind={action?.kind ?? null}
++        subscriber={action?.subscriber ?? null}
++      />
+     </div>
+   );
+ }
+diff --git a/apps/web/src/types/index.ts b/apps/web/src/types/index.ts
+index 1b30538..65c43d9 100644
+--- a/apps/web/src/types/index.ts
++++ b/apps/web/src/types/index.ts
+@@ -628,7 +628,12 @@ export interface AdminUserSummary {
+   email: string;
+   role: UserRole;
+   createdAt: string;
++  archivedAt: string | null;
+   eventCount: number;
++  // Whether the "permanently delete" action is available -- false once the
++  // subscriber has any paid/manual order on record (see admin.service.ts's
++  // listAllUsers); archive is always available regardless of this flag.
++  canHardDelete: boolean;
+ }
+ 
+ export interface AdminEventSummary {

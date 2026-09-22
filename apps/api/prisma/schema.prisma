@@ -30,6 +30,12 @@ model User {
   role         UserRole @default(PLANNER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  // Set when an admin archives this subscriber's account (Admin > Subscribers).
+  // Archived accounts can't log in; their events stop accepting new RSVPs,
+  // ticket sales, and shop orders (see archivedAt on Event below), but all
+  // existing data is left intact and restorable -- see admin.service.ts's
+  // archiveSubscriber/restoreSubscriber.
+  archivedAt   DateTime?
 
   events        Event[]
   notifications Notification[]
@@ -151,6 +157,15 @@ model Event {
   // the purchase flow on their RSVP page once this is on, so a planner can
   // set products up before going live.
   merchandiseEnabled Boolean @default(false)
+
+  // Set (to the same timestamp as the owner's User.archivedAt) when an admin
+  // archives the owning subscriber -- see admin.service.ts's
+  // archiveSubscriber. While set, the public RSVP page and ticket page both
+  // report closed/unavailable (see rsvp.service.ts's checkRsvpIsOpen /
+  // publicEventShape and tickets/checkout.service.ts), same treatment as
+  // rsvpOpen=false, but existing guests/orders/data are untouched and this
+  // clears automatically if the subscriber is restored.
+  archivedAt DateTime?
 
   @@index([userId])
   @@map("events")

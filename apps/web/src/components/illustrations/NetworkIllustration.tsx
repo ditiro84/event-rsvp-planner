@@ -32,8 +32,8 @@ export function NetworkIllustration({ className }: { className?: string }) {
     <svg viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true">
       <defs>
         <radialGradient id="stageGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#7c5cff" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#7c5cff" stopOpacity="0" />
+          <stop offset="0%" stopColor="#9d3fff" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#9d3fff" stopOpacity="0" />
         </radialGradient>
         {/* Two extra soft glows, off-center, so the panel reads as a genuine
             colour mix rather than a single violet glow -- coral echoes the
@@ -41,8 +41,8 @@ export function NetworkIllustration({ className }: { className?: string }) {
             (see lib/tabTheme.ts), together making this dark hero panel feel
             considered rather than monochrome. */}
         <radialGradient id="coralGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#d85a30" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#d85a30" stopOpacity="0" />
+          <stop offset="0%" stopColor="#ff5c3d" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#ff5c3d" stopOpacity="0" />
         </radialGradient>
         <radialGradient id="tealGlow" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#0d9488" stopOpacity="0.4" />
@@ -54,12 +54,12 @@ export function NetworkIllustration({ className }: { className?: string }) {
       <circle cx="360" cy="70" r="120" fill="url(#tealGlow)" />
 
       <g transform="translate(210 210)">
-        <circle r="190" fill="none" stroke="#7c5cff" strokeOpacity="0.15" />
-        <circle r="140" fill="none" stroke="#7c5cff" strokeOpacity="0.25" />
-        <circle r="90" fill="none" stroke="#7c5cff" strokeOpacity="0.4" />
+        <circle r="190" fill="none" stroke="#9d3fff" strokeOpacity="0.15" />
+        <circle r="140" fill="none" stroke="#9d3fff" strokeOpacity="0.25" />
+        <circle r="90" fill="none" stroke="#9d3fff" strokeOpacity="0.4" />
 
-        <line x1="-170" y1="0" x2="170" y2="0" stroke="#7c5cff" strokeOpacity="0.12" />
-        <line x1="0" y1="-170" x2="0" y2="170" stroke="#7c5cff" strokeOpacity="0.12" />
+        <line x1="-170" y1="0" x2="170" y2="0" stroke="#9d3fff" strokeOpacity="0.12" />
+        <line x1="0" y1="-170" x2="0" y2="170" stroke="#9d3fff" strokeOpacity="0.12" />
 
         {/* Each ring of nodes now carries its own colour (coral / teal /
             white) instead of every node being plain white, so the
@@ -75,7 +75,7 @@ export function NetworkIllustration({ className }: { className?: string }) {
         ))}
 
         <circle r="70" fill="url(#stageGlow)" />
-        <rect x="-40" y="-24" width="80" height="48" rx="24" fill="#7c5cff" fillOpacity="0.9" />
+        <rect x="-40" y="-24" width="80" height="48" rx="24" fill="#9d3fff" fillOpacity="0.9" />
         <text
           x="0"
           y="4"

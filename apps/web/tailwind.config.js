@@ -4,24 +4,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary brand -- violet, matching the approved Figma "DESKTOP
-        // SCREENS" mockups (the literal, page-level designs), which take
-        // precedence over the earlier abstract design-system reference
-        // sheet. Anchors: #7c5cff (accents/glow) and #633bfe (buttons,
-        // links, primary actions) -- the rest of the ramp is interpolated
-        // to keep a consistent hue.
+        // Primary brand -- violet, per the "Open Ring" brand identity
+        // (2026 refresh). Anchor: #9d3fff at 600 (buttons, links, primary
+        // actions) -- a more saturated, higher-energy violet than the
+        // original #633bfe, chosen deliberately to read as vivid/modern
+        // rather than the muted evolution first proposed. Rest of the
+        // ramp is interpolated in HSL space to keep a consistent hue.
         brand: {
-          50: "#f4f1ff",
-          100: "#ebe5ff",
-          200: "#d9ceff",
-          300: "#bfabff",
-          400: "#9d7fff",
-          500: "#7c5cff",
-          600: "#633bfe",
-          700: "#5028e0",
-          800: "#4320b8",
-          900: "#371d93",
-          950: "#221159",
+          50: "#f6eeff",
+          100: "#eddcfe",
+          200: "#dbb9fd",
+          300: "#c187fd",
+          400: "#a856fd",
+          500: "#a54eff",
+          600: "#9d3fff",
+          700: "#7500f0",
+          800: "#5905b1",
+          900: "#42087f",
+          950: "#270946",
         },
         // Neutral scale retinted with a faint violet cast to match the
         // mockups' text/border grays (heading #110b29, body #524e6e,
@@ -45,22 +45,24 @@ export default {
           DEFAULT: "#f8f7fa",
           surface: "#ffffff",
         },
-        // Secondary accent -- warm coral, paired with the brand violet so
-        // the app has two voices instead of one ("duotone" direction):
-        // brand stays primary (nav, primary actions), coral calls out
-        // money-moment CTAs (buy ticket, checkout) and category/highlight
-        // tags so the UI reads as more than a single-color surface.
+        // Secondary accent -- vivid coral-tangerine, paired with the brand
+        // violet so the app has two voices instead of one ("duotone"
+        // direction): brand stays primary (nav, primary actions), coral
+        // calls out money-moment CTAs (buy ticket, checkout) and
+        // category/highlight tags. Anchor: #ff5c3d at 500, pushed brighter
+        // than the original muted terracotta as part of the 2026 identity
+        // refresh so the UI reads as vivid rather than desaturated.
         coral: {
-          50: "#fdf3ee",
-          100: "#faece7",
-          200: "#f5c4b3",
-          300: "#f0997b",
-          400: "#e87a50",
-          500: "#d85a30",
-          600: "#b8481f",
-          700: "#993c1d",
-          800: "#712b13",
-          900: "#4a1b0c",
+          50: "#fff0ee",
+          100: "#feddd7",
+          200: "#fec0b4",
+          300: "#ff9480",
+          400: "#ff6f54",
+          500: "#ff5c3d",
+          600: "#f92d06",
+          700: "#c0290c",
+          800: "#8e220e",
+          900: "#601a0d",
         },
         success: {
           50: "#ecfdf5",

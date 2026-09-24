@@ -56,7 +56,7 @@ export const TAB_THEME: Record<string, TabTheme> = {
     navActiveBar: "bg-brand-600",
     navActiveBorder: "border-brand-600",
     statAccent: "purple",
-    hex: "#633bfe",
+    hex: "#9d3fff",
     pageBg: "bg-gradient-to-br from-brand-50 via-white to-coral-50/60",
   },
   guests: {
@@ -99,7 +99,7 @@ export const TAB_THEME: Record<string, TabTheme> = {
     navActiveBar: "bg-coral-600",
     navActiveBorder: "border-coral-600",
     statAccent: "coral",
-    hex: "#b8481f",
+    hex: "#f92d06",
     pageBg: "bg-gradient-to-br from-coral-50 via-white to-brand-50/50",
   },
   tickets: {
@@ -150,7 +150,7 @@ export const TAB_THEME: Record<string, TabTheme> = {
     navActiveBar: "bg-brand-600",
     navActiveBorder: "border-brand-600",
     statAccent: "purple",
-    hex: "#633bfe",
+    hex: "#9d3fff",
     pageBg: "bg-gradient-to-br from-brand-50 via-white to-coral-50/60",
   },
   analytics: {

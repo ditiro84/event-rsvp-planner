@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { usePublicServices } from "@/hooks/useLandingServices";
 import { publicArticleCoverImageUrl, usePublicArticles } from "@/hooks/useArticles";
 import { formatDate } from "@/lib/format";
@@ -129,7 +130,7 @@ export default function LandingPage() {
               Everything for your event, in one place
             </span>
             <h1 className="mx-auto mt-7 max-w-2xl font-display text-5xl font-bold tracking-tight text-slate-950 sm:text-6xl lg:mx-0 lg:text-7xl">
-              Plan events guests will remember
+              Plan events guests will <span className="text-brand-600">remember</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-xl text-slate-600 lg:mx-0">
               Guest management, RSVP, seating, check-in, vendors, and payments, all in one dashboard, so you spend
@@ -162,6 +163,10 @@ export default function LandingPage() {
               alt="A crowd dancing at a nightclub event"
               className="absolute bottom-0 left-0 h-32 w-44 rounded-xl2 object-cover shadow-elevated ring-4 ring-white sm:h-44 sm:w-64"
             />
+            <div className="absolute right-4 top-4 flex items-center gap-2 rounded-full bg-brand-600 py-2 pl-2 pr-4 shadow-elevated ring-4 ring-white">
+              <BrandMark className="h-7 w-7 brightness-0 invert" />
+              <span className="text-sm font-semibold text-white">Every seat, held</span>
+            </div>
           </div>
         </section>
 

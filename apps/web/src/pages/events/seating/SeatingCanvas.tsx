@@ -4,7 +4,7 @@ import type Konva from "konva";
 import type { LayoutObjectRecord, SeatRecord, TableRecord, VenueLayoutRecord } from "@/types";
 import { computeSeatPositions, LAYOUT_OBJECT_COLORS, LAYOUT_OBJECT_LABELS } from "./seatGeometry";
 
-const BRAND = "#633bfe"; // brand-600 -- kept in sync with tailwind.config.js's brand palette
+const BRAND = "#9d3fff"; // brand-600 -- kept in sync with tailwind.config.js's brand palette
 const SEAT_EMPTY = "#ffffff";
 const SEAT_STROKE = "#908b9f";
 const SEAT_VIP = "#eab308";

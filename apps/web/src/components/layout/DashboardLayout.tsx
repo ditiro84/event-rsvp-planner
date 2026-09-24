@@ -11,7 +11,6 @@ import {
   Pencil,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
   Store,
   Ticket,
   Trash2,
@@ -22,6 +21,7 @@ import {
 import { useDeleteEvent, useEvent } from "@/hooks/useEvents";
 import { useAuth } from "@/lib/AuthContext";
 import { Badge } from "@/components/ui/Badge";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -131,9 +131,7 @@ export function DashboardLayout() {
         <div className="flex h-[72px] items-center justify-between px-4 sm:px-8 lg:px-12">
           <div className="flex h-full min-w-0 items-center gap-6 lg:gap-12">
             <NavLink to={isAdmin ? "/admin" : "/events"} className="flex shrink-0 items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-                <Sparkles className="h-4 w-4 text-white" />
-              </span>
+              <BrandMark />
               <span className="font-display text-xl font-bold text-slate-950">Gadaova</span>
             </NavLink>
 

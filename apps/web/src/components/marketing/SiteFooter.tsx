@@ -1,14 +1,12 @@
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { BrandMark } from "@/components/ui/BrandMark";
 
 export function SiteFooter() {
   return (
     <footer className="border-t border-slate-100 bg-white">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600">
-            <Sparkles className="h-3.5 w-3.5 text-white" />
-          </span>
+          <BrandMark className="h-6 w-6" />
           <span className="font-display text-sm font-bold text-slate-950">Gadaova</span>
         </div>
         <div className="flex items-center gap-6 text-sm text-slate-600">
@@ -22,7 +20,15 @@ export function SiteFooter() {
             Sign Up
           </Link>
         </div>
-        <p className="text-xs text-slate-400">&copy; {new Date().getFullYear()} Gadaova. All rights reserved.</p>
+        <div className="flex items-center gap-4 text-xs text-slate-400">
+          <span>&copy; {new Date().getFullYear()} Gadaova. All rights reserved.</span>
+          <Link to="/privacy" className="hover:text-brand-600">
+            Privacy
+          </Link>
+          <Link to="/terms" className="hover:text-brand-600">
+            Terms
+          </Link>
+        </div>
       </div>
     </footer>
   );

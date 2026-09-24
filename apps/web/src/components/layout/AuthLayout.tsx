@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Share2 } from "lucide-react";
 import { NetworkIllustration } from "@/components/illustrations/NetworkIllustration";
+import { BrandMark } from "@/components/ui/BrandMark";
 
 // Shared two-column shell for the login and register screens, matching the
 // Figma "login-desktop" mockup: a dark violet-gradient brand panel with an
@@ -12,9 +12,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-white">
       <div className="relative hidden w-[60%] max-w-[864px] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#1c0d3a] to-[#09031c] px-20 py-16 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500 shadow-[0_4px_6px_rgba(124,92,255,0.5)]">
-            <Share2 className="h-[18px] w-[18px] text-white" />
-          </div>
+          <BrandMark className="h-9 w-9" />
           <span className="font-display text-[22px] font-extrabold text-white">Gadaova</span>
         </div>
 
@@ -40,9 +38,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
       <div className="flex flex-1 items-center justify-center px-4 py-12 sm:px-8">
         <div className="mb-8 flex flex-col items-center gap-2 text-brand-700 lg:hidden">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500">
-            <Share2 className="h-[18px] w-[18px] text-white" />
-          </div>
+          <BrandMark className="h-9 w-9" />
           <span className="font-display text-xl font-extrabold text-slate-950">Gadaova</span>
         </div>
         <div className="w-full max-w-[448px]">{children}</div>

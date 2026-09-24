@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/Button";
+import { BrandMark } from "@/components/ui/BrandMark";
 
 // Shared header for all public/marketing pages (landing page, /articles
 // blog) -- kept as one component so nav/branding only needs updating once.
@@ -12,9 +12,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/80 backdrop-blur">
       <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-            <Sparkles className="h-4 w-4 text-white" />
-          </span>
+          <BrandMark />
           <span className="font-display text-xl font-bold text-slate-950">Gadaova</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">

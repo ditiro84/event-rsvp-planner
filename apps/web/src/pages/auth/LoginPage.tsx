@@ -17,10 +17,6 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-function notAvailable(provider: string) {
-  toast.info(`${provider} sign-in isn't available yet.`);
-}
-
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -97,19 +93,23 @@ export default function LoginPage() {
           <div className="flex gap-4">
             <button
               type="button"
-              onClick={() => notAvailable("Google")}
-              className="flex h-12 flex-1 items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-950 hover:bg-slate-50"
+              disabled
+              title="Google sign-in isn't available yet"
+              className="flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium text-slate-400"
             >
-              <GoogleIcon className="h-[18px] w-[18px]" />
-              Google
+              <GoogleIcon className="h-[18px] w-[18px] opacity-50" />
+              <span>Google</span>
+              <span className="text-xs text-slate-400">Soon</span>
             </button>
             <button
               type="button"
-              onClick={() => notAvailable("Apple")}
-              className="flex h-12 flex-1 items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-950 hover:bg-slate-50"
+              disabled
+              title="Apple sign-in isn't available yet"
+              className="flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium text-slate-400"
             >
-              <AppleIcon className="h-[18px] w-[18px]" />
-              Apple
+              <AppleIcon className="h-[18px] w-[18px] opacity-50" />
+              <span>Apple</span>
+              <span className="text-xs text-slate-400">Soon</span>
             </button>
           </div>
         </div>

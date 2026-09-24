@@ -4,7 +4,6 @@ import { AdminRoute, ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Spinner } from "@/components/ui/Spinner";
-import { useAuth } from "@/lib/AuthContext";
 
 // Route-level code splitting: the initial bundle only needs enough to show
 // the login screen or the dashboard shell. Everything else loads on first
@@ -16,6 +15,8 @@ const ArticlesListPage = lazy(() => import("@/pages/marketing/ArticlesListPage")
 const ArticleDetailPage = lazy(() => import("@/pages/marketing/ArticleDetailPage"));
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/legal/PrivacyPolicyPage"));
+const TermsOfServicePage = lazy(() => import("@/pages/legal/TermsOfServicePage"));
 const EventsListPage = lazy(() => import("@/pages/events/EventsListPage"));
 const PublicRsvpPage = lazy(() => import("@/pages/rsvp/PublicRsvpPage"));
 const PublicTicketEventPage = lazy(() => import("@/pages/tickets/PublicTicketEventPage"));
@@ -53,6 +54,7 @@ const EventTeamRoute = lazy(() =>
 const StaffCheckInPage = lazy(() => import("@/pages/staff/StaffCheckInPage"));
 const AnalyticsPage = lazy(() => import("@/pages/analytics/AnalyticsPage"));
 const AdminPage = lazy(() => import("@/pages/admin/AdminPage"));
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
 function RouteFallback() {
   return (
@@ -60,16 +62,6 @@ function RouteFallback() {
       <Spinner />
     </div>
   );
-}
-
-// Landing spot for any unmatched URL (bad link, stale bookmark, typo).
-// Role-aware so an admin bounces to Admin rather than an empty "My Events"
-// list they're not meant to use day to day -- see DashboardLayout's nav.
-function DefaultRedirect() {
-  const { user, isLoading } = useAuth();
-  if (isLoading) return <RouteFallback />;
-  if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === "ADMIN" ? "/admin" : "/events"} replace />;
 }
 
 export default function App() {
@@ -82,6 +74,8 @@ export default function App() {
           <Route path="/articles/:slug" element={<ArticleDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
           {/* The :slug segment is a cosmetic, human-readable copy of the
               event name (see lib/slug.ts) -- it makes the link recognizable
               to a guest instead of a bare token, but PublicRsvpPage only
@@ -115,7 +109,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<DefaultRedirect />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
       <InstallPrompt />

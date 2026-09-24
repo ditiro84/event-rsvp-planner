@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/AuthContext";
+import { InstallPromptProvider } from "@/lib/InstallPromptContext";
 import App from "./App";
 // Self-hosted Outfit (display/headings) + DM Sans (body/UI text), matching
 // the approved Figma "DESKTOP SCREENS" mockups -- pulled in as static font
@@ -30,8 +31,10 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
-          <Toaster position="top-right" richColors closeButton />
+          <InstallPromptProvider>
+            <App />
+            <Toaster position="top-right" richColors closeButton />
+          </InstallPromptProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

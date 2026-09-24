@@ -1,7 +1,7 @@
 import { Download, Share } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { useInstallPrompt } from "@/lib/InstallPromptContext";
 
 // In-page (never floating) "install to home screen" notice for logged-in
 // dashboard screens -- same install-detection logic as InstallAppButton on

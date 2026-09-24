@@ -1,6 +1,6 @@
 import { Download, Share } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { useInstallPrompt } from "@/lib/InstallPromptContext";
 
 // Contextual "install to home screen" control -- lives in the landing page
 // FAQ answer for "Is there a mobile app?" (see LandingPage.tsx) rather than

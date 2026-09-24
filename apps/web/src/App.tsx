@@ -2,7 +2,6 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminRoute, ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { InstallPrompt } from "@/components/InstallPrompt";
 import { Spinner } from "@/components/ui/Spinner";
 
 // Route-level code splitting: the initial bundle only needs enough to show
@@ -112,7 +111,6 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
-      <InstallPrompt />
     </>
   );
 }

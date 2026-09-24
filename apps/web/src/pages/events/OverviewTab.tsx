@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowRight, Armchair, ClipboardCheck, Mail, Users } from
 import { useEventDashboard } from "@/hooks/useEvents";
 import { useInsights } from "@/hooks/useInsights";
 import { Card, StatCard } from "@/components/ui/Card";
+import { InstallAppNotice } from "@/components/InstallAppNotice";
 import { RadialProgress } from "@/components/ui/RadialProgress";
 import { Stepper, type StepperStep } from "@/components/ui/Stepper";
 import { Badge } from "@/components/ui/Badge";
@@ -101,6 +102,8 @@ export function EventOverviewTab({ event }: { event: EventRecord }) {
 
   return (
     <div className="space-y-6">
+      <InstallAppNotice description="Add it to your home screen for one-tap access to this event, right from your phone." />
+
       <Stepper steps={steps} />
 
       <div className="flex flex-col gap-6 lg:flex-row">

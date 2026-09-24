@@ -12,6 +12,7 @@ import {
 } from "@/hooks/useCollaborators";
 import { useCreateStaffPass, useRevokeStaffPass, useStaffPasses } from "@/hooks/useStaffPasses";
 import { Card } from "@/components/ui/Card";
+import { InstallAppNotice } from "@/components/InstallAppNotice";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -89,6 +90,8 @@ export function TeamTab({ eventId }: { eventId: string }) {
           </p>
         </div>
       </div>
+
+      <InstallAppNotice description="Staff working the door can install it to their phone for one-tap access to check-in." />
 
       <Card className="p-5">
         <div className="mb-1 flex items-center justify-between gap-3">

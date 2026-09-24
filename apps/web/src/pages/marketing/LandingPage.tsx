@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { BrandMark } from "@/components/ui/BrandMark";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { usePublicServices } from "@/hooks/useLandingServices";
 import { publicArticleCoverImageUrl, usePublicArticles } from "@/hooks/useArticles";
 import { formatDate } from "@/lib/format";
@@ -341,6 +342,7 @@ export default function LandingPage() {
                   <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
                 </summary>
                 <p className="mt-3 text-sm leading-relaxed text-slate-600">{faq.answer}</p>
+                {faq.question === "Is there a mobile app?" && <InstallAppButton />}
               </details>
             ))}
           </div>

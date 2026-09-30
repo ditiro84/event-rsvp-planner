@@ -401,7 +401,22 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
                       <td className="px-4 py-3">
                         <RsvpStatusBadge status={guest.rsvpStatus} />
                         {guest.additionalGuestsCount > 0 && (
-                          <p className="mt-1 text-xs text-slate-400">+{guest.additionalGuestsCount} guest(s)</p>
+                          <div className="mt-1">
+                            <p className="text-xs text-slate-400">+{guest.additionalGuestsCount} guest(s)</p>
+                            {guest.party && guest.party.length > 0 && (
+                              <p className="mt-0.5 max-w-[180px] truncate text-xs text-slate-500" title={guest.party.map((p) => p.fullName).join(", ")}>
+                                {guest.party.map((p) => p.fullName).join(", ")}
+                              </p>
+                            )}
+                            {(!guest.party || guest.party.length === 0) && (
+                              <p className="mt-0.5 text-xs italic text-slate-400">Names not provided</p>
+                            )}
+                            {guest.party && guest.party.length > 0 && guest.party.length < guest.additionalGuestsCount && (
+                              <p className="mt-0.5 text-xs italic text-slate-400">
+                                +{guest.additionalGuestsCount - guest.party.length} unnamed
+                              </p>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3 text-slate-600">

@@ -1,19 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarHeart, CheckCircle2, FileText, MapPin, PartyPopper, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import { CalendarHeart, CheckCircle2, FileText, MapPin, PartyPopper, ShoppingBag, XCircle } from "lucide-react";
 import { useInvitePrefill, usePublicEvent, useSubmitRsvp, useSubmitRsvpViaInvite } from "@/hooks/useRsvp";
+import { useCheckout, usePublicShop } from "@/hooks/useProducts";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
-import { ShopSection } from "./ShopSection";
+import { DeliveryFields, PROVIDER_LABELS, ProductRow, ShopSection } from "./ShopSection";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { extractCardTheme, type CardTheme } from "@/lib/cardTheme";
 import { CardThemeContext, buildCardThemeStyles, withAlpha } from "@/lib/cardThemeContext";
+import type { CurrencyCode, PayoutProvider, PublicShopProduct } from "@/types";
 
 const schema = z
   .object({
@@ -131,6 +134,7 @@ export default function PublicRsvpPage() {
     handleSubmit,
     watch,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { attending: "CONFIRMED" } });
 
@@ -148,7 +152,109 @@ export default function PublicRsvpPage() {
 
   const attending = watch("attending");
 
+  // Merchandise, folded into the same submit as the RSVP itself. Guests
+  // were completing the RSVP and never reaching the separate merchandise
+  // form even when they meant to buy something -- see onSubmit below for
+  // how the two are now sequenced under one button, and the mandatory
+  // yes/no gate rendered further down the form.
+  const shopQuery = usePublicShop(event?.rsvpToken);
+  const checkout = useCheckout(event?.rsvpToken ?? "");
+  const products = useMemo(() => shopQuery.data?.products ?? [], [shopQuery.data]);
+  const shopEnabled = !shopQuery.isLoading && !!shopQuery.data?.enabled && products.length > 0;
+  const paymentOptionsByCurrency = shopQuery.data?.paymentOptionsByCurrency ?? {};
+  const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+
+  const [wantsMerchandise, setWantsMerchandise] = useState<"yes" | "no" | null>(null);
+  const [merchError, setMerchError] = useState("");
+  const [merchCheckoutError, setMerchCheckoutError] = useState("");
+  const [merchOrderPlaced, setMerchOrderPlaced] = useState(false);
+  const [cart, setCart] = useState<Record<string, { quantity: number; size: string }>>({});
+  const [provider, setProvider] = useState<PayoutProvider | "">("");
+  const [deliveryMethod, setDeliveryMethod] = useState<"AT_EVENT" | "SHIPPING">("AT_EVENT");
+  const [addressLine1, setAddressLine1] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [city, setCity] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [country, setCountry] = useState("");
+  const [dialCode, setDialCode] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [guestMarkedPaid, setGuestMarkedPaid] = useState(false);
+
+  const cartCurrency: CurrencyCode | null = useMemo(() => {
+    const [firstId] = Object.keys(cart).filter((id) => (cart[id]?.quantity ?? 0) > 0);
+    return firstId ? productById.get(firstId)?.currency ?? null : null;
+  }, [cart, productById]);
+
+  const cartItems = Object.entries(cart)
+    .filter(([, v]) => v.quantity > 0)
+    .map(([productId, v]) => ({ product: productById.get(productId), quantity: v.quantity, size: v.size }))
+    .filter((i): i is { product: PublicShopProduct; quantity: number; size: string } => !!i.product);
+
+  const cartTotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  const availableProviders = cartCurrency ? paymentOptionsByCurrency[cartCurrency] ?? [] : [];
+
+  function setQty(productId: string, product: PublicShopProduct, nextQty: number) {
+    if (nextQty > 0 && cartCurrency && product.currency !== cartCurrency) {
+      toast.error(`Your cart is in ${cartCurrency}. Clear it first to buy items priced in a different currency.`);
+      return;
+    }
+    setCart((c) => ({ ...c, [productId]: { quantity: Math.max(0, nextQty), size: c[productId]?.size ?? "" } }));
+  }
+
+  function setItemSize(productId: string, size: string) {
+    setCart((c) => ({ ...c, [productId]: { quantity: c[productId]?.quantity ?? 0, size } }));
+  }
+
+  // "No" clears any in-progress cart/delivery state along with hiding the
+  // section, so switching Yes -> No -> Yes again starts clean rather than
+  // resurrecting a stale selection.
+  function chooseWantsMerchandise(choice: "yes" | "no") {
+    setWantsMerchandise(choice);
+    setMerchError("");
+    if (choice === "no") {
+      setCart({});
+      setDeliveryMethod("AT_EVENT");
+      setAddressLine1("");
+      setAddressLine2("");
+      setCity("");
+      setPostcode("");
+      setCountry("");
+      setDialCode("");
+      setPhoneNumber("");
+      setProvider("");
+      setGuestMarkedPaid(false);
+    }
+  }
+
   async function onSubmit(values: FormValues) {
+    const wantsMerchNow = shopEnabled && values.attending === "CONFIRMED";
+
+    if (wantsMerchNow) {
+      if (wantsMerchandise === null) {
+        setMerchError("Please let us know if you'd like to purchase merchandise before submitting.");
+        return;
+      }
+      if (wantsMerchandise === "yes") {
+        if (cartItems.length === 0) {
+          setMerchError('Select at least one item below, or choose "No" if you don\'t want to purchase anything.');
+          return;
+        }
+        if (!values.email || !values.email.trim()) {
+          setError("email", { message: "Email is required to complete your merchandise order" });
+          return;
+        }
+        if (
+          deliveryMethod === "SHIPPING" &&
+          (!addressLine1.trim() || !city.trim() || !postcode.trim() || !country || !dialCode || !phoneNumber.trim())
+        ) {
+          setMerchError("Fill in your shipping address and phone number to complete your order.");
+          return;
+        }
+      }
+    }
+    setMerchError("");
+    setMerchCheckoutError("");
+
     const additionalGuestNames = (values.additionalGuestNamesRaw || "")
       .split(",")
       .map((n) => n.trim())
@@ -175,6 +281,50 @@ export default function PublicRsvpPage() {
         email: values.email || "",
         rsvpStatus: result.guest.rsvpStatus,
       });
+
+      // The RSVP is saved at this point no matter what happens next -- a
+      // guest's reply shouldn't be held hostage to their order going
+      // through. See the merchCheckoutError banner on the confirmation
+      // screen for how a failure here is surfaced without losing the RSVP
+      // that just succeeded.
+      if (wantsMerchNow && wantsMerchandise === "yes" && cartItems.length > 0) {
+        try {
+          const { checkoutUrl } = await checkout.mutateAsync({
+            guestName: `${values.firstName} ${values.lastName}`.trim(),
+            guestEmail: values.email || "",
+            guestId: result.guest.id,
+            deliveryMethod,
+            ...(deliveryMethod === "SHIPPING"
+              ? {
+                  shippingAddressLine1: addressLine1,
+                  shippingAddressLine2: addressLine2 || undefined,
+                  shippingCity: city,
+                  shippingPostcode: postcode,
+                  shippingCountry: country,
+                  shippingPhone: `${dialCode} ${phoneNumber}`.trim(),
+                }
+              : {}),
+            items: cartItems.map((i) => ({ productId: i.product.id, quantity: i.quantity, selectedSize: i.size.trim() || undefined })),
+            provider: provider || undefined,
+            guestMarkedPaid: availableProviders.length === 0 ? guestMarkedPaid : undefined,
+          });
+          if (checkoutUrl) {
+            // A processor is connected -- hand off to its hosted checkout
+            // page, same as ShopSection's own standalone checkout. The RSVP
+            // above is already saved, so abandoning payment here doesn't
+            // lose it.
+            window.location.href = checkoutUrl;
+            return;
+          }
+          // No processor connected for this currency -- the order was
+          // captured directly (status MANUAL). Surfaced via a note on the
+          // confirmation screen; the order itself also shows up in "Your
+          // orders" in the shop section below, same as any other order.
+          setMerchOrderPlaced(true);
+        } catch (err) {
+          setMerchCheckoutError(getApiErrorMessage(err));
+        }
+      }
     } catch (err) {
       alert(getApiErrorMessage(err));
     }
@@ -225,10 +375,29 @@ export default function PublicRsvpPage() {
                 <h1 className="mt-4 font-display text-xl font-semibold text-slate-900">{copy.title(submitted.firstName)}</h1>
                 <p className="mt-2 text-sm text-slate-500">{copy.body}</p>
               </div>
+              {merchOrderPlaced && (
+                <div className="mt-4 flex items-start gap-3 rounded-xl2 border border-success-200 bg-success-50 p-4 shadow-card">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-success-800">Your merchandise order was placed too</p>
+                    <p className="text-sm text-success-700">See "Your orders" below for details and delivery info.</p>
+                  </div>
+                </div>
+              )}
+              {merchCheckoutError && (
+                <div className="mt-4 flex items-start gap-3 rounded-xl2 border border-danger-200 bg-danger-50 p-4 shadow-card">
+                  <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-danger-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-danger-800">Your RSVP is confirmed, but we couldn't complete your order</p>
+                    <p className="text-sm text-danger-700">{merchCheckoutError} You can try again below.</p>
+                  </div>
+                </div>
+              )}
               {/* Shown right after confirming, not just before -- a guest who
                   just RSVP'd is the most likely to be curious about merch,
                   and this way they don't have to refresh the page to see it
-                  again. */}
+                  again. Also doubles as the retry path if the combined
+                  submit above got the RSVP through but the order failed. */}
               <ShopSection
                 rsvpToken={event.rsvpToken}
                 guestName={`${submitted.firstName} ${submitted.lastName}`.trim()}
@@ -410,6 +579,11 @@ export default function PublicRsvpPage() {
 
           {attending === "CONFIRMED" && (
             <>
+              {(event.allowPlusOnes || event.allowPlusOneNames) && (
+                <p className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-sm font-semibold text-warning-800">
+                  Bringing anyone with you? Add them below so we know exactly who's coming -- don't just mention them in the message field.
+                </p>
+              )}
               {event.allowPlusOnes && (
                 <Field label="Number of additional guests" htmlFor="additionalGuestsCount" hint="Not including yourself">
                   <Input id="additionalGuestsCount" type="number" min={0} {...register("additionalGuestsCount")} />
@@ -452,22 +626,136 @@ export default function PublicRsvpPage() {
             </Field>
           )}
 
+          {shopEnabled && attending === "CONFIRMED" && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-brand-600" style={theme ? { color: theme.primary } : undefined} />
+                <span className="text-sm font-semibold text-slate-900">Would you like to purchase merchandise?</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                This event has merchandise available -- let us know now so it can go out with your RSVP.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => chooseWantsMerchandise("yes")}
+                  className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+                    wantsMerchandise === "yes"
+                      ? "border-brand-600 bg-brand-50 text-brand-700"
+                      : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                  }`}
+                  style={wantsMerchandise === "yes" ? themeStyles.outline("primary") : undefined}
+                >
+                  Yes, I'd like to buy something
+                </button>
+                <button
+                  type="button"
+                  onClick={() => chooseWantsMerchandise("no")}
+                  className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+                    wantsMerchandise === "no"
+                      ? "border-brand-600 bg-brand-50 text-brand-700"
+                      : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                  }`}
+                  style={wantsMerchandise === "no" ? themeStyles.outline("primary") : undefined}
+                >
+                  No, not this time
+                </button>
+              </div>
+              {merchError && <p className="mt-2 text-xs font-semibold text-danger-600">{merchError}</p>}
+
+              {wantsMerchandise === "yes" && (
+                <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+                  <div className="divide-y divide-slate-100">
+                    {products.map((product) => (
+                      <ProductRow
+                        key={product.id}
+                        product={product}
+                        quantity={cart[product.id]?.quantity ?? 0}
+                        size={cart[product.id]?.size ?? ""}
+                        disabled={product.stockQuantity === 0}
+                        onAdd={() => setQty(product.id, product, (cart[product.id]?.quantity ?? 0) + 1)}
+                        onChangeQty={(delta) => setQty(product.id, product, (cart[product.id]?.quantity ?? 0) + delta)}
+                        onSizeChange={(size) => setItemSize(product.id, size)}
+                      />
+                    ))}
+                  </div>
+
+                  {cartItems.length > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-slate-600">Total</span>
+                        <span className="font-bold text-slate-900">{formatMoney(cartTotal, cartCurrency ?? "USD")}</span>
+                      </div>
+
+                      <DeliveryFields
+                        idPrefix="rsvp-shop"
+                        value={{ deliveryMethod, addressLine1, addressLine2, city, postcode, country, dialCode, phoneNumber }}
+                        onChange={(patch) => {
+                          if (patch.deliveryMethod !== undefined) setDeliveryMethod(patch.deliveryMethod);
+                          if (patch.addressLine1 !== undefined) setAddressLine1(patch.addressLine1);
+                          if (patch.addressLine2 !== undefined) setAddressLine2(patch.addressLine2);
+                          if (patch.city !== undefined) setCity(patch.city);
+                          if (patch.postcode !== undefined) setPostcode(patch.postcode);
+                          if (patch.country !== undefined) setCountry(patch.country);
+                          if (patch.dialCode !== undefined) setDialCode(patch.dialCode);
+                          if (patch.phoneNumber !== undefined) setPhoneNumber(patch.phoneNumber);
+                        }}
+                      />
+
+                      {availableProviders.length > 1 && (
+                        <Field label="Payment method" htmlFor="rsvp-shop-provider">
+                          <Select
+                            id="rsvp-shop-provider"
+                            value={provider}
+                            onChange={(e) => setProvider(e.target.value as PayoutProvider | "")}
+                          >
+                            <option value="">Default</option>
+                            {availableProviders.map((p) => (
+                              <option key={p} value={p}>
+                                {PROVIDER_LABELS[p]}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                      )}
+
+                      {availableProviders.length === 0 && (
+                        <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={guestMarkedPaid}
+                            onChange={(e) => setGuestMarkedPaid(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                            style={theme ? { accentColor: theme.primary } : undefined}
+                          />
+                          <span>
+                            <span className="font-medium text-slate-900">I've already sent payment</span>
+                            <span className="block text-xs text-slate-500">
+                              Optional: tick this if you've already paid the host directly (e.g. via Zelle).
+                            </span>
+                          </span>
+                        </label>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <Button
             type="submit"
             className="w-full hover:brightness-90"
             style={themeStyles.primaryFill}
-            isLoading={isSubmitting}
+            isLoading={isSubmitting || checkout.isPending}
           >
-            Submit RSVP
+            {wantsMerchandise === "yes" && cartItems.length > 0
+              ? availableProviders.length > 0
+                ? `Submit RSVP & pay ${formatMoney(cartTotal, cartCurrency ?? "USD")}`
+                : `Submit RSVP & place order -- ${formatMoney(cartTotal, cartCurrency ?? "USD")}`
+              : "Submit RSVP"}
           </Button>
         </form>
-
-          <ShopSection
-            rsvpToken={event.rsvpToken}
-            guestName={guestPrefill ? `${guestPrefill.firstName} ${guestPrefill.lastName}`.trim() : undefined}
-            guestEmail={guestPrefill?.email ?? undefined}
-            guestId={guestPrefill?.guestId}
-          />
         </div>
         </div>
       </div>

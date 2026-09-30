@@ -21,13 +21,13 @@ import { formatOrderItems, formatShippingAddress } from "@/lib/orders";
 import { useCardThemeStyles } from "@/lib/cardThemeContext";
 import type { CurrencyCode, OrderRecord, PayoutProvider, PublicShopProduct } from "@/types";
 
-const PROVIDER_LABELS: Record<PayoutProvider, string> = {
+export const PROVIDER_LABELS: Record<PayoutProvider, string> = {
   STRIPE_CONNECT: "Card (Stripe)",
   PAYSTACK: "Card / Bank Transfer (Paystack)",
   PAYPAL: "PayPal",
 };
 
-function ProductRow({
+export function ProductRow({
   product,
   quantity,
   size,
@@ -186,7 +186,7 @@ function PaypalReturnBanner({ rsvpToken, paypalOrderId, onDone }: { rsvpToken: s
 // Editable delivery state shared by both the checkout form (a brand-new
 // order) and ExistingOrderCard's edit form (an order already placed) --
 // pulled out so the two never drift apart on the actual fields collected.
-interface DeliveryFieldsValue {
+export interface DeliveryFieldsValue {
   deliveryMethod: "AT_EVENT" | "SHIPPING";
   addressLine1: string;
   addressLine2: string;
@@ -197,7 +197,7 @@ interface DeliveryFieldsValue {
   phoneNumber: string;
 }
 
-function DeliveryFields({
+export function DeliveryFields({
   idPrefix,
   value,
   onChange,
@@ -333,7 +333,7 @@ function DeliveryFields({
 // the dial-code + number pair DeliveryFields edits separately. Best-effort:
 // falls back to putting everything in the number field if there's no space
 // to split on.
-function splitPhone(phone: string | null): { dialCode: string; phoneNumber: string } {
+export function splitPhone(phone: string | null): { dialCode: string; phoneNumber: string } {
   if (!phone) return { dialCode: "", phoneNumber: "" };
   const spaceIdx = phone.indexOf(" ");
   if (spaceIdx <= 0) return { dialCode: "", phoneNumber: phone };

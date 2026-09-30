@@ -489,7 +489,15 @@ export function SeatingTab({ eventId }: { eventId: string }) {
             panel) doesn't fit side by side, so it stacks vertically instead --
             each section keeps a capped height so the whole page stays
             scrollable rather than any one section eating the viewport. */}
-        <div className="max-h-56 w-full shrink-0 overflow-hidden rounded-xl2 border border-slate-200/80 bg-white shadow-card sm:h-auto sm:max-h-[70vh] sm:w-64">
+        {/* A definite (not max-) height here is required: GuestSidebar's
+            internal "h-full flex flex-col" + "flex-1 overflow-y-auto" list
+            only produces a scrollbar when its ancestor has a resolvable
+            height. With only max-height set, there was nothing for that
+            percentage/flex sizing to resolve against, so the list silently
+            grew past the cap and got clipped by this div's overflow-hidden
+            instead of scrolling -- which is what left unassigned guests
+            unreachable below the fold. */}
+        <div className="h-56 w-full shrink-0 overflow-hidden rounded-xl2 border border-slate-200/80 bg-white shadow-card sm:h-[70vh] sm:w-64">
           <GuestSidebar guests={data.unassignedGuests} tables={data.tables} onAssign={(guestId, tableId) => assignGuestToTable(guestId, tableId)} />
         </div>
 

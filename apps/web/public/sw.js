@@ -4,7 +4,19 @@
 // Vercel deployment), so it never intercepts calls to the Railway API,
 // Stripe/Paystack/PayPal, or any cross-origin request -- ticket
 // availability, checkout, and door-scan data always stay live.
-const CACHE_NAME = "gadaova-shell-v1";
+//
+// IMPORTANT: the fetch handler below serves a cached response instead of
+// the network response whenever one exists (cache-first), so anything in
+// APP_SHELL -- including the favicon/app icons -- can keep showing stale
+// content indefinitely for an already-installed user, even after a new
+// deploy ships updated files at the same URL. The activate handler already
+// deletes any cache whose name isn't CACHE_NAME, so bumping the version
+// suffix below is what actually forces already-installed clients to drop
+// stale assets and re-fetch. Bump it whenever a file listed in APP_SHELL
+// changes (e.g. the brand refresh that replaced favicon.svg/icon-192.png/
+// icon-512.png landed in the app but installed clients kept the old art
+// cached under "v1" until this was bumped).
+const CACHE_NAME = "gadaova-shell-v2";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

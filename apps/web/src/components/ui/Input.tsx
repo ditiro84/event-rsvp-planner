@@ -4,7 +4,10 @@ import { cn } from "@/lib/cn";
 interface FieldWrapperProps {
   label?: string;
   error?: string;
-  hint?: string;
+  // ReactNode (not just string) so a hint can be emphasized -- e.g. "Not
+  // including yourself" on the RSVP form is wrapped in <strong> because
+  // guests kept overlooking it and miscounting their party.
+  hint?: React.ReactNode;
   htmlFor?: string;
   className?: string;
   children: React.ReactNode;

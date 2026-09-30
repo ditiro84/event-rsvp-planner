@@ -16,6 +16,23 @@ function checkRsvpIsOpen(event: any) {
   }
 }
 
+// The shape schema (submitRsvpSchema) only checks names.length <= count --
+// it has no access to the event's own settings. Whether names are actually
+// *required* to match the count depends on whether this host collects
+// names at all (event.allowPlusOneNames): hosts who only track a headcount
+// (allowPlusOneNames off) shouldn't be blocked by a rule about a field they
+// never show. Checked here, after the event is loaded, rather than in the
+// shape schema. Planners kept finding a guest had said "3 additional
+// guests" but named only one (or none) of them -- silently letting that
+// through meant a seating chart with unnamed seats nobody could assign.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function assertPartyNamesComplete(event: any, input: SubmitRsvpInput) {
+  if (input.attending !== "CONFIRMED" || !event.allowPlusOneNames) return;
+  if (input.additionalGuestsCount > 0 && input.additionalGuestNames.length !== input.additionalGuestsCount) {
+    throw new BadRequestError("Please provide a name for each additional guest");
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function publicEventShape(event: any) {
   const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
@@ -96,6 +113,7 @@ export async function submitRsvp(token: string, input: SubmitRsvpInput) {
     throw new NotFoundError("This RSVP link is invalid");
   }
   checkRsvpIsOpen(event);
+  assertPartyNamesComplete(event, input);
 
   const email = input.email?.trim().toLowerCase() || null;
 
@@ -176,6 +194,7 @@ export async function submitRsvpViaInvitation(invitationToken: string, input: Su
     throw new NotFoundError("This invite link is invalid");
   }
   checkRsvpIsOpen(invitation.event);
+  assertPartyNamesComplete(invitation.event, input);
 
   const guestId = invitation.guest.id;
   const guestData = guestUpdateData(input);

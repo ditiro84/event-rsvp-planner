@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { CalendarHeart, CheckCircle2, FileText, MapPin, PartyPopper, ShoppingBag, XCircle } from "lucide-react";
+import { CalendarHeart, CheckCircle2, FileText, MapPin, PartyPopper, Plus, ShoppingBag, X, XCircle } from "lucide-react";
 import { useInvitePrefill, usePublicEvent, useSubmitRsvp, useSubmitRsvpViaInvite } from "@/hooks/useRsvp";
 import { useCheckout, usePublicShop } from "@/hooks/useProducts";
 import { Spinner } from "@/components/ui/Spinner";
@@ -26,7 +26,7 @@ const schema = z
     phone: z.string().optional(),
     attending: z.enum(["CONFIRMED", "DECLINED", "MAYBE"]),
     additionalGuestsCount: z.string().optional(),
-    additionalGuestNamesRaw: z.string().optional(),
+    additionalGuestNames: z.array(z.object({ fullName: z.string() })).optional(),
     mealPreference: z.string().optional(),
     dietaryRequirements: z.string().optional(),
     accessibilityRequirements: z.string().optional(),
@@ -141,12 +141,16 @@ export default function PublicRsvpPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     reset,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { attending: "CONFIRMED" } });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { attending: "CONFIRMED", additionalGuestNames: [] },
+  });
 
   useEffect(() => {
     if (guestPrefill) {
@@ -156,11 +160,43 @@ export default function PublicRsvpPage() {
         lastName: guestPrefill.lastName,
         email: guestPrefill.email ?? "",
         phone: guestPrefill.phone ?? "",
+        additionalGuestNames: [],
       });
     }
   }, [guestPrefill, reset]);
 
   const attending = watch("attending");
+
+  // When the host collects both a headcount and names for additional
+  // guests, the two are kept in lockstep: typing "3" above immediately
+  // gives three required name inputs below, rather than letting the count
+  // and the number of names drift apart (planners kept getting RSVPs that
+  // said "3 additional guests" with zero or one name attached, which then
+  // showed up as unseatable "+2 unnamed" on the guest list).
+  const additionalGuestsCountRaw = watch("additionalGuestsCount");
+  const namesLinkedToCount = !!event?.allowPlusOnes && !!event?.allowPlusOneNames;
+  const { fields: additionalGuestFields, append: appendAdditionalGuest, remove: removeAdditionalGuest } = useFieldArray({
+    control,
+    name: "additionalGuestNames",
+  });
+
+  useEffect(() => {
+    if (!namesLinkedToCount) return;
+    const count = Math.max(0, Math.min(20, Number(additionalGuestsCountRaw) || 0));
+    const diff = count - additionalGuestFields.length;
+    if (diff > 0) {
+      appendAdditionalGuest(Array.from({ length: diff }, () => ({ fullName: "" })));
+    } else if (diff < 0) {
+      removeAdditionalGuest(
+        Array.from({ length: -diff }, (_, i) => additionalGuestFields.length - 1 - i)
+      );
+    }
+    // Only react to the count (and the event settings that decide whether
+    // it drives names at all) -- not to additionalGuestFields itself,
+    // which append/remove above already change; including it would fight
+    // the very update this effect is making.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [additionalGuestsCountRaw, namesLinkedToCount]);
 
   // Merchandise, folded into the same submit as the RSVP itself. Guests
   // were completing the RSVP and never reaching the separate merchandise
@@ -237,6 +273,18 @@ export default function PublicRsvpPage() {
   }
 
   async function onSubmit(values: FormValues) {
+    if (values.attending === "CONFIRMED" && namesLinkedToCount) {
+      const count = values.additionalGuestsCount ? Number(values.additionalGuestsCount) : 0;
+      const names = values.additionalGuestNames ?? [];
+      const missingIndex = names.findIndex((n) => !n.fullName.trim());
+      if (count > 0 && missingIndex !== -1) {
+        setError(`additionalGuestNames.${missingIndex}.fullName` as const, {
+          message: "Enter this guest's name",
+        });
+        return;
+      }
+    }
+
     const wantsMerchNow = shopEnabled && values.attending === "CONFIRMED";
 
     if (wantsMerchNow) {
@@ -265,9 +313,8 @@ export default function PublicRsvpPage() {
     setMerchError("");
     setMerchCheckoutError("");
 
-    const additionalGuestNames = (values.additionalGuestNamesRaw || "")
-      .split(",")
-      .map((n) => n.trim())
+    const additionalGuestNames = (values.additionalGuestNames ?? [])
+      .map((n) => n.fullName.trim())
       .filter(Boolean);
 
     try {
@@ -602,14 +649,70 @@ export default function PublicRsvpPage() {
                 </p>
               )}
               {event.allowPlusOnes && (
-                <Field label="Number of additional guests" htmlFor="additionalGuestsCount" hint="Not including yourself">
+                <Field
+                  label="Number of additional guests"
+                  htmlFor="additionalGuestsCount"
+                  hint={<strong className="font-semibold text-slate-700">Not including yourself</strong>}
+                >
                   <Input id="additionalGuestsCount" type="number" min={0} {...register("additionalGuestsCount")} />
                 </Field>
               )}
               {event.allowPlusOneNames && (
-                <Field label="Names of additional guests" htmlFor="additionalGuestNamesRaw" hint="Separate names with commas">
-                  <Input id="additionalGuestNamesRaw" {...register("additionalGuestNamesRaw")} placeholder="e.g. Michael Johnson, Priya Patel" />
-                </Field>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-slate-700">Names of additional guests</label>
+                    {!namesLinkedToCount && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => appendAdditionalGuest({ fullName: "" })}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add name
+                      </Button>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {namesLinkedToCount
+                      ? "One name for each additional guest above -- required."
+                      : "Add a name for each person you're bringing."}
+                  </p>
+                  {Array.isArray(errors.additionalGuestNames) &&
+                    errors.additionalGuestNames.some((e) => e?.fullName) && (
+                    <p className="mt-1 text-xs text-red-600" role="alert">
+                      Enter a name for every additional guest below.
+                    </p>
+                  )}
+                  {namesLinkedToCount && additionalGuestFields.length === 0 && (
+                    <p className="mt-2 text-xs italic text-slate-400">
+                      Enter a number above to add name fields.
+                    </p>
+                  )}
+                  {additionalGuestFields.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {additionalGuestFields.map((field, index) => (
+                        <div key={field.id} className="flex items-center gap-2">
+                          <Input
+                            placeholder={`Guest ${index + 1} full name`}
+                            {...register(`additionalGuestNames.${index}.fullName` as const)}
+                            error={!!errors.additionalGuestNames?.[index]?.fullName}
+                          />
+                          {!namesLinkedToCount && (
+                            <button
+                              type="button"
+                              onClick={() => removeAdditionalGuest(index)}
+                              aria-label="Remove guest"
+                              className="shrink-0 rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
               {event.allowMealSelection && (
                 <Field label="Meal preference" htmlFor="mealPreference">

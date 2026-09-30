@@ -121,6 +121,38 @@ describe("Public RSVP flow", () => {
     expect(res.status).toBe(400);
   });
 
+  it("rejects a confirmed RSVP that names fewer guests than the declared count", async () => {
+    const { token } = await registerAndLogin(app);
+    const event = await createEvent(token);
+
+    const res = await request(app).post(`/api/rsvp/${event.rsvpToken}`).send({
+      firstName: "Sarah",
+      lastName: "Johnson",
+      attending: "CONFIRMED",
+      additionalGuestsCount: 3,
+      additionalGuestNames: ["Only One Name"],
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("allows a confirmed RSVP with fewer names than the count when the event doesn't collect names", async () => {
+    const { token } = await registerAndLogin(app);
+    const event = await createEvent(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    await request(app).put(`/api/events/${event.id}`).set(auth).send({ allowPlusOneNames: false });
+
+    const res = await request(app).post(`/api/rsvp/${event.rsvpToken}`).send({
+      firstName: "Sarah",
+      lastName: "Johnson",
+      attending: "CONFIRMED",
+      additionalGuestsCount: 3,
+    });
+
+    expect(res.status).toBe(200);
+  });
+
   it("shows non-responders in the planner RSVP dashboard", async () => {
     const { token } = await registerAndLogin(app);
     const event = await createEvent(token);

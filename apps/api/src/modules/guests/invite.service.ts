@@ -239,6 +239,86 @@ export async function sendInviteEmail(userId: string, guestId: string) {
   return { sent: true };
 }
 
+function editRequestEmailHtml(eventName: string, guestFirstName: string, url: string, message: string) {
+  // Preserve the planner's own line breaks (a <textarea> in the UI) without
+  // letting arbitrary HTML through -- a minimal escape, then swap newlines
+  // for <br>, same trust boundary as any other free-text field we render.
+  const escaped = message
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
+  return `
+    <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h1 style="font-size: 20px; color: #1e293b;">A note about your RSVP to ${eventName}</h1>
+      <p style="color: #334155; font-size: 15px;">Hi ${guestFirstName},</p>
+      <p style="color: #334155; font-size: 15px;">${escaped}</p>
+      <p style="text-align: center; margin: 28px 0;">
+        <a href="${url}" style="background: #4f46e5; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Update your RSVP
+        </a>
+      </p>
+      <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px;">
+        Or copy this link: ${url}
+      </p>
+    </div>
+  `;
+}
+
+// Lets a planner send a guest back to their existing (already-submitted)
+// RSVP with a specific ask -- e.g. "please add your +2's names" -- rather
+// than the generic "you're invited" copy in sendInviteEmail above. Reuses
+// the same personalized invitation link/token, since that page already
+// opens pre-filled and editable; there's no separate "edit" link to mint.
+export async function sendEditRequestEmail(userId: string, guestId: string, message: string) {
+  const { client, from } = getResendClient();
+  const { guest, invitation } = await getOrCreateInvitation(userId, guestId);
+
+  if (!guest.email) {
+    throw new BadRequestError("This guest doesn't have an email address on file.");
+  }
+
+  const event = await prisma.event.findUnique({
+    where: { id: guest.eventId },
+    include: { user: { select: { name: true, email: true } } },
+  });
+  if (!event) {
+    throw new BadRequestError("Event not found.");
+  }
+
+  const url = buildInviteUrl(invitation.token, event.name);
+  const subject = `Please update your RSVP for ${event.name}`;
+  const recipientName = `${guest.firstName} ${guest.lastName}`.trim();
+
+  const { error } = await client.emails.send({
+    from: formatFromHeader(event.name, from),
+    to: guest.email,
+    replyTo: event.user.email,
+    subject,
+    html: editRequestEmailHtml(event.name, guest.firstName, url, message),
+  });
+
+  // Logged the same way as the invite email (see sendInviteEmail above) so
+  // it shows up in the same Email Log the host already checks.
+  await prisma.emailEvent.create({
+    data: {
+      eventId: guest.eventId,
+      guestId: guest.id,
+      recipientEmail: guest.email,
+      recipientName,
+      subject,
+      status: error ? "FAILED" : "SENT",
+      errorMessage: error?.message ?? null,
+    },
+  });
+
+  if (error) {
+    throw new BadRequestError(`Failed to send edit request email: ${error.message}`);
+  }
+
+  return { sent: true };
+}
+
 export async function bulkSendInviteEmails(userId: string, eventId: string, guestIds?: string[]) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { eventId, email: { not: null } };

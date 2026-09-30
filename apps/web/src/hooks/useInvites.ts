@@ -47,3 +47,18 @@ export function useBulkSendInviteEmails(eventId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["events", eventId, "guests"] }),
   });
 }
+
+// Sends a guest their existing personalized RSVP link (get-or-created the
+// same way as an invite) along with a planner-written note -- used to ask
+// a guest to go back and fix/complete something on an RSVP they already
+// submitted, e.g. missing additional-guest names. See RequestEditModal.tsx.
+export function useSendEditRequestEmail(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ guestId, message }: { guestId: string; message: string }) => {
+      const res = await api.post(`/events/${eventId}/guests/${guestId}/invite/request-edit-email`, { message });
+      return res.data.data as { sent: boolean };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", eventId, "guests"] }),
+  });
+}

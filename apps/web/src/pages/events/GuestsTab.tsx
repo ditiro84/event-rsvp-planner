@@ -10,6 +10,7 @@ import {
   MailOpen,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Send,
   Star,
@@ -33,6 +34,7 @@ import { getTabTheme } from "@/lib/tabTheme";
 import { GuestFormModal } from "./GuestFormModal";
 import { CsvImportModal } from "./CsvImportModal";
 import { InviteModal } from "./InviteModal";
+import { RequestEditModal } from "./RequestEditModal";
 import type { Guest } from "@/types";
 
 const PAGE_SIZE = 8;
@@ -73,6 +75,7 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
   const [showImport, setShowImport] = useState(false);
   const [editingGuest, setEditingGuest] = useState<Guest | undefined>();
   const [invitingGuest, setInvitingGuest] = useState<Guest | undefined>();
+  const [requestingEditGuest, setRequestingEditGuest] = useState<Guest | undefined>();
 
   const sorted = useMemo(() => {
     if (!guests) return [];
@@ -437,6 +440,7 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
                         <GuestRowActions
                           guest={guest}
                           onInvite={() => setInvitingGuest(guest)}
+                          onRequestEdit={() => setRequestingEditGuest(guest)}
                           onEdit={() => setEditingGuest(guest)}
                           onDelete={() => handleDelete(guest)}
                         />
@@ -484,6 +488,7 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
                     <GuestRowActions
                       guest={guest}
                       onInvite={() => setInvitingGuest(guest)}
+                      onRequestEdit={() => setRequestingEditGuest(guest)}
                       onEdit={() => setEditingGuest(guest)}
                       onDelete={() => handleDelete(guest)}
                     />
@@ -578,6 +583,15 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
           guest={invitingGuest}
         />
       )}
+      {requestingEditGuest && (
+        <RequestEditModal
+          open={!!requestingEditGuest}
+          onClose={() => setRequestingEditGuest(undefined)}
+          eventId={eventId}
+          eventName={eventName}
+          guest={requestingEditGuest}
+        />
+      )}
     </div>
   );
 }
@@ -585,11 +599,13 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
 function GuestRowActions({
   guest,
   onInvite,
+  onRequestEdit,
   onEdit,
   onDelete,
 }: {
   guest: Guest;
   onInvite: () => void;
+  onRequestEdit: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -601,6 +617,14 @@ function GuestRowActions({
         className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand-600"
       >
         <Send className="h-4 w-4" />
+      </button>
+      <button
+        aria-label={`Ask ${guest.firstName} ${guest.lastName} to update their RSVP`}
+        title="Request an edit to their RSVP"
+        onClick={onRequestEdit}
+        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+      >
+        <RefreshCw className="h-4 w-4" />
       </button>
       <button
         aria-label={`Edit ${guest.firstName} ${guest.lastName}`}

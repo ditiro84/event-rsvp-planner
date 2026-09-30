@@ -3,7 +3,7 @@ import { created, noContent, ok } from "../../lib/apiResponse";
 import { BadRequestError } from "../../lib/errors";
 import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { createGuestSchema, listGuestsQuerySchema, updateGuestSchema } from "./guests.schema";
-import { bulkSendInviteEmailsSchema, checkInScanSchema, markInviteSentSchema } from "./invite.schema";
+import { bulkSendInviteEmailsSchema, checkInScanSchema, markInviteSentSchema, requestEditEmailSchema } from "./invite.schema";
 import * as service from "./guests.service";
 import * as inviteService from "./invite.service";
 import { guestsToCsv, parseGuestsCsv } from "./guests.csv";
@@ -73,6 +73,12 @@ export async function sendInviteEmail(req: Request, res: Response) {
 export async function bulkSendInviteEmails(req: Request, res: Response) {
   const input = bulkSendInviteEmailsSchema.parse(req.body);
   const result = await inviteService.bulkSendInviteEmails(req.userId!, req.params.eventId, input.guestIds);
+  return ok(res, result);
+}
+
+export async function sendEditRequestEmail(req: Request, res: Response) {
+  const input = requestEditEmailSchema.parse(req.body);
+  const result = await inviteService.sendEditRequestEmail(req.userId!, req.params.guestId, input.message);
   return ok(res, result);
 }
 

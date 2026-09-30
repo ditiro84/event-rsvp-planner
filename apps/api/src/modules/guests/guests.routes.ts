@@ -29,6 +29,7 @@ router.post("/checkin/scan", controller.checkInScan);
 router.get("/:guestId/invite", validateParams(guestIdParamsSchema), controller.getInviteLink);
 router.post("/:guestId/invite/mark-sent", validateParams(guestIdParamsSchema), controller.markInviteSent);
 router.post("/:guestId/invite/email", validateParams(guestIdParamsSchema), controller.sendInviteEmail);
+router.post("/:guestId/invite/request-edit-email", validateParams(guestIdParamsSchema), controller.sendEditRequestEmail);
 router.post("/invites/send-email", controller.bulkSendInviteEmails);
 
 export default router;

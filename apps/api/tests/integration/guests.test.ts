@@ -373,6 +373,43 @@ describe("Guests API: invites", () => {
     expect(res.body.error.message).toMatch(/isn't configured/i);
   });
 
+  it("returns a clear error requesting an RSVP edit by email when Resend isn't configured", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson", email: "sarah@example.com" });
+    const guestId = created.body.data.guest.id;
+
+    const res = await request(app)
+      .post(`/api/events/${eventId}/guests/${guestId}/invite/request-edit-email`)
+      .set(auth)
+      .send({ message: "Could you add your additional guests' names?" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/isn't configured/i);
+  });
+
+  it("requires a message when requesting an RSVP edit by email", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/guests`)
+      .set(auth)
+      .send({ firstName: "Sarah", lastName: "Johnson", email: "sarah@example.com" });
+    const guestId = created.body.data.guest.id;
+
+    const res = await request(app)
+      .post(`/api/events/${eventId}/guests/${guestId}/invite/request-edit-email`)
+      .set(auth)
+      .send({ message: "" });
+    expect(res.status).toBe(400);
+  });
+
   it("rejects fetching another planner's guest invite link", async () => {
     const { token } = await registerAndLogin(app);
     const planner2 = await registerAndLogin(app);

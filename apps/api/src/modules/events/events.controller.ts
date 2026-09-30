@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import { created, noContent, ok } from "../../lib/apiResponse";
 import { BadRequestError } from "../../lib/errors";
+import { serveBytesWithRangeSupport } from "../../utils/serveBytes";
 import { createEventSchema, updateEventSchema } from "./events.schema";
 import * as service from "./events.service";
-import * as cardService from "./invitationCard.service";
+import * as mediaService from "./invitationMedia.service";
+import { reorderInvitationMediaSchema } from "./events.schema";
 
 // Every response below carries a raw Prisma Event row -- strip the cover
 // image bytes out and expose a boolean instead (same hasImage/hasCoverImage
@@ -68,32 +70,36 @@ export async function dashboard(req: Request, res: Response) {
   return ok(res, { ...result, event: sanitizeEvent(result.event) });
 }
 
-export async function getInvitationCardMeta(req: Request, res: Response) {
-  const card = await cardService.getInvitationCardMeta(req.userId!, req.params.eventId);
-  return ok(res, { card });
+export async function listInvitationMedia(req: Request, res: Response) {
+  const items = await mediaService.listInvitationMedia(req.userId!, req.params.eventId);
+  return ok(res, { items });
 }
 
-export async function uploadInvitationCard(req: Request, res: Response) {
+export async function uploadInvitationMedia(req: Request, res: Response) {
   if (!req.file) {
     throw new BadRequestError("No file uploaded (field name: file)");
   }
-  const card = await cardService.uploadInvitationCard(req.userId!, req.params.eventId, {
+  const item = await mediaService.uploadInvitationMedia(req.userId!, req.params.eventId, {
     buffer: req.file.buffer,
     mimetype: req.file.mimetype,
     originalname: req.file.originalname,
     size: req.file.size,
   });
-  return ok(res, { card });
+  return ok(res, { item });
 }
 
-export async function downloadInvitationCard(req: Request, res: Response) {
-  const card = await cardService.getInvitationCardFile(req.userId!, req.params.eventId);
-  res.setHeader("Content-Type", card.mimeType);
-  res.setHeader("Content-Disposition", `inline; filename="${card.fileName}"`);
-  return res.status(200).send(card.data);
+export async function reorderInvitationMedia(req: Request, res: Response) {
+  const { orderedIds } = reorderInvitationMediaSchema.parse(req.body);
+  await mediaService.reorderInvitationMedia(req.userId!, req.params.eventId, orderedIds);
+  return noContent(res);
 }
 
-export async function deleteInvitationCard(req: Request, res: Response) {
-  await cardService.deleteInvitationCard(req.userId!, req.params.eventId);
+export async function downloadInvitationMediaFile(req: Request, res: Response) {
+  const item = await mediaService.getInvitationMediaFile(req.userId!, req.params.eventId, req.params.mediaId);
+  serveBytesWithRangeSupport(req, res, item.data, item.mimeType, item.fileName);
+}
+
+export async function deleteInvitationMediaItem(req: Request, res: Response) {
+  await mediaService.deleteInvitationMediaItem(req.userId!, req.params.eventId, req.params.mediaId);
   return noContent(res);
 }

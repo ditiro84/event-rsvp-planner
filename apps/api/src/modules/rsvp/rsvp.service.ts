@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { getOwnedEventOrCollaborator } from "../events/events.service";
-import { getInvitationCardMimeType } from "../events/invitationCard.service";
+import { listInvitationMediaMetaForEvent } from "../events/invitationMedia.service";
 import { notifyRsvpChange } from "../notifications/notifications.service";
 import { SubmitRsvpInput } from "./rsvp.schema";
 
@@ -19,7 +19,7 @@ function checkRsvpIsOpen(event: any) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function publicEventShape(event: any) {
   const deadlinePassed = event.rsvpDeadline ? new Date() > event.rsvpDeadline : false;
-  const cardMimeType = await getInvitationCardMimeType(event.id);
+  const invitationMedia = await listInvitationMediaMetaForEvent(event.id);
   return {
     id: event.id,
     // Exposed so the guest-facing page can hit the shop endpoints
@@ -44,11 +44,12 @@ async function publicEventShape(event: any) {
     allowDietary: event.allowDietary,
     allowAccessibilityInfo: event.allowAccessibilityInfo,
     allowSpecialRequests: event.allowSpecialRequests,
-    hasInvitationCard: cardMimeType !== null,
-    // Colour-theming the guest page from the card only works for images --
-    // a PDF would need its first page rasterized first, which this app
-    // doesn't do (see lib/cardTheme.ts on the frontend).
-    invitationCardIsImage: cardMimeType?.startsWith("image/") ?? false,
+    // Ordered list of every invitation media item (images, PDFs, short video
+    // clips) -- the public RSVP page renders these as a gallery the guest
+    // pages through (see InvitationMediaGallery.tsx on the frontend), and
+    // also uses the first IMAGE item (if any) for the page's colour theme
+    // (see lib/cardTheme.ts -- a PDF or video isn't used for this).
+    invitationMedia,
   };
 }
 

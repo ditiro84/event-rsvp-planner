@@ -3,7 +3,7 @@ import multer from "multer";
 import { requireAuth } from "../../middleware/auth";
 import { validateBody, validateParams } from "../../middleware/validate";
 import { auditAdminEventActions } from "../../middleware/auditAdminEventActions";
-import { createEventSchema, eventIdParamsSchema, updateEventSchema } from "./events.schema";
+import { createEventSchema, eventIdParamsSchema, invitationMediaParamsSchema, updateEventSchema } from "./events.schema";
 import * as controller from "./events.controller";
 import guestsRouter from "../guests/guests.routes";
 import seatingRouter from "../seating/seating.routes";
@@ -17,6 +17,12 @@ import staffPassesRouter from "../collaborators/staffPasses.routes";
 import * as rsvpController from "../rsvp/rsvp.controller";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+// Separate instance with a higher limit, used only for invitation-media
+// uploads -- video clips need more headroom than the 8MB image/PDF cap
+// shared by everything else in this file (cover image etc); the service
+// layer (invitationMedia.service.ts) still enforces the tighter per-type
+// caps (8MB image/PDF, 15MB video), this is just multer's outer ceiling.
+const uploadInvitationMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -35,15 +41,28 @@ router.delete("/:eventId", validateParams(eventIdParamsSchema), controller.remov
 router.get("/:eventId/dashboard", validateParams(eventIdParamsSchema), controller.dashboard);
 router.get("/:eventId/rsvp", validateParams(eventIdParamsSchema), rsvpController.dashboard);
 
-router.get("/:eventId/invitation-card", validateParams(eventIdParamsSchema), controller.getInvitationCardMeta);
-router.get("/:eventId/invitation-card/file", validateParams(eventIdParamsSchema), controller.downloadInvitationCard);
+router.get("/:eventId/invitation-media", validateParams(eventIdParamsSchema), controller.listInvitationMedia);
 router.post(
-  "/:eventId/invitation-card",
+  "/:eventId/invitation-media",
   validateParams(eventIdParamsSchema),
-  upload.single("file"),
-  controller.uploadInvitationCard
+  uploadInvitationMedia.single("file"),
+  controller.uploadInvitationMedia
 );
-router.delete("/:eventId/invitation-card", validateParams(eventIdParamsSchema), controller.deleteInvitationCard);
+router.put(
+  "/:eventId/invitation-media/reorder",
+  validateParams(eventIdParamsSchema),
+  controller.reorderInvitationMedia
+);
+router.get(
+  "/:eventId/invitation-media/:mediaId/file",
+  validateParams(invitationMediaParamsSchema),
+  controller.downloadInvitationMediaFile
+);
+router.delete(
+  "/:eventId/invitation-media/:mediaId",
+  validateParams(invitationMediaParamsSchema),
+  controller.deleteInvitationMediaItem
+);
 
 // Public ticket listing cover image (bytes-in-postgres, same pattern as
 // invitation cards above and Product/Article images).

@@ -254,10 +254,17 @@ export interface PublicEvent {
   allowDietary: boolean;
   allowAccessibilityInfo: boolean;
   allowSpecialRequests: boolean;
-  hasInvitationCard: boolean;
-  // Whether the uploaded card is an image (vs a PDF) -- only images are
-  // used for the page's colour theme, see lib/cardTheme.ts.
-  invitationCardIsImage: boolean;
+  // Ordered list of every invitation media item (images, PDFs, short video
+  // clips) the host has uploaded -- rendered as a gallery the guest pages
+  // through (see InvitationMediaGallery.tsx). The first IMAGE item (if any)
+  // also backs the page's colour theme, see lib/cardTheme.ts.
+  invitationMedia: InvitationMediaItem[];
+}
+
+export interface InvitationMediaItem {
+  id: string;
+  mimeType: string;
+  fileName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -368,7 +375,6 @@ export interface InviteLink {
   sentAt: string | null;
   guestEmail: string | null;
   guestPhone: string | null;
-  hasInvitationCard: boolean;
 }
 
 export interface GuestPrefill {

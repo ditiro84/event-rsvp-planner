@@ -2,7 +2,13 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { env } from "../../config/env";
 import { validateBody, validateParams } from "../../middleware/validate";
-import { invitationTokenParamsSchema, rsvpTokenParamsSchema, submitRsvpSchema } from "./rsvp.schema";
+import {
+  invitationTokenMediaParamsSchema,
+  invitationTokenParamsSchema,
+  rsvpTokenMediaParamsSchema,
+  rsvpTokenParamsSchema,
+  submitRsvpSchema,
+} from "./rsvp.schema";
 import * as controller from "./rsvp.controller";
 
 // Public router: no authentication. Mounted at /api/rsvp
@@ -41,16 +47,16 @@ router.post(
 );
 
 router.get(
-  "/invite/:invitationToken/invitation-card",
+  "/invite/:invitationToken/invitation-media/:mediaId/file",
   readRateLimit,
-  validateParams(invitationTokenParamsSchema),
-  controller.getInvitationCardByInviteToken
+  validateParams(invitationTokenMediaParamsSchema),
+  controller.getInvitationMediaFileByInviteToken
 );
 router.get(
-  "/:token/invitation-card",
+  "/:token/invitation-media/:mediaId/file",
   readRateLimit,
-  validateParams(rsvpTokenParamsSchema),
-  controller.getInvitationCardByToken
+  validateParams(rsvpTokenMediaParamsSchema),
+  controller.getInvitationMediaFileByToken
 );
 
 router.get("/:token", readRateLimit, validateParams(rsvpTokenParamsSchema), controller.getPublicEvent);

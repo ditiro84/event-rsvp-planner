@@ -5,7 +5,7 @@ import { env } from "../../config/env";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { checkInGuest, getOwnedGuest } from "./guests.service";
-import { eventHasInvitationCard, getInvitationCardBytesForEvent } from "../events/invitationCard.service";
+import { getPrimaryAttachableMediaForEvent } from "../events/invitationMedia.service";
 import { formatFromHeader } from "../../utils/email";
 import { slugify } from "../../lib/slug";
 
@@ -37,7 +37,6 @@ export async function getInviteLink(userId: string, guestId: string) {
   const { guest, invitation } = await getOrCreateInvitation(userId, guestId);
   const url = buildInviteUrl(invitation.token, guest.event.name);
   const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 400 });
-  const hasInvitationCard = await eventHasInvitationCard(guest.eventId);
   return {
     url,
     qrDataUrl,
@@ -45,7 +44,6 @@ export async function getInviteLink(userId: string, guestId: string) {
     sentAt: invitation.sentAt,
     guestEmail: guest.email,
     guestPhone: guest.phone,
-    hasInvitationCard,
   };
 }
 
@@ -186,9 +184,11 @@ export async function sendInviteEmail(userId: string, guestId: string) {
     },
   ];
 
-  // If the host has uploaded a designed invitation card (PDF/PNG/JPEG),
-  // attach it too so the guest gets the real invite, not just a QR code.
-  const card = await getInvitationCardBytesForEvent(guest.eventId);
+  // If the host has uploaded invitation media, attach the first IMAGE/PDF
+  // item (in the same order guests see on the RSVP page) so the guest gets
+  // the real invite, not just a QR code -- video items are skipped here,
+  // see getPrimaryAttachableMediaForEvent's comment.
+  const card = await getPrimaryAttachableMediaForEvent(guest.eventId);
   if (card) {
     attachments.push({
       filename: card.fileName,

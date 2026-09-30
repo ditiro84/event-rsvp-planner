@@ -1,16 +1,33 @@
 import { Fragment, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Clock, Copy, FileText, Mail, MessageCircle, ShoppingBag, Search, Send, Trash2, Truck, Upload } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Copy,
+  FileText,
+  Mail,
+  MessageCircle,
+  PlayCircle,
+  ShoppingBag,
+  Search,
+  Send,
+  Trash2,
+  Truck,
+  Upload,
+} from "lucide-react";
 import { usePlannerRsvpDashboard, useToggleRsvpOpen } from "@/hooks/useRsvp";
 import { useGuests, type GuestFilters } from "@/hooks/useGuests";
 import { useBulkSendInviteEmails } from "@/hooks/useInvites";
 import { useOrders } from "@/hooks/useProducts";
 import {
-  useDeleteInvitationCard,
-  useInvitationCardMeta,
-  useInvitationCardPreview,
-  useUploadInvitationCard,
-} from "@/hooks/useInvitationCard";
+  useDeleteInvitationMedia,
+  useInvitationMediaList,
+  useInvitationMediaPreview,
+  useReorderInvitationMedia,
+  useUploadInvitationMedia,
+  type InvitationMediaMeta,
+} from "@/hooks/useInvitationMedia";
 import { Card } from "@/components/ui/Card";
 import { DonutChart } from "@/components/ui/DonutChart";
 import { Input } from "@/components/ui/Input";
@@ -428,12 +445,85 @@ function LegendRow({ dot, label, value }: { dot: string; label: string; value: n
   );
 }
 
+const MAX_INVITATION_MEDIA_ITEMS = 8;
+
+function InvitationMediaRow({
+  eventId,
+  item,
+  isFirst,
+  isLast,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+  isReordering,
+  isDeleting,
+}: {
+  eventId: string;
+  item: InvitationMediaMeta;
+  isFirst: boolean;
+  isLast: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDelete: () => void;
+  isReordering: boolean;
+  isDeleting: boolean;
+}) {
+  const isImage = item.mimeType.startsWith("image/");
+  const isVideo = item.mimeType.startsWith("video/");
+  const { previewUrl } = useInvitationMediaPreview(eventId, isImage ? item.id : null);
+
+  return (
+    <div className="flex items-center gap-4 rounded-lg border border-slate-200 p-3">
+      {previewUrl ? (
+        <img src={previewUrl} alt={item.fileName} className="h-16 w-16 shrink-0 rounded-md border border-slate-200 object-cover" />
+      ) : (
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50">
+          {isVideo ? <PlayCircle className="h-7 w-7 text-slate-400" /> : <FileText className="h-7 w-7 text-slate-400" />}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-slate-900">{item.fileName}</p>
+        <p className="text-xs text-slate-500">
+          {isVideo ? "Video" : isImage ? "Image" : "PDF"} &middot; {formatFileSize(item.size)} &middot; uploaded{" "}
+          {formatDate(item.createdAt)}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={isFirst || isReordering}
+          aria-label="Move earlier"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <ChevronDown className="h-4 w-4 rotate-180" />
+        </button>
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={isLast || isReordering}
+          aria-label="Move later"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <ChevronDown className="h-4 w-4" />
+        </button>
+        <Button variant="danger" size="sm" onClick={onDelete} isLoading={isDeleting}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function InvitationCardSection({ eventId }: { eventId: string }) {
-  const { data: card, isLoading, isError, refetch } = useInvitationCardMeta(eventId);
-  const upload = useUploadInvitationCard(eventId);
-  const remove = useDeleteInvitationCard(eventId);
-  const { previewUrl } = useInvitationCardPreview(eventId, !!card && card.mimeType.startsWith("image/"));
+  const { data: items, isLoading, isError, refetch } = useInvitationMediaList(eventId);
+  const upload = useUploadInvitationMedia(eventId);
+  const remove = useDeleteInvitationMedia(eventId);
+  const reorder = useReorderInvitationMedia(eventId);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ordered = items ?? [];
+  const atLimit = ordered.length >= MAX_INVITATION_MEDIA_ITEMS;
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -441,17 +531,29 @@ function InvitationCardSection({ eventId }: { eventId: string }) {
     if (!file) return;
     try {
       await upload.mutateAsync(file);
-      toast.success("Invitation card uploaded");
+      toast.success("Added to the invitation gallery");
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
   }
 
-  async function handleRemove() {
-    if (!confirm("Remove the invitation card? Guests will stop receiving it with new invites.")) return;
+  async function handleDelete(item: InvitationMediaMeta) {
+    if (!confirm(`Remove "${item.fileName}"? Guests will stop seeing it on the RSVP page.`)) return;
     try {
-      await remove.mutateAsync();
-      toast.success("Invitation card removed");
+      await remove.mutateAsync(item.id);
+      toast.success("Removed");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  }
+
+  async function handleMove(index: number, direction: -1 | 1) {
+    const next = [...ordered];
+    const swapWith = index + direction;
+    if (swapWith < 0 || swapWith >= next.length) return;
+    [next[index], next[swapWith]] = [next[swapWith], next[index]];
+    try {
+      await reorder.mutateAsync(next.map((i) => i.id));
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -459,20 +561,32 @@ function InvitationCardSection({ eventId }: { eventId: string }) {
 
   return (
     <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-700">Invitation card</p>
+          <p className="text-sm font-medium text-slate-700">Invitation gallery</p>
           <p className="mt-1 text-xs text-slate-500">
-            Attach a designed PDF or image (PNG/JPEG, up to 8MB) to send alongside the QR code in invite emails.
-            WhatsApp invites will include a link to view it, since WhatsApp links can't auto-attach files.
+            Add PDFs, images (PNG/JPEG, up to 8MB each) and short video clips (MP4/MOV, up to 15MB, keep it brief --
+            think a quick reel) for guests to page through on the RSVP page. The first image or PDF is also attached
+            to invite emails automatically; video isn't, since most mail apps handle that badly -- it'll still show
+            on the RSVP page guests already get linked to.
           </p>
         </div>
+        <Button
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          isLoading={upload.isPending}
+          disabled={atLimit}
+          title={atLimit ? `Up to ${MAX_INVITATION_MEDIA_ITEMS} items` : undefined}
+        >
+          <Upload className="h-4 w-4" />
+          Add
+        </Button>
       </div>
 
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+        accept=".pdf,.png,.jpg,.jpeg,.mp4,.mov,application/pdf,image/png,image/jpeg,video/mp4,video/quicktime"
         className="hidden"
         onChange={handleFileChange}
       />
@@ -480,40 +594,33 @@ function InvitationCardSection({ eventId }: { eventId: string }) {
       {isLoading ? (
         <Spinner />
       ) : isError ? (
-        <ErrorState title="Couldn't load the invitation card" onRetry={() => refetch()} />
-      ) : card ? (
-        <div className="flex items-center gap-4 rounded-lg border border-slate-200 p-3">
-          {previewUrl ? (
-            <img src={previewUrl} alt="Invitation card preview" className="h-20 w-20 rounded-md border border-slate-200 object-cover" />
-          ) : (
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50">
-              <FileText className="h-8 w-8 text-slate-400" />
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-900">{card.fileName}</p>
-            <p className="text-xs text-slate-500">
-              {formatFileSize(card.size)} &middot; uploaded {formatDate(card.createdAt)}
-            </p>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} isLoading={upload.isPending}>
-              Replace
-            </Button>
-            <Button variant="danger" size="sm" onClick={handleRemove} isLoading={remove.isPending}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+        <ErrorState title="Couldn't load the invitation gallery" onRetry={() => refetch()} />
+      ) : ordered.length > 0 ? (
+        <div className="space-y-2">
+          {ordered.map((item, index) => (
+            <InvitationMediaRow
+              key={item.id}
+              eventId={eventId}
+              item={item}
+              isFirst={index === 0}
+              isLast={index === ordered.length - 1}
+              onMoveUp={() => handleMove(index, -1)}
+              onMoveDown={() => handleMove(index, 1)}
+              onDelete={() => handleDelete(item)}
+              isReordering={reorder.isPending}
+              isDeleting={remove.isPending && remove.variables === item.id}
+            />
+          ))}
         </div>
       ) : (
         <EmptyState
           icon={<Upload className="h-8 w-8" />}
-          title="No invitation card yet"
-          description="Upload a PDF or image and it'll be attached to every invite email automatically."
+          title="No invitation media yet"
+          description="Add a PDF, image, or short video and guests will see it on the RSVP page."
           action={
             <Button size="sm" onClick={() => fileInputRef.current?.click()} isLoading={upload.isPending}>
               <Upload className="h-4 w-4" />
-              Upload card
+              Add media
             </Button>
           }
         />

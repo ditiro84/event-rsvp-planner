@@ -11,7 +11,7 @@ const RESOURCE_LABELS: { match: RegExp; label: string }[] = [
   { match: /^\/products/, label: "product" },
   { match: /^\/orders/, label: "order" },
   { match: /^\/payouts/, label: "payout account" },
-  { match: /^\/invitation-card/, label: "invitation card" },
+  { match: /^\/invitation-media/, label: "invitation media" },
 ];
 
 const METHOD_VERBS: Record<string, string> = {
@@ -118,13 +118,14 @@ const DELETE_SNAPSHOT_RULES: { match: RegExp; before: (eventId: string, id: stri
       }),
   },
   {
-    // Singleton per event (one card, keyed on eventId itself) -- no :id
-    // segment, so the capture group is unused and `id` in `before` is "".
-    match: /^\/invitation-card$/,
-    before: async (eventId) =>
-      prisma.eventInvitationCard.findUnique({
-        where: { eventId },
-        select: { fileName: true, mimeType: true, size: true },
+    // One of possibly several media items per event now (see
+    // EventInvitationMedia) -- unlike the old singleton card, DELETE here
+    // targets a specific item by id.
+    match: /^\/invitation-media\/([^/]+)$/,
+    before: async (_eventId, id) =>
+      prisma.eventInvitationMedia.findUnique({
+        where: { id },
+        select: { fileName: true, mimeType: true, size: true, position: true },
       }),
   },
   {

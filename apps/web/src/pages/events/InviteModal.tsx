@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Copy, FileText, Mail, MessageCircle } from "lucide-react";
+import { Copy, Mail, MessageCircle } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { useGetInviteLink, useMarkInviteSent, useSendInviteEmail } from "@/hooks/useInvites";
-import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import type { Guest } from "@/types";
@@ -38,17 +38,6 @@ export function InviteModal({
 
   const link = getLink.data;
 
-  // link.url looks like "<PUBLIC_APP_URL>/rsvp/invite/<slug>/<token>" (the
-  // slug is a cosmetic, human-readable copy of the event name -- see
-  // lib/slug.ts -- so the token is always the LAST path segment, not
-  // necessarily everything after "/invite/"). Pull just the token back out
-  // to build a direct link to the public card-serving endpoint (WhatsApp's
-  // wa.me links can only pre-fill text, not attach files, so this is how a
-  // card reaches WhatsApp invites).
-  const invitationCardUrl = link
-    ? `${apiBaseUrl}/rsvp/invite/${link.url.split("/").filter(Boolean).pop()}/invitation-card`
-    : null;
-
   async function handleCopy() {
     if (!link) return;
     await navigator.clipboard.writeText(link.url);
@@ -58,9 +47,11 @@ export function InviteModal({
 
   function handleWhatsApp() {
     if (!link || !guest.phone) return;
-    const message = link.hasInvitationCard
-      ? `You're invited to ${eventName}! RSVP here: ${link.url}\n\nView your invitation card: ${invitationCardUrl}`
-      : `You're invited to ${eventName}! RSVP here: ${link.url}`;
+    // The RSVP link itself already surfaces the full invitation gallery
+    // (images, PDF, any video clip) at the top of the page, so there's no
+    // separate card link to include here the way there was when a card was
+    // a single file.
+    const message = `You're invited to ${eventName}! RSVP here: ${link.url}`;
     window.open(buildWhatsAppUrl(message, guest.phone), "_blank", "noopener,noreferrer");
     markSent.mutate({ guestId: guest.id, channel: "whatsapp" });
   }
@@ -125,18 +116,6 @@ export function InviteModal({
               Email
             </Button>
           </div>
-
-          {link.hasInvitationCard && invitationCardUrl && (
-            <a
-              href={invitationCardUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 text-xs font-medium text-brand-700 hover:text-brand-800"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              View invitation card
-            </a>
-          )}
 
           {link.sentAt && (
             <p className="text-center text-xs text-slate-400">

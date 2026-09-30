@@ -13,6 +13,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { formatDate, formatMoney } from "@/lib/format";
 import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
 import { DeliveryFields, PROVIDER_LABELS, ProductRow, ShopSection } from "./ShopSection";
+import { InvitationMediaGallery } from "./InvitationMediaGallery";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { extractCardTheme, type CardTheme } from "@/lib/cardTheme";
 import { CardThemeContext, buildCardThemeStyles, withAlpha } from "@/lib/cardThemeContext";
@@ -86,30 +87,34 @@ export default function PublicRsvpPage() {
   const submitByInvite = useSubmitRsvpViaInvite(invitationToken ?? "");
   const submitRsvp = isInvite ? submitByInvite : submitByToken;
 
-  // Both the shared event link and the personalized invite link serve the
-  // card from a public, unauthenticated endpoint -- just pick whichever
-  // token got us to this page.
-  const invitationCardUrl = isInvite
-    ? `${apiBaseUrl}/rsvp/invite/${invitationToken}/invitation-card`
-    : `${apiBaseUrl}/rsvp/${token}/invitation-card`;
+  // Both the shared event link and the personalized invite link serve
+  // invitation media from a public, unauthenticated endpoint -- just pick
+  // whichever token got us to this page. Each item is fetched by its own
+  // id (see InvitationMediaGallery.tsx), unlike the old single-card route.
+  function mediaFileUrl(mediaId: string) {
+    return isInvite
+      ? `${apiBaseUrl}/rsvp/invite/${invitationToken}/invitation-media/${mediaId}/file`
+      : `${apiBaseUrl}/rsvp/${token}/invitation-media/${mediaId}/file`;
+  }
 
   const [submitted, setSubmitted] = useState<
     { guestId: string; firstName: string; lastName: string; email: string; rsvpStatus: string } | null
   >(null);
 
-  // Colours (and the card image itself, for a blurred ambient background)
-  // pulled from the event's invitation card, so the whole guest page can
-  // pick up the card's look -- see lib/cardTheme.ts for the extraction and
-  // lib/cardThemeContext.tsx for how it's shared with ShopSection below.
-  // Only attempted for image cards (invitationCardIsImage); a PDF card is
-  // left alone and the page just keeps its default brand/coral look.
+  // Colours (and the image itself, for a blurred ambient background) pulled
+  // from the event's first IMAGE invitation-media item, so the whole guest
+  // page can pick up its look -- see lib/cardTheme.ts for the extraction
+  // and lib/cardThemeContext.tsx for how it's shared with ShopSection
+  // below. A PDF or video item is left alone and the page just keeps its
+  // default brand/coral look.
   const [theme, setTheme] = useState<CardTheme | null>(null);
+  const primaryImageMedia = event?.invitationMedia.find((m) => m.mimeType.startsWith("image/"));
 
   useEffect(() => {
-    if (!event?.invitationCardIsImage) return;
+    if (!primaryImageMedia) return;
     let cancelled = false;
     let createdUrl: string | null = null;
-    extractCardTheme(invitationCardUrl).then((result) => {
+    extractCardTheme(mediaFileUrl(primaryImageMedia.id)).then((result) => {
       if (cancelled) {
         if (result) URL.revokeObjectURL(result.imageUrl);
         return;
@@ -121,11 +126,10 @@ export default function PublicRsvpPage() {
       cancelled = true;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-    // invitationCardUrl is derived from token/invitationToken, which don't
-    // change without a full remount, so it's intentionally left out here to
-    // avoid re-extracting on every render.
+    // Re-runs only when which item is primary actually changes, not on
+    // every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event?.invitationCardIsImage]);
+  }, [primaryImageMedia?.id]);
 
   const themeStyles = buildCardThemeStyles(theme);
 
@@ -535,17 +539,22 @@ export default function PublicRsvpPage() {
                   This invite was sent to {guestPrefill.firstName} {guestPrefill.lastName} — feel free to update any details below.
                 </p>
               )}
-              {event.hasInvitationCard && (
-                <a
-                  href={invitationCardUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 hover:brightness-90"
-                  style={themeStyles.primaryFill}
-                >
-                  <FileText className="h-5 w-5" />
-                  View invitation card
-                </a>
+              {event.invitationMedia.length > 0 && (
+                <InvitationMediaGallery
+                  items={event.invitationMedia}
+                  mediaFileUrl={mediaFileUrl}
+                  renderTrigger={(onClick) => (
+                    <button
+                      type="button"
+                      onClick={onClick}
+                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 hover:brightness-90"
+                      style={themeStyles.primaryFill}
+                    >
+                      <FileText className="h-5 w-5" />
+                      {event.invitationMedia.length > 1 ? "View invitation" : "View invitation card"}
+                    </button>
+                  )}
+                />
               )}
             </div>
           </div>

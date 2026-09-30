@@ -62,3 +62,12 @@ export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export const eventIdParamsSchema = z.object({
   eventId: z.string().min(1),
 });
+
+export const invitationMediaParamsSchema = z.object({
+  eventId: z.string().min(1),
+  mediaId: z.string().min(1),
+});
+
+export const reorderInvitationMediaSchema = z.object({
+  orderedIds: z.array(z.string().min(1)).min(1),
+});

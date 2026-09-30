@@ -8,6 +8,16 @@ export const invitationTokenParamsSchema = z.object({
   invitationToken: z.string().min(1),
 });
 
+export const rsvpTokenMediaParamsSchema = z.object({
+  token: z.string().min(1),
+  mediaId: z.string().min(1),
+});
+
+export const invitationTokenMediaParamsSchema = z.object({
+  invitationToken: z.string().min(1),
+  mediaId: z.string().min(1),
+});
+
 export const submitRsvpSchema = z
   .object({
     firstName: z.string().trim().min(1, "First name is required").max(100),

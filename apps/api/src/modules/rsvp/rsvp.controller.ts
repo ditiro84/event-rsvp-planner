@@ -2,7 +2,8 @@ import { Request, Response } from "express";
 import { ok } from "../../lib/apiResponse";
 import { submitRsvpSchema } from "./rsvp.schema";
 import * as service from "./rsvp.service";
-import * as cardService from "../events/invitationCard.service";
+import * as mediaService from "../events/invitationMedia.service";
+import { serveBytesWithRangeSupport } from "../../utils/serveBytes";
 
 export async function getPublicEvent(req: Request, res: Response) {
   const event = await service.getPublicEventByToken(req.params.token);
@@ -37,16 +38,15 @@ export async function submitViaInvite(req: Request, res: Response) {
   });
 }
 
-export async function getInvitationCardByToken(req: Request, res: Response) {
-  const card = await cardService.getInvitationCardByEventToken(req.params.token);
-  res.setHeader("Content-Type", card.mimeType);
-  res.setHeader("Content-Disposition", `inline; filename="${card.fileName}"`);
-  return res.status(200).send(card.data);
+export async function getInvitationMediaFileByToken(req: Request, res: Response) {
+  const item = await mediaService.getInvitationMediaFileByEventToken(req.params.token, req.params.mediaId);
+  serveBytesWithRangeSupport(req, res, item.data, item.mimeType, item.fileName);
 }
 
-export async function getInvitationCardByInviteToken(req: Request, res: Response) {
-  const card = await cardService.getInvitationCardByInvitationToken(req.params.invitationToken);
-  res.setHeader("Content-Type", card.mimeType);
-  res.setHeader("Content-Disposition", `inline; filename="${card.fileName}"`);
-  return res.status(200).send(card.data);
+export async function getInvitationMediaFileByInviteToken(req: Request, res: Response) {
+  const item = await mediaService.getInvitationMediaFileByInvitationToken(
+    req.params.invitationToken,
+    req.params.mediaId
+  );
+  serveBytesWithRangeSupport(req, res, item.data, item.mimeType, item.fileName);
 }

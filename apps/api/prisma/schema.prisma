@@ -140,7 +140,7 @@ model Event {
   venueLayout     VenueLayout?
   tables          Table[]
   checkIns        CheckIn[]
-  invitationCard  EventInvitationCard?
+  invitationMedia EventInvitationMedia[]
   vendors         Vendor[]
   notifications   Notification[]
   products        Product[]
@@ -342,11 +342,26 @@ model GuestParty {
 // (capped in the upload handler) and this avoids needing a separate storage
 // service/credentials. Kept in its own table (not columns on Event) so
 // normal Event queries never pull these bytes along for the ride.
-model EventInvitationCard {
-  id       String @id @default(cuid())
-  eventId  String @unique
-  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+// Multiple invitation media items per event -- images, PDFs, and short
+// video clips (e.g. a reel-style teaser) -- replacing the old single
+// EventInvitationCard. `position` controls both the planner's manage order
+// and the order guests page through them in on the RSVP page. The lowest-
+// position IMAGE item also backs the page's colour theme (see
+// lib/cardTheme.ts on the frontend) and is the one attached to invite
+// emails (see invite.service.ts) -- video/PDF items are never
+// email-attached, since most mail clients mishandle large/video
+// attachments and a clip is better experienced on the RSVP page anyway.
+// Stored as bytes in Postgres, same pattern as the rest of this app's
+// uploads (Product/Article images, cover images) rather than an external
+// bucket -- see invitationMedia.service.ts for the size caps this implies
+// (video capped well below image/PDF, and Range-request support on the
+// serving route so <video> can seek despite there being no CDN).
+model EventInvitationMedia {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
+  position Int    @default(0)
   data     Bytes
   mimeType String
   fileName String
@@ -355,7 +370,8 @@ model EventInvitationCard {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("event_invitation_cards")
+  @@index([eventId, position])
+  @@map("event_invitation_media")
 }
 
 // Optional per-guest personalised invitation link (future: email/SMS sending).

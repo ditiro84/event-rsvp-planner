@@ -633,7 +633,7 @@ export default function PublicRsvpPage() {
                 <span className="text-sm font-semibold text-slate-900">Would you like to purchase merchandise?</span>
               </div>
               <p className="mt-1 text-xs text-slate-500">
-                This event has merchandise available -- let us know now so it can go out with your RSVP.
+                This event has Fabric, Gele, Fila, T-Shirt etc available -- let us know now so it can go out with your RSVP.
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
@@ -646,7 +646,7 @@ export default function PublicRsvpPage() {
                   }`}
                   style={wantsMerchandise === "yes" ? themeStyles.outline("primary") : undefined}
                 >
-                  Yes, I'd like to buy something
+                  Yes, I'd like to buy Fabric, Gele, Fila, T-Shirt etc
                 </button>
                 <button
                   type="button"

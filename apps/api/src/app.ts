@@ -31,7 +31,19 @@ export function createApp() {
 
   app.set("trust proxy", 1); // needed for correct client IPs behind Railway/Render/Vercel proxies
 
-  app.use(helmet());
+  // Default helmet() sets Cross-Origin-Resource-Policy: same-origin, which
+  // blocks the Vercel-hosted frontend (a different origin from this API)
+  // from directly <img>/<video>-embedding anything we serve -- product
+  // photos, event cover images, invitation media, etc. CORS (below) only
+  // covers fetch()/XHR; CORP is a separate, stricter check that applies to
+  // plain <img src> regardless of CORS headers, so a same-origin CORP
+  // policy silently breaks any image embedded the "normal" way while
+  // fetch()-then-blob-URL tricks (see AuthedImage.tsx, cardTheme.ts) keep
+  // working -- which is exactly what made this bug easy to miss. Since
+  // every resource this API serves is meant to be embedded by that
+  // separately-hosted frontend, "cross-origin" is the correct policy here,
+  // not a relaxation of something that needed to stay locked down.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(
     cors({
       origin: env.corsOrigins,

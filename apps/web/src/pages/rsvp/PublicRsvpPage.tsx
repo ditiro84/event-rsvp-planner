@@ -546,18 +546,15 @@ export default function PublicRsvpPage() {
                 </p>
               )}
               {event.invitationMedia.length > 0 && (
-                // A single item opens the raw file directly in a new tab --
-                // same as the old one-card feature. With more than one item
-                // a raw file link can't page between them, so that case
-                // opens a dedicated gallery page (still a new tab) instead
-                // of an in-page modal, so guests keep the invitation open
-                // alongside the RSVP form rather than it covering the page.
+                // Always opens our own standalone gallery page (in a new tab)
+                // rather than linking straight to the raw file -- that page
+                // sets its own tab title ("Invitation - Event Name") and has
+                // a clean in-app URL, whereas a raw file link hands the tab
+                // over to the browser's native viewer (title/URL become the
+                // file's own dimensions/raw API path, outside our control).
+                // It also still handles paging through multiple items.
                 <a
-                  href={
-                    event.invitationMedia.length === 1
-                      ? mediaFileUrl(event.invitationMedia[0].id)
-                      : invitationMediaPageUrl
-                  }
+                  href={invitationMediaPageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 hover:brightness-90"

@@ -18,6 +18,7 @@ const PrivacyPolicyPage = lazy(() => import("@/pages/legal/PrivacyPolicyPage"));
 const TermsOfServicePage = lazy(() => import("@/pages/legal/TermsOfServicePage"));
 const EventsListPage = lazy(() => import("@/pages/events/EventsListPage"));
 const PublicRsvpPage = lazy(() => import("@/pages/rsvp/PublicRsvpPage"));
+const InvitationMediaPage = lazy(() => import("@/pages/rsvp/InvitationMediaPage"));
 const PublicTicketEventPage = lazy(() => import("@/pages/tickets/PublicTicketEventPage"));
 
 // All five of these live in one module (EventTabPages.tsx); pointing
@@ -85,6 +86,14 @@ export default function App() {
           <Route path="/rsvp/invite/:invitationToken" element={<PublicRsvpPage />} />
           <Route path="/rsvp/:slug/:token" element={<PublicRsvpPage />} />
           <Route path="/rsvp/:token" element={<PublicRsvpPage />} />
+          {/* Standalone multi-item invitation gallery, opened in a new tab
+              from PublicRsvpPage.tsx -- only reachable when an event has
+              more than one invitation media item (a single item links
+              straight to the raw file instead). Same token/invitationToken
+              params as the RSVP routes above, no slug variants needed since
+              this is never a link a host hands out directly. */}
+          <Route path="/rsvp/invite/:invitationToken/invitation-media" element={<InvitationMediaPage />} />
+          <Route path="/rsvp/:token/invitation-media" element={<InvitationMediaPage />} />
           <Route path="/tickets/:slug" element={<PublicTicketEventPage />} />
           <Route path="/staff/:passToken" element={<StaffCheckInPage />} />
 

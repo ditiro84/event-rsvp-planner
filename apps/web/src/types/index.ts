@@ -256,7 +256,7 @@ export interface PublicEvent {
   allowSpecialRequests: boolean;
   // Ordered list of every invitation media item (images, PDFs, short video
   // clips) the host has uploaded -- rendered as a gallery the guest pages
-  // through (see InvitationMediaGallery.tsx). The first IMAGE item (if any)
+  // through (see InvitationMediaPage.tsx). The first IMAGE item (if any)
   // also backs the page's colour theme, see lib/cardTheme.ts.
   invitationMedia: InvitationMediaItem[];
 }

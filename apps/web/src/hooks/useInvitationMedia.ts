@@ -65,7 +65,7 @@ export function useReorderInvitationMedia(eventId: string) {
 // and video) or an "open in new tab" link (PDFs). Uses the authenticated
 // host-side download endpoint, so this only works for the event owner --
 // not the public guest-facing preview, which hits a separate
-// unauthenticated route (see InvitationMediaGallery.tsx on the public
+// unauthenticated route (see InvitationMediaPage.tsx on the public
 // RSVP page).
 export function useInvitationMediaPreview(eventId: string, mediaId: string | null) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

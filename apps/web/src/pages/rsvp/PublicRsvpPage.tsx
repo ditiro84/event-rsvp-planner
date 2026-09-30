@@ -13,7 +13,6 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { formatDate, formatMoney } from "@/lib/format";
 import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
 import { DeliveryFields, PROVIDER_LABELS, ProductRow, ShopSection } from "./ShopSection";
-import { InvitationMediaGallery } from "./InvitationMediaGallery";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { extractCardTheme, type CardTheme } from "@/lib/cardTheme";
 import { CardThemeContext, buildCardThemeStyles, withAlpha } from "@/lib/cardThemeContext";
@@ -90,12 +89,19 @@ export default function PublicRsvpPage() {
   // Both the shared event link and the personalized invite link serve
   // invitation media from a public, unauthenticated endpoint -- just pick
   // whichever token got us to this page. Each item is fetched by its own
-  // id (see InvitationMediaGallery.tsx), unlike the old single-card route.
+  // id (see InvitationMediaPage.tsx), unlike the old single-card route.
   function mediaFileUrl(mediaId: string) {
     return isInvite
       ? `${apiBaseUrl}/rsvp/invite/${invitationToken}/invitation-media/${mediaId}/file`
       : `${apiBaseUrl}/rsvp/${token}/invitation-media/${mediaId}/file`;
   }
+
+  // In-app route (not the API) for the standalone multi-item gallery page
+  // -- see InvitationMediaPage.tsx. Only ever used as a target="_blank"
+  // href, never navigated to from within this component.
+  const invitationMediaPageUrl = isInvite
+    ? `/rsvp/invite/${invitationToken}/invitation-media`
+    : `/rsvp/${token}/invitation-media`;
 
   const [submitted, setSubmitted] = useState<
     { guestId: string; firstName: string; lastName: string; email: string; rsvpStatus: string } | null
@@ -540,21 +546,26 @@ export default function PublicRsvpPage() {
                 </p>
               )}
               {event.invitationMedia.length > 0 && (
-                <InvitationMediaGallery
-                  items={event.invitationMedia}
-                  mediaFileUrl={mediaFileUrl}
-                  renderTrigger={(onClick) => (
-                    <button
-                      type="button"
-                      onClick={onClick}
-                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 hover:brightness-90"
-                      style={themeStyles.primaryFill}
-                    >
-                      <FileText className="h-5 w-5" />
-                      {event.invitationMedia.length > 1 ? "View invitation" : "View invitation card"}
-                    </button>
-                  )}
-                />
+                // A single item opens the raw file directly in a new tab --
+                // same as the old one-card feature. With more than one item
+                // a raw file link can't page between them, so that case
+                // opens a dedicated gallery page (still a new tab) instead
+                // of an in-page modal, so guests keep the invitation open
+                // alongside the RSVP form rather than it covering the page.
+                <a
+                  href={
+                    event.invitationMedia.length === 1
+                      ? mediaFileUrl(event.invitationMedia[0].id)
+                      : invitationMediaPageUrl
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 hover:brightness-90"
+                  style={themeStyles.primaryFill}
+                >
+                  <FileText className="h-5 w-5" />
+                  {event.invitationMedia.length > 1 ? "View invitation" : "View invitation card"}
+                </a>
               )}
             </div>
           </div>

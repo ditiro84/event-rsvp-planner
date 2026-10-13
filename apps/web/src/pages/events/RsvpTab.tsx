@@ -312,9 +312,27 @@ export function RsvpTab({ event }: { event: EventRecord }) {
                                 <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                               ))}
                             <Avatar firstName={guest.firstName} lastName={guest.lastName} size="sm" />
-                            <span className="font-semibold text-slate-900">
-                              {guest.firstName} {guest.lastName}
-                            </span>
+                            <div className="min-w-0">
+                              <span className="font-semibold text-slate-900">
+                                {guest.firstName} {guest.lastName}
+                              </span>
+                              {guest.additionalGuestsCount > 0 && (
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                  {guest.party && guest.party.length > 0 && (
+                                    <>
+                                      <span className="font-medium text-slate-600">With:</span>{" "}
+                                      {guest.party.map((p) => p.fullName).join(", ")}
+                                    </>
+                                  )}
+                                  {(guest.party?.length ?? 0) < guest.additionalGuestsCount && (
+                                    <span className="text-amber-600">
+                                      {guest.party && guest.party.length > 0 ? " · " : ""}
+                                      {guest.additionalGuestsCount - (guest.party?.length ?? 0)} unnamed
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-slate-600">{guest.email || "—"}</td>

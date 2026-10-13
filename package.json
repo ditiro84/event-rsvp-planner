@@ -5,7 +5,8 @@
   "description": "Event RSVP and Visual Seating Planner SaaS - monorepo root",
   "workspaces": [
     "apps/api",
-    "apps/web"
+    "apps/web",
+    "apps/e2e"
   ],
   "scripts": {
     "dev:api": "npm run dev --workspace=apps/api",
@@ -18,7 +19,10 @@
     "typecheck:api": "npm run typecheck --workspace=apps/api",
     "typecheck:web": "npm run typecheck --workspace=apps/web",
     "prisma:generate": "npm run prisma:generate --workspace=apps/api",
-    "prisma:migrate": "npm run prisma:migrate --workspace=apps/api"
+    "prisma:migrate": "npm run prisma:migrate --workspace=apps/api",
+    "test:e2e": "npm run test --workspace=apps/e2e",
+    "typecheck:e2e": "npm run typecheck --workspace=apps/e2e",
+    "lint:e2e": "npm run lint --workspace=apps/e2e"
   },
   "engines": {
     "node": ">=20.0.0"

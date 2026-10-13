@@ -73,7 +73,7 @@ export function GuestSidebar({
           />
         </div>
       </div>
-      <div className="flex-1 space-y-1.5 overflow-y-auto px-3 py-3">
+      <div data-testid="unassigned-guests-list" className="flex-1 space-y-1.5 overflow-y-auto px-3 py-3">
         {guests.length === 0 && (
           <p className="px-1 py-6 text-center text-sm text-slate-400">Everyone confirmed has a seat.</p>
         )}

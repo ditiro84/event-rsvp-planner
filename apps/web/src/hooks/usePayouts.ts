@@ -28,7 +28,7 @@ export function useDisconnectPayoutAccount(eventId: string) {
 // rather than rendering anything itself.
 export function useConnectStripe(eventId: string) {
   return useMutation({
-    mutationFn: async (currency: Extract<CurrencyCode, "USD" | "GBP">) => {
+    mutationFn: async (currency: Extract<CurrencyCode, "USD" | "GBP" | "CAD">) => {
       const res = await api.post(`/events/${eventId}/payouts/stripe/connect`, { currency });
       return res.data.data as { onboardingUrl: string; payoutAccountId: string };
     },

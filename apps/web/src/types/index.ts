@@ -21,7 +21,7 @@ export type PublicEventCategory =
   | "PRIVATE_PARTY"
   | "OTHER";
 
-export type CurrencyCode = "USD" | "GBP" | "NGN";
+export type CurrencyCode = "USD" | "GBP" | "NGN" | "CAD";
 
 export type UserRole = "PLANNER" | "ADMIN";
 

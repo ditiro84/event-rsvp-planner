@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-// Stripe Connect only covers USD (US-country Express account) and GBP
-// (GB-country) here -- NGN isn't a supported Stripe Connect country at all,
+// Stripe Connect covers USD (US-country Express account), GBP (GB-country)
+// and CAD (CA-country) here -- NGN isn't a supported Stripe Connect country at all,
 // so Naira payouts go through Paystack Subaccounts instead (see #117).
 export const connectStripeSchema = z.object({
-  currency: z.enum(["USD", "GBP"]),
+  currency: z.enum(["USD", "GBP", "CAD"]),
 });
 export type ConnectStripeInput = z.infer<typeof connectStripeSchema>;
 
@@ -30,7 +30,7 @@ export type ConnectPaystackInput = z.infer<typeof connectPaystackSchema>;
 // planner's own PayPal email, connected per currency like the other two
 // providers (see payouts.service.ts connectPaypal).
 export const connectPaypalSchema = z.object({
-  currency: z.enum(["USD", "GBP", "NGN"]),
+  currency: z.enum(["USD", "GBP", "NGN", "CAD"]),
   email: z.string().trim().email("Enter a valid PayPal email address"),
 });
 export type ConnectPaypalInput = z.infer<typeof connectPaypalSchema>;

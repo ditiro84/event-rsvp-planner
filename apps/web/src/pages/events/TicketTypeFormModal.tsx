@@ -14,7 +14,7 @@ const schema = z.object({
   name: z.string().min(1, "Ticket name is required"),
   description: z.string().optional(),
   price: z.coerce.number().min(0, "Price must be 0 or more"),
-  currency: z.enum(["USD", "GBP", "NGN"]),
+  currency: z.enum(["USD", "GBP", "NGN", "CAD"]),
   quantityTotal: z.union([z.coerce.number().int().min(1), z.literal("")]).optional(),
   salesStartAt: z.string().optional(),
   salesEndAt: z.string().optional(),

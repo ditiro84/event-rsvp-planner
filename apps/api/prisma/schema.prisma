@@ -730,6 +730,7 @@ enum Currency {
   USD
   GBP
   NGN
+  CAD
 }
 
 // A single sellable item on an event's shop (e.g. favour boxes, t-shirts).

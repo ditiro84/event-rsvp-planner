@@ -5,7 +5,7 @@ export const createTicketTypeSchema = z.object({
   description: z.string().trim().max(2000).optional().nullable(),
   // Whole-currency amount from the client (e.g. dollars); stored as cents.
   price: z.coerce.number().min(0).max(1_000_000),
-  currency: z.enum(["USD", "GBP", "NGN"]),
+  currency: z.enum(["USD", "GBP", "NGN", "CAD"]),
   // Null/omitted = unlimited.
   quantityTotal: z.coerce.number().int().min(1).max(1_000_000).optional().nullable(),
   salesStartAt: z.coerce.date().optional().nullable(),

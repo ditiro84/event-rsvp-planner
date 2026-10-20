@@ -36,7 +36,7 @@ const schema = z.object({
   phone: z.string().optional(),
   website: z.string().optional(),
   cost: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  currency: z.enum(["USD", "GBP", "NGN"]),
+  currency: z.enum(["USD", "GBP", "NGN", "CAD"]),
   depositPaid: z.boolean().optional(),
   notes: z.string().optional(),
 });

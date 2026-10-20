@@ -49,12 +49,14 @@ export const CURRENCIES: { code: CurrencyCode; symbol: string; label: string }[]
   { code: "USD", symbol: "$", label: "US Dollar" },
   { code: "GBP", symbol: "£", label: "British Pound" },
   { code: "NGN", symbol: "₦", label: "Nigerian Naira" },
+  { code: "CAD", symbol: "C$", label: "Canadian Dollar" },
 ];
 
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   USD: "$",
   GBP: "£",
   NGN: "₦",
+  CAD: "C$",
 };
 
 export function formatMoney(amount: number, currency: CurrencyCode = "USD") {

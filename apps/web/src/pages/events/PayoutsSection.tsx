@@ -25,11 +25,12 @@ import type { CurrencyCode, PayoutAccountRecord, PayoutProvider } from "@/types"
 
 // Which providers a given currency can route through -- mirrors
 // STRIPE_COUNTRY_BY_CURRENCY in payouts.service.ts (Stripe Connect only
-// covers USD/GBP; PayPal is offered everywhere).
+// covers USD/GBP/CAD; PayPal is offered everywhere).
 const PROVIDERS_BY_CURRENCY: Record<CurrencyCode, PayoutProvider[]> = {
   USD: ["STRIPE_CONNECT", "PAYPAL"],
   GBP: ["STRIPE_CONNECT", "PAYPAL"],
   NGN: ["PAYSTACK", "PAYPAL"],
+  CAD: ["STRIPE_CONNECT", "PAYPAL"],
 };
 
 function providerIcon(provider: PayoutProvider) {
@@ -49,7 +50,7 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
   const [paystackModal, setPaystackModal] = useState(false);
   const [paypalModal, setPaypalModal] = useState<CurrencyCode | null>(null);
 
-  async function handleConnectStripe(currency: "USD" | "GBP") {
+  async function handleConnectStripe(currency: "USD" | "GBP" | "CAD") {
     try {
       const { onboardingUrl } = await connectStripe.mutateAsync(currency);
       // Full-page redirect: Stripe's own hosted onboarding page collects
@@ -142,7 +143,7 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
                             <Button
                               variant="secondary"
                               size="sm"
-                              onClick={() => handleConnectStripe(currency.code as "USD" | "GBP")}
+                              onClick={() => handleConnectStripe(currency.code as "USD" | "GBP" | "CAD")}
                               isLoading={connectStripe.isPending}
                             >
                               Finish setup
@@ -169,7 +170,7 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
                             variant="secondary"
                             size="sm"
                             onClick={() => {
-                              if (provider === "STRIPE_CONNECT") handleConnectStripe(currency.code as "USD" | "GBP");
+                              if (provider === "STRIPE_CONNECT") handleConnectStripe(currency.code as "USD" | "GBP" | "CAD");
                               else if (provider === "PAYSTACK") setPaystackModal(true);
                               else setPaypalModal(currency.code);
                             }}

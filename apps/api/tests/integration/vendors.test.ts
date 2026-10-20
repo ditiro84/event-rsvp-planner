@@ -141,4 +141,29 @@ describe("Vendors", () => {
       ])
     );
   });
+  it("accepts CAD as a vendor currency and keeps it as its own total", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/vendors`)
+      .set(auth)
+      .send({ name: "Toronto DJ", cost: 750, status: "BOOKED", currency: "CAD" });
+    expect(created.status).toBe(201);
+    expect(created.body.data.vendor.currency).toBe("CAD");
+
+    const res = await request(app).get(`/api/events/${eventId}/vendors/summary`).set(auth);
+    expect(res.body.data.costsByCurrency).toEqual(expect.arrayContaining([{ currency: "CAD", total: 750 }]));
+  });
+
+  it("rejects an unsupported currency", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const res = await request(app)
+      .post(`/api/events/${eventId}/vendors`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ name: "Euro Vendor", cost: 100, currency: "EUR" });
+    expect(res.status).toBe(400);
+  });
 });

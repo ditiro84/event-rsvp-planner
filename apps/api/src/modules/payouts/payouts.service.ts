@@ -13,6 +13,7 @@ import { ConnectPaypalInput, ConnectPaystackInput, ConnectStripeInput } from "./
 const STRIPE_COUNTRY_BY_CURRENCY: Record<string, string> = {
   USD: "US",
   GBP: "GB",
+  CAD: "CA",
 };
 
 // Which EventPayoutAccount rows actually count as "ready to accept
@@ -114,7 +115,7 @@ export async function disconnectPayoutAccount(userId: string, eventId: string, p
   await prisma.eventPayoutAccount.delete({ where: { id: payoutAccountId } });
 }
 
-// --- Stripe Connect (USD/GBP) -------------------------------------------------
+// --- Stripe Connect (USD/GBP/CAD) -------------------------------------------------
 
 // Creates (or reuses) a Stripe Express connected account for this event +
 // currency, then returns a fresh Account Link URL to Stripe's own hosted

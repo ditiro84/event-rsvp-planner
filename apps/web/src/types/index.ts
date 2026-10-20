@@ -57,6 +57,7 @@ export interface EventRecord {
   allowAccessibilityInfo: boolean;
   allowSpecialRequests: boolean;
   merchandiseEnabled: boolean;
+  merchandiseLabel: string | null;
   // Public ticketing listing (separate from the private RSVP flow above).
   isPublic: boolean;
   publicCategory: PublicEventCategory | null;
@@ -594,6 +595,8 @@ export interface PublicShopProduct {
 
 export interface PublicShopListing {
   enabled: boolean;
+  // Planner-written blurb of what's for sale; null = derive from product names.
+  label: string | null;
   products: PublicShopProduct[];
   // Which processors are connected and ready to accept payment, per
   // currency -- e.g. { USD: ["STRIPE_CONNECT", "PAYPAL"], NGN: ["PAYSTACK"] }.

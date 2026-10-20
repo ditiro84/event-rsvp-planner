@@ -158,6 +158,11 @@ model Event {
   // set products up before going live.
   merchandiseEnabled Boolean @default(false)
 
+  // Optional planner-written list of what's for sale (e.g. "Aso-ebi fabric,
+  // gele and caps"), shown in the merchandise yes/no prompt on the RSVP page.
+  // When empty, the prompt falls back to the names of the active products.
+  merchandiseLabel String?
+
   // Set (to the same timestamp as the owner's User.archivedAt) when an admin
   // archives the owning subscriber -- see admin.service.ts's
   // archiveSubscriber. While set, the public RSVP page and ticket page both

@@ -5,7 +5,7 @@ import { LegalPageLayout, LegalSection } from "./LegalPageLayout";
 // see LegalPageLayout's notice for why the wording itself is a draft.
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPageLayout title="Privacy Policy" lastUpdated="Draft -- not yet published" path="/privacy">
+    <LegalPageLayout title="Privacy Policy" lastUpdated="Draft – not yet published" path="/privacy">
       <LegalSection heading="What this covers">
         <p>
           This policy describes how Gadaova handles information for event planners who create an account, and for
@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
       <LegalSection heading="Information guests provide">
         <p>
           Guests don&rsquo;t need an account. When someone RSVPs, buys a ticket, or shops merchandise through an
-          event link, Gadaova collects what they enter on that form -- name, email, phone, meal or dietary notes,
+          event link, Gadaova collects what they enter on that form – name, email, phone, meal or dietary notes,
           and a shipping address if they buy something that ships.
         </p>
       </LegalSection>
@@ -31,7 +31,7 @@ export default function PrivacyPolicyPage() {
       <LegalSection heading="Payments">
         <p>
           Ticket and merchandise payments are processed by Stripe, Paystack, or PayPal, whichever the event&rsquo;s
-          planner has connected. Gadaova doesn&rsquo;t receive or store full card numbers -- that happens directly
+          planner has connected. Gadaova doesn&rsquo;t receive or store full card numbers – that happens directly
           between the guest and the payment processor. Payouts land in the planner&rsquo;s own connected account;
           Gadaova never holds guest funds.
         </p>

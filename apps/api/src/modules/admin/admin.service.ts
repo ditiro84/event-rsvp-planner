@@ -296,7 +296,7 @@ export async function archiveSubscriber(adminUserId: string, targetUserId: strin
   await writeAdminAuditLog(
     adminUserId,
     "ARCHIVE",
-    `Archived subscriber ${target.email} (and their events -- RSVP/ticket pages closed to new activity)`,
+    `Archived subscriber ${target.email} (and their events – RSVP/ticket pages closed to new activity)`,
     { email: target.email, name: target.name, eventsArchived: eventsArchived.count }
   );
 }
@@ -339,7 +339,7 @@ export async function hardDeleteSubscriber(adminUserId: string, targetUserId: st
   });
   if (paidOrder) {
     throw new BadRequestError(
-      "This subscriber has paid orders on record, so they can't be permanently deleted -- archive them instead."
+      "This subscriber has paid orders on record, so they can't be permanently deleted – archive them instead."
     );
   }
 

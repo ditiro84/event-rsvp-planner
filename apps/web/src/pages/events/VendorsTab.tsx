@@ -139,8 +139,8 @@ export function VendorsTab({ eventId }: { eventId: string }) {
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-xl2 border border-slate-200/80 bg-white shadow-card">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-xl2 border border-slate-200/80 bg-white shadow-card">
+          <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-5 py-3">Vendor</th>

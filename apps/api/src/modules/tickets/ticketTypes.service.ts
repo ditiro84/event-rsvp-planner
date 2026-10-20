@@ -115,7 +115,7 @@ export async function deleteTicketType(userId: string, eventId: string, ticketTy
   const existing = await getOwnedTicketType(userId, eventId, ticketTypeId);
   if (existing.quantitySold > 0) {
     throw new BadRequestError(
-      "This ticket type has sales on it and can't be deleted -- hide it (set inactive) instead."
+      "This ticket type has sales on it and can't be deleted – hide it (set inactive) instead."
     );
   }
   await prisma.ticketType.delete({ where: { id: ticketTypeId } });

@@ -69,8 +69,8 @@ export function ArticlesTab() {
       {data.length === 0 ? (
         <EmptyState title="No articles yet" description="Write your first post to share updates with visitors." />
       ) : (
-        <Card className="overflow-hidden">
-          <table className="w-full text-left text-sm">
+        <Card className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-5 py-3">Title</th>

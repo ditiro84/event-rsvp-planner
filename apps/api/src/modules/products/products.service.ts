@@ -147,10 +147,10 @@ export async function getProductImageBytes(productId: string) {
 export async function listPublicProducts(rsvpToken: string) {
   const event = await prisma.event.findUnique({
     where: { rsvpToken },
-    select: { id: true, merchandiseEnabled: true },
+    select: { id: true, merchandiseEnabled: true, merchandiseLabel: true },
   });
   if (!event) throw new NotFoundError("This RSVP link is invalid");
-  if (!event.merchandiseEnabled) return { enabled: false, products: [], paymentOptionsByCurrency: {} };
+  if (!event.merchandiseEnabled) return { enabled: false, label: null, products: [], paymentOptionsByCurrency: {} };
 
   const [products, paymentOptionsByCurrency] = await Promise.all([
     prisma.product.findMany({
@@ -162,6 +162,7 @@ export async function listPublicProducts(rsvpToken: string) {
 
   return {
     enabled: true,
+    label: event.merchandiseLabel,
     // Which processors are ready to accept payment, per currency -- lets
     // the shop UI gray out an "Add to cart" for a currency nothing is
     // connected for yet, rather than guests only discovering that at

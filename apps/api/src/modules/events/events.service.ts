@@ -237,6 +237,7 @@ export async function updateEvent(userId: string, eventId: string, input: Update
   const existing = await getOwnedEventOrCollaborator(userId, eventId);
   const data: Record<string, unknown> = { ...input };
   if ("imageUrl" in data && data.imageUrl === "") data.imageUrl = null;
+  if ("merchandiseLabel" in data && data.merchandiseLabel === "") data.merchandiseLabel = null;
 
   // Generate publicSlug once, the first time an event goes public -- never
   // overwritten afterward (immutable, same as Article.slug), so the

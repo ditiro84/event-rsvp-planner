@@ -87,13 +87,13 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="-mx-4 flex gap-1 overflow-x-auto border-b border-slate-200 px-4 sm:mx-0 sm:px-0">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              "flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium",
+              "flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium",
               tab === t.id
                 ? cn(theme.navActiveBorder, theme.navActiveText)
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -312,8 +312,8 @@ function SubscribersTab() {
       <div className="flex justify-end">
         <ExportMenu data={data} columns={subscriberColumns} filename="subscribers" title="Subscribers" />
       </div>
-      <Card className="overflow-hidden">
-        <table className="w-full text-left text-sm">
+      <Card className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
             <tr>
               <th className="px-5 py-3">Name</th>
@@ -425,8 +425,8 @@ function EventsTab() {
       <div className="flex justify-end">
         <ExportMenu data={data} columns={eventColumns} filename="events" title="Events" />
       </div>
-      <Card className="overflow-hidden">
-        <table className="w-full text-left text-sm">
+      <Card className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
             <tr>
               <th className="px-5 py-3">Event</th>
@@ -541,8 +541,8 @@ function AuditLogTab() {
       <div className="flex justify-end">
         <ExportMenu data={data} columns={auditLogColumns} filename="audit-log" title="Audit Log" />
       </div>
-      <Card className="overflow-hidden">
-        <table className="w-full text-left text-sm">
+      <Card className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
             <tr>
               <th className="px-5 py-3">Admin</th>
@@ -609,8 +609,8 @@ function PaymentLogsTab() {
       <div className="flex justify-end">
         <ExportMenu data={data} columns={paymentLogColumns} filename="payment-logs" title="Payment Logs" />
       </div>
-      <Card className="overflow-hidden">
-        <table className="w-full text-left text-sm">
+      <Card className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
             <tr>
               <th className="px-5 py-3">Status</th>
@@ -693,8 +693,8 @@ function EmailLogsTab() {
         {failedCount > 0 ? <Badge variant="danger">{failedCount} failed</Badge> : <span />}
         <ExportMenu data={data} columns={emailLogColumns} filename="email-logs" title="Email Logs" />
       </div>
-      <Card className="overflow-hidden">
-        <table className="w-full text-left text-sm">
+      <Card className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
             <tr>
               <th className="px-5 py-3">Status</th>

@@ -70,7 +70,7 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
     // true for an incomplete one.
     const message = account.connected
       ? `Disconnect ${providerLabel(account.provider)} for ${account.currency}? Guests won't be able to check out in ${account.currency} through it anymore.`
-      : `Remove this incomplete ${providerLabel(account.provider)} connection for ${account.currency}? Nothing has gone live yet -- this just clears it so setup can start fresh.`;
+      : `Remove this incomplete ${providerLabel(account.provider)} connection for ${account.currency}? Nothing has gone live yet – this just clears it so setup can start fresh.`;
     if (!confirm(message)) {
       return;
     }

@@ -48,6 +48,7 @@ export type CreateEventInput = z.infer<typeof createEventSchema>;
 export const updateEventSchema = createEventSchema.partial().extend({
   rsvpOpen: z.boolean().optional(),
   merchandiseEnabled: z.boolean().optional(),
+  merchandiseLabel: z.string().trim().max(120).optional().nullable(),
   // Public ticketing listing fields. publicSlug is deliberately NOT
   // accepted here -- it's server-generated once from the name (see
   // ensureUniqueEventSlug in events.service.ts) and immutable after,

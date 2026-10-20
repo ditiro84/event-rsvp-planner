@@ -6,6 +6,7 @@ import { useUpdateEvent } from "@/hooks/useEvents";
 import { Card, StatCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Field, Input } from "@/components/ui/Input";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
@@ -59,7 +60,7 @@ function OrderDetails({ order }: { order: OrderRecord }) {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-slate-700">Collecting at the event -- no shipping needed.</p>
+          <p className="text-sm text-slate-700">Collecting at the event – no shipping needed.</p>
         )}
       </div>
     </div>
@@ -72,6 +73,7 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
   const { data: orders } = useOrders(event.id);
   const deleteProduct = useDeleteProduct(event.id);
   const updateEvent = useUpdateEvent(event.id);
+  const [labelDraft, setLabelDraft] = useState(event.merchandiseLabel ?? "");
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRecord | undefined>();
   // Which order's row is expanded to show full contact/delivery details --
@@ -86,6 +88,15 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
     try {
       await deleteProduct.mutateAsync(product.id);
       toast.success("Product removed");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  }
+
+  async function handleSaveLabel() {
+    try {
+      await updateEvent.mutateAsync({ merchandiseLabel: labelDraft.trim() || null });
+      toast.success("Guest prompt updated");
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -155,6 +166,32 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
           </p>
         </div>
       )}
+
+      <Card className="p-4">
+        <Field
+          label="What guests see on the RSVP form"
+          htmlFor="merchandise-label"
+          hint={'Shown in "Would you like to purchase merchandise?" – e.g. "Aso-ebi fabric, gele and caps". Leave blank to list your product names automatically.'}
+        >
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              id="merchandise-label"
+              value={labelDraft}
+              maxLength={120}
+              placeholder="e.g. Aso-ebi fabric, gele and caps"
+              onChange={(e) => setLabelDraft(e.target.value)}
+            />
+            <Button
+              variant="secondary"
+              onClick={handleSaveLabel}
+              isLoading={updateEvent.isPending}
+              disabled={labelDraft.trim() === (event.merchandiseLabel ?? "")}
+            >
+              Save
+            </Button>
+          </div>
+        </Field>
+      </Card>
 
       {/* Payout account management is owner-only, never a collaborator --
           see EventCollaborator's design note in schema.prisma. */}
@@ -276,8 +313,8 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
         {!orders || orders.length === 0 ? (
           <EmptyState title="No orders yet" description="Paid orders will show up here once guests start buying." />
         ) : (
-          <Card className="overflow-hidden">
-            <table className="w-full text-left text-sm">
+          <Card className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-5 py-3">Guest</th>

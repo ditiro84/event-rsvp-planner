@@ -128,7 +128,7 @@ export async function connectStripe(userId: string, eventId: string, input: Conn
   await getOwnedEventStrict(userId, eventId);
   const country = STRIPE_COUNTRY_BY_CURRENCY[input.currency];
   if (!country) {
-    throw new BadRequestError(`Stripe Connect doesn't support ${input.currency} payouts -- use Paystack for NGN.`);
+    throw new BadRequestError(`Stripe Connect doesn't support ${input.currency} payouts – use Paystack for NGN.`);
   }
 
   const stripe = getStripeClient();

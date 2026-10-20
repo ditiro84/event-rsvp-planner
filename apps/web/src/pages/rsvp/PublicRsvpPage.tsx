@@ -206,6 +206,14 @@ export default function PublicRsvpPage() {
   const shopQuery = usePublicShop(event?.rsvpToken);
   const checkout = useCheckout(event?.rsvpToken ?? "");
   const products = useMemo(() => shopQuery.data?.products ?? [], [shopQuery.data]);
+  const merchLabel = useMemo(() => {
+    const custom = shopQuery.data?.label?.trim();
+    if (custom) return custom;
+    const names = Array.from(new Set(products.map((p) => p.name.trim()).filter(Boolean)));
+    if (names.length === 0) return "merchandise";
+    if (names.length <= 4) return names.join(", ");
+    return `${names.slice(0, 4).join(", ")} and more`;
+  }, [shopQuery.data, products]);
   const shopEnabled = !shopQuery.isLoading && !!shopQuery.data?.enabled && products.length > 0;
   const paymentOptionsByCurrency = shopQuery.data?.paymentOptionsByCurrency ?? {};
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
@@ -645,7 +653,7 @@ export default function PublicRsvpPage() {
             <>
               {(event.allowPlusOnes || event.allowPlusOneNames) && (
                 <p className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-sm font-semibold text-warning-800">
-                  Bringing anyone with you? Add them below so we know exactly who's coming -- don't just mention them in the message field.
+                  Bringing anyone with you? Add them below so we know exactly who's coming – don't just mention them in the message field.
                 </p>
               )}
               {event.allowPlusOnes && (
@@ -675,7 +683,7 @@ export default function PublicRsvpPage() {
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {namesLinkedToCount
-                      ? "One name for each additional guest above -- required."
+                      ? "One name for each additional guest above – required."
                       : "Add a name for each person you're bringing."}
                   </p>
                   {Array.isArray(errors.additionalGuestNames) &&
@@ -753,7 +761,7 @@ export default function PublicRsvpPage() {
                 <span className="text-sm font-semibold text-slate-900">Would you like to purchase merchandise?</span>
               </div>
               <p className="mt-1 text-xs text-slate-500">
-                This event has Fabric, Gele, Fila, T-Shirt etc available -- let us know now so it can go out with your RSVP.
+                This event has {merchLabel} available – let us know now so it can go out with your RSVP.
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
@@ -766,7 +774,7 @@ export default function PublicRsvpPage() {
                   }`}
                   style={wantsMerchandise === "yes" ? themeStyles.outline("primary") : undefined}
                 >
-                  Yes, I'd like to buy Fabric, Gele, Fila, T-Shirt etc
+                  Yes, I'd like to buy {merchLabel}
                 </button>
                 <button
                   type="button"
@@ -872,7 +880,7 @@ export default function PublicRsvpPage() {
             {wantsMerchandise === "yes" && cartItems.length > 0
               ? availableProviders.length > 0
                 ? `Submit RSVP & pay ${formatMoney(cartTotal, cartCurrency ?? "USD")}`
-                : `Submit RSVP & place order -- ${formatMoney(cartTotal, cartCurrency ?? "USD")}`
+                : `Submit RSVP & place order – ${formatMoney(cartTotal, cartCurrency ?? "USD")}`
               : "Submit RSVP"}
           </Button>
         </form>

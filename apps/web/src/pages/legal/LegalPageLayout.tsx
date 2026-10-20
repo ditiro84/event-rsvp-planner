@@ -42,7 +42,7 @@ export function LegalPageLayout({
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" />
           <p className="text-sm text-warning-800">
             <strong>Draft, not final.</strong> This page is a starting point covering the topics a policy like this
-            usually needs -- it hasn't been reviewed by a lawyer and shouldn't be relied on as Gadaova&rsquo;s actual{" "}
+            usually needs – it hasn't been reviewed by a lawyer and shouldn't be relied on as Gadaova&rsquo;s actual{" "}
             {title.toLowerCase()} until it has.
           </p>
         </div>

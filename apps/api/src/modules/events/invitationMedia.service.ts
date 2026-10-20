@@ -50,7 +50,7 @@ export async function uploadInvitationMedia(userId: string, eventId: string, fil
   if (file.size > maxSize) {
     throw new BadRequestError(
       isVideo
-        ? "Video clips must be 15MB or smaller -- keep it short, like a quick reel"
+        ? "Video clips must be 15MB or smaller – keep it short, like a quick reel"
         : "Invitation media must be 8MB or smaller"
     );
   }

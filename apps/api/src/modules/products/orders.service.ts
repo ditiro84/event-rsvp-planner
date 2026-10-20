@@ -153,7 +153,7 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
     // currency (the frontend groups the shop by currency to prevent this
     // in the first place, this is the backend backstop).
     if (currency && product.currency !== currency) {
-      throw new BadRequestError("Your cart mixes items priced in different currencies -- please check out one currency at a time.");
+      throw new BadRequestError("Your cart mixes items priced in different currencies – please check out one currency at a time.");
     }
     currency = product.currency;
 

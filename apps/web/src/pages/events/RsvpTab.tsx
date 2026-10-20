@@ -422,7 +422,7 @@ function GuestOrdersDetails({ orders }: { orders: OrderRecord[] }) {
                 {order.guestEmail || "No email on file"}
               </p>
               {order.guestMarkedPaid && order.status === "MANUAL" && (
-                <p className="mt-1 text-xs font-medium text-warning-700">Guest says paid -- verify before fulfilling.</p>
+                <p className="mt-1 text-xs font-medium text-warning-700">Guest says paid – verify before fulfilling.</p>
               )}
             </div>
             <div>
@@ -441,7 +441,7 @@ function GuestOrdersDetails({ orders }: { orders: OrderRecord[] }) {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-700">Collecting at the event -- no shipping needed.</p>
+                <p className="text-sm text-slate-700">Collecting at the event – no shipping needed.</p>
               )}
             </div>
           </div>
@@ -583,9 +583,9 @@ function InvitationCardSection({ eventId }: { eventId: string }) {
         <div>
           <p className="text-sm font-medium text-slate-700">Invitation gallery</p>
           <p className="mt-1 text-xs text-slate-500">
-            Add PDFs, images (PNG/JPEG, up to 8MB each) and short video clips (MP4/MOV, up to 15MB, keep it brief --
+            Add PDFs, images (PNG/JPEG, up to 8MB each) and short video clips (MP4/MOV, up to 15MB, keep it brief –
             think a quick reel) for guests to page through on the RSVP page. The first image or PDF is also attached
-            to invite emails automatically; video isn't, since most mail apps handle that badly -- it'll still show
+            to invite emails automatically; video isn't, since most mail apps handle that badly – it'll still show
             on the RSVP page guests already get linked to.
           </p>
         </div>

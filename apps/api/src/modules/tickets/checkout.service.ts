@@ -161,7 +161,7 @@ export async function createTicketCheckoutSession(slug: string, input: CreateTic
     // (see orders.service.ts createCheckoutSession).
     if (currency && ticketType.currency !== currency) {
       throw new BadRequestError(
-        "Your cart mixes tickets priced in different currencies -- please check out one currency at a time."
+        "Your cart mixes tickets priced in different currencies – please check out one currency at a time."
       );
     }
     currency = ticketType.currency;

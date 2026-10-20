@@ -2,7 +2,7 @@ import { LegalPageLayout, LegalSection } from "./LegalPageLayout";
 
 export default function TermsOfServicePage() {
   return (
-    <LegalPageLayout title="Terms of Service" lastUpdated="Draft -- not yet published" path="/terms">
+    <LegalPageLayout title="Terms of Service" lastUpdated="Draft – not yet published" path="/terms">
       <LegalSection heading="Using Gadaova">
         <p>
           Creating events, managing a guest list, sending RSVP invites, seating, and door check-in are free.
@@ -20,7 +20,7 @@ export default function TermsOfServicePage() {
       <LegalSection heading="Payments and payouts">
         <p>
           Payment processing is handled by Stripe, Paystack, or PayPal, each governed by that provider&rsquo;s own
-          terms. Payouts go directly to the account you connect -- Gadaova is not a party to the transaction between
+          terms. Payouts go directly to the account you connect – Gadaova is not a party to the transaction between
           you and your guest, and doesn&rsquo;t hold or guarantee funds.
         </p>
       </LegalSection>

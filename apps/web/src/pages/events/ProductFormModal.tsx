@@ -18,7 +18,7 @@ const schema = z.object({
   description: z.string().optional(),
   size: z.string().optional(),
   price: z.coerce.number().min(0, "Price must be 0 or more"),
-  currency: z.enum(["USD", "GBP", "NGN", "CAD"]),
+  currency: z.enum(["USD", "GBP", "NGN", "CAD", "EUR"]),
   stockQuantity: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
   active: z.boolean().optional(),
 });

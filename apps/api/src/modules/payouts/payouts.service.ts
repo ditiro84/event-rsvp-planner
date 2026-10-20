@@ -127,7 +127,7 @@ export async function connectStripe(userId: string, eventId: string, input: Conn
   // Strict (owner-only, no admin bypass): connecting a payout account
   // enters/changes financial routing details -- on the admin blocklist.
   await getOwnedEventStrict(userId, eventId);
-  const country = STRIPE_COUNTRY_BY_CURRENCY[input.currency];
+  const country = input.currency === "EUR" ? input.country : STRIPE_COUNTRY_BY_CURRENCY[input.currency];
   if (!country) {
     throw new BadRequestError(`Stripe Connect doesn't support ${input.currency} payouts – use Paystack for NGN.`);
   }

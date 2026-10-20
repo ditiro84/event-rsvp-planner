@@ -157,13 +157,28 @@ describe("Vendors", () => {
     expect(res.body.data.costsByCurrency).toEqual(expect.arrayContaining([{ currency: "CAD", total: 750 }]));
   });
 
+  it("accepts EUR as a vendor currency and keeps it as its own total", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+    const created = await request(app)
+      .post(`/api/events/${eventId}/vendors`)
+      .set(auth)
+      .send({ name: "Paris Florist", cost: 500, status: "BOOKED", currency: "EUR" });
+    expect(created.status).toBe(201);
+    expect(created.body.data.vendor.currency).toBe("EUR");
+
+    const res = await request(app).get(`/api/events/${eventId}/vendors/summary`).set(auth);
+    expect(res.body.data.costsByCurrency).toEqual(expect.arrayContaining([{ currency: "EUR", total: 500 }]));
+  });
+
   it("rejects an unsupported currency", async () => {
     const { token } = await registerAndLogin(app);
     const eventId = await createEventWithToken(token);
     const res = await request(app)
       .post(`/api/events/${eventId}/vendors`)
       .set({ Authorization: `Bearer ${token}` })
-      .send({ name: "Euro Vendor", cost: 100, currency: "EUR" });
+      .send({ name: "Yen Vendor", cost: 100, currency: "JPY" });
     expect(res.status).toBe(400);
   });
 });

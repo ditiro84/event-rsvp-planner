@@ -1,11 +1,23 @@
 import { z } from "zod";
 
-// Stripe Connect covers USD (US-country Express account), GBP (GB-country)
-// and CAD (CA-country) here -- NGN isn't a supported Stripe Connect country at all,
+// Stripe Connect covers USD (US-country Express account), GBP (GB-country),
+// CAD (CA-country) and EUR (planner picks one of the supported eurozone
+// countries, since EUR spans many Stripe countries) -- NGN isn't a supported Stripe Connect country at all,
 // so Naira payouts go through Paystack Subaccounts instead (see #117).
-export const connectStripeSchema = z.object({
-  currency: z.enum(["USD", "GBP", "CAD"]),
-});
+export const STRIPE_EUR_COUNTRIES = [
+  "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR",
+  "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK",
+] as const;
+
+export const connectStripeSchema = z
+  .object({
+    currency: z.enum(["USD", "GBP", "CAD", "EUR"]),
+    country: z.enum(STRIPE_EUR_COUNTRIES).optional(),
+  })
+  .refine((v) => v.currency !== "EUR" || v.country !== undefined, {
+    message: "Select the country your bank account is in",
+    path: ["country"],
+  });
 export type ConnectStripeInput = z.infer<typeof connectStripeSchema>;
 
 export const payoutAccountIdParamsSchema = z.object({

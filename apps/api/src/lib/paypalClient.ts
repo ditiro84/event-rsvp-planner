@@ -56,7 +56,7 @@ async function paypalRequest<T = unknown>(path: string, options: { method?: "GET
 
 export interface CreatePaypalOrderParams {
   amount: number; // whole-currency units, e.g. dollars -- PayPal's API wants a decimal string, not cents.
-  currency: "USD" | "GBP" | "NGN" | "CAD";
+  currency: "USD" | "GBP" | "NGN" | "CAD" | "EUR";
   payeeEmail: string;
   platformFeeAmount: number; // same whole-currency units; 0 disables the fee attempt entirely.
   orderId: string; // our internal Order.id, round-tripped via custom_id for the webhook/capture step to match back

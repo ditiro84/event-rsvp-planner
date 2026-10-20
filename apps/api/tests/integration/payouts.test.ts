@@ -49,6 +49,15 @@ describe("Payout accounts", () => {
     expect(res.body.error.message).toMatch(/STRIPE_SECRET_KEY/);
   });
 
+  it("requires a country when connecting Stripe for EUR", async () => {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const res = await request(app).post(`/api/events/${eventId}/payouts/stripe/connect`).set(auth).send({ currency: "EUR" });
+    expect(res.status).toBe(400);
+  });
+
   it("returns a clear error listing Paystack banks when Paystack isn't configured", async () => {
     const { token } = await registerAndLogin(app);
     const eventId = await createEventWithToken(token);

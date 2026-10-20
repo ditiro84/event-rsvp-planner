@@ -25,13 +25,28 @@ import type { CurrencyCode, PayoutAccountRecord, PayoutProvider } from "@/types"
 
 // Which providers a given currency can route through -- mirrors
 // STRIPE_COUNTRY_BY_CURRENCY in payouts.service.ts (Stripe Connect only
-// covers USD/GBP/CAD; PayPal is offered everywhere).
+// covers USD/GBP/CAD/EUR; PayPal is offered everywhere).
 const PROVIDERS_BY_CURRENCY: Record<CurrencyCode, PayoutProvider[]> = {
   USD: ["STRIPE_CONNECT", "PAYPAL"],
   GBP: ["STRIPE_CONNECT", "PAYPAL"],
   NGN: ["PAYSTACK", "PAYPAL"],
   CAD: ["STRIPE_CONNECT", "PAYPAL"],
+  EUR: ["STRIPE_CONNECT", "PAYPAL"],
 };
+
+type StripeCurrency = "USD" | "GBP" | "CAD" | "EUR";
+
+// Stripe needs the country the Express account is created in; EUR spans many
+// of them, so the planner picks theirs (must match the API's allow-list).
+const EUR_COUNTRIES: { code: string; name: string }[] = [
+  { code: "AT", name: "Austria" }, { code: "BE", name: "Belgium" }, { code: "CY", name: "Cyprus" },
+  { code: "DE", name: "Germany" }, { code: "EE", name: "Estonia" }, { code: "ES", name: "Spain" },
+  { code: "FI", name: "Finland" }, { code: "FR", name: "France" }, { code: "GR", name: "Greece" },
+  { code: "HR", name: "Croatia" }, { code: "IE", name: "Ireland" }, { code: "IT", name: "Italy" },
+  { code: "LT", name: "Lithuania" }, { code: "LU", name: "Luxembourg" }, { code: "LV", name: "Latvia" },
+  { code: "MT", name: "Malta" }, { code: "NL", name: "Netherlands" }, { code: "PT", name: "Portugal" },
+  { code: "SI", name: "Slovenia" }, { code: "SK", name: "Slovakia" },
+];
 
 function providerIcon(provider: PayoutProvider) {
   if (provider === "STRIPE_CONNECT") return <CreditCard className="h-4 w-4" />;
@@ -50,9 +65,27 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
   const [paystackModal, setPaystackModal] = useState(false);
   const [paypalModal, setPaypalModal] = useState<CurrencyCode | null>(null);
 
-  async function handleConnectStripe(currency: "USD" | "GBP" | "CAD") {
+  const [eurCountryModal, setEurCountryModal] = useState(false);
+  const [eurCountry, setEurCountry] = useState("");
+
+  // EUR needs a country for a brand-new Stripe account; an existing
+  // (incomplete) one is reused server-side, so "Finish setup" skips the
+  // picker via isNew=false and sends any valid country (ignored there).
+  function startStripe(currency: StripeCurrency, isNew: boolean) {
+    if (currency === "EUR") {
+      if (isNew) {
+        setEurCountryModal(true);
+        return;
+      }
+      void handleConnectStripe("EUR", eurCountry || "DE");
+      return;
+    }
+    void handleConnectStripe(currency);
+  }
+
+  async function handleConnectStripe(currency: StripeCurrency, country?: string) {
     try {
-      const { onboardingUrl } = await connectStripe.mutateAsync(currency);
+      const { onboardingUrl } = await connectStripe.mutateAsync({ currency, country });
       // Full-page redirect: Stripe's own hosted onboarding page collects
       // bank details directly, we never see them (see payouts.service.ts).
       window.location.href = onboardingUrl;
@@ -143,7 +176,7 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
                             <Button
                               variant="secondary"
                               size="sm"
-                              onClick={() => handleConnectStripe(currency.code as "USD" | "GBP" | "CAD")}
+                              onClick={() => startStripe(currency.code as StripeCurrency, false)}
                               isLoading={connectStripe.isPending}
                             >
                               Finish setup
@@ -170,7 +203,7 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
                             variant="secondary"
                             size="sm"
                             onClick={() => {
-                              if (provider === "STRIPE_CONNECT") handleConnectStripe(currency.code as "USD" | "GBP" | "CAD");
+                              if (provider === "STRIPE_CONNECT") startStripe(currency.code as StripeCurrency, true);
                               else if (provider === "PAYSTACK") setPaystackModal(true);
                               else setPaypalModal(currency.code);
                             }}
@@ -189,6 +222,36 @@ export function PayoutsSection({ eventId }: { eventId: string }) {
         </div>
       )}
 
+      <Modal open={eurCountryModal} onClose={() => setEurCountryModal(false)} title="Connect Stripe for Euro payouts">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Euro payouts go to a bank account in a eurozone country. Choose the country your bank account is in.
+          </p>
+          <Field label="Country" htmlFor="eur-country">
+            <Select id="eur-country" value={eurCountry} onChange={(e) => setEurCountry(e.target.value)}>
+              <option value="">Select a country</option>
+              {EUR_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setEurCountryModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!eurCountry}
+              isLoading={connectStripe.isPending}
+              onClick={() => handleConnectStripe("EUR", eurCountry)}
+            >
+              Continue to Stripe
+            </Button>
+          </div>
+        </div>
+      </Modal>
       <PaystackConnectModal eventId={eventId} open={paystackModal} onClose={() => setPaystackModal(false)} />
       <PaypalConnectModal
         eventId={eventId}

@@ -444,7 +444,7 @@ export async function startPaypalCheckout(
 ) {
   const paypalOrder = await createPaypalOrder({
     amount: totalCents / 100,
-    currency: currency as "USD" | "GBP" | "NGN" | "CAD",
+    currency: currency as "USD" | "GBP" | "NGN" | "CAD" | "EUR",
     payeeEmail: payoutAccount.paypalEmail,
     platformFeeAmount: platformFeeCents / 100,
     orderId: order.id,

@@ -37,7 +37,7 @@ const FAQS = [
   {
     question: "What payment methods can I accept?",
     answer:
-      "Connect Stripe, Paystack, or PayPal and accept payments in USD, GBP, NGN, or CAD. Payouts land directly in your own account, and Gadaova never holds your funds.",
+      "Connect Stripe, Paystack, or PayPal and accept payments in USD, GBP, NGN, CAD, or EUR. Payouts land directly in your own account, and Gadaova never holds your funds.",
   },
   {
     question: "Can I check guests in at the door?",
@@ -255,7 +255,7 @@ export default function LandingPage() {
                 Built-in payments
               </span>
               <h2 className="mt-4 font-display text-3xl font-bold text-slate-950 sm:text-4xl">
-                Get paid in USD, GBP, NGN, or CAD
+                Get paid in USD, GBP, NGN, CAD, or EUR
               </h2>
               <p className="mt-4 text-lg text-slate-600">
                 Sell merchandise or collect payments straight from your event page. Connect Stripe, PayPal, or

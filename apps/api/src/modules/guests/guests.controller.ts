@@ -5,6 +5,7 @@ import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { createGuestSchema, listGuestsQuerySchema, updateGuestSchema } from "./guests.schema";
 import { bulkSendInviteEmailsSchema, checkInScanSchema, markInviteSentSchema, requestEditEmailSchema } from "./invite.schema";
 import * as service from "./guests.service";
+import { redactGuestForRole } from "./guestRedaction";
 import * as inviteService from "./invite.service";
 import { guestsToCsv, parseGuestsCsv } from "./guests.csv";
 import { guestsToPdf } from "./guests.pdf";
@@ -13,7 +14,7 @@ import { guestsToWristbandsPdf } from "./guests.wristbands.pdf";
 export async function list(req: Request, res: Response) {
   const query = listGuestsQuerySchema.parse(req.query);
   const guests = await service.listGuests(req.userId!, req.params.eventId, query);
-  return ok(res, { guests });
+  return ok(res, { guests: guests.map((g: Record<string, unknown>) => redactGuestForRole(g, req.eventCollaboratorRole)) });
 }
 
 export async function create(req: Request, res: Response) {
@@ -40,18 +41,18 @@ export async function remove(req: Request, res: Response) {
 
 export async function checkIn(req: Request, res: Response) {
   const guest = await service.checkInGuest(req.userId!, req.params.guestId, req.userId);
-  return ok(res, { guest });
+  return ok(res, { guest: redactGuestForRole(guest, req.eventCollaboratorRole) });
 }
 
 export async function checkOut(req: Request, res: Response) {
   const guest = await service.checkOutGuest(req.userId!, req.params.guestId);
-  return ok(res, { guest });
+  return ok(res, { guest: redactGuestForRole(guest, req.eventCollaboratorRole) });
 }
 
 export async function checkInScan(req: Request, res: Response) {
   const input = checkInScanSchema.parse(req.body);
   const guest = await inviteService.checkInGuestByToken(req.userId!, req.params.eventId, input.token, req.userId);
-  return ok(res, { guest });
+  return ok(res, { guest: redactGuestForRole(guest, req.eventCollaboratorRole) });
 }
 
 export async function getInviteLink(req: Request, res: Response) {

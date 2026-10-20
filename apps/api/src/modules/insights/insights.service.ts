@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
-import { getOwnedEventOrCollaborator } from "../events/events.service";
+import { getCollaboratorRole, getOwnedEventOrCollaborator } from "../events/events.service";
+import { roleHasCapability } from "../collaborators/permissions";
 
 export type InsightSeverity = "ACTION_REQUIRED" | "UPDATE";
 
@@ -108,6 +109,13 @@ function buildEventInsights(event: any, guests: any[]): Insight[] {
 const SEVERITY_RANK: Record<InsightSeverity, number> = { ACTION_REQUIRED: 0, UPDATE: 1 };
 
 export async function listInsights(userId: string, eventId?: string) {
+  // Insights mix in vendor costs and orders, so they are limited to roles that
+  // may see those (owner, admin, coordinator).
+  if (eventId) {
+    await getOwnedEventOrCollaborator(userId, eventId);
+    const role = await getCollaboratorRole(userId, eventId);
+    if (role && !roleHasCapability(role, "vendors:read")) return [];
+  }
   const events = eventId
     ? [await getOwnedEventOrCollaborator(userId, eventId)]
     : await prisma.event.findMany({ where: { userId }, orderBy: { date: "asc" } });

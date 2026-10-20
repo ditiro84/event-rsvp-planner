@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { created, noContent, ok } from "../../lib/apiResponse";
-import { inviteCollaboratorSchema } from "./collaborators.schema";
+import { inviteCollaboratorSchema, updateCollaboratorRoleSchema } from "./collaborators.schema";
 import * as service from "./collaborators.service";
 
 export async function list(req: Request, res: Response) {
@@ -10,8 +10,19 @@ export async function list(req: Request, res: Response) {
 
 export async function invite(req: Request, res: Response) {
   const input = inviteCollaboratorSchema.parse(req.body);
-  const result = await service.inviteCollaborator(req.userId!, req.params.eventId, input.email);
+  const result = await service.inviteCollaborator(req.userId!, req.params.eventId, input.email, input.role);
   return created(res, result);
+}
+
+export async function updateRole(req: Request, res: Response) {
+  const input = updateCollaboratorRoleSchema.parse(req.body);
+  const collaborator = await service.updateCollaboratorRole(
+    req.userId!,
+    req.params.eventId,
+    req.params.collaboratorId,
+    input.role
+  );
+  return ok(res, { collaborator });
 }
 
 export async function remove(req: Request, res: Response) {

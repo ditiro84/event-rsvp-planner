@@ -71,6 +71,9 @@ export interface EventRecord {
   // collaborator rather than as the owner (see EventCollaborator) -- used to
   // hide owner-only UI like Payouts and Team management.
   isCollaborator: boolean;
+  // The collaborator's role and what it allows (null for the owner/admins).
+  collaboratorRole: EventCollaboratorRole | null;
+  capabilities: CollaboratorCapability[] | null;
 }
 
 export interface EventGuestSummary {
@@ -773,7 +776,28 @@ export interface LandingService {
 // - EventStaffPassRecord: no-account, named, revocable door check-in link.
 // ---------------------------------------------------------------------------
 
-export type EventCollaboratorRole = "STAFF";
+export type EventCollaboratorRole = "STAFF" | "COORDINATOR" | "CATERER" | "DOOR_STAFF" | "VIEWER";
+
+// Mirrors Capability in the API's collaborators/permissions.ts.
+export type CollaboratorCapability =
+  | "event:view"
+  | "event:edit"
+  | "guests:read"
+  | "guests:export"
+  | "guests:write"
+  | "rsvp:read"
+  | "checkin"
+  | "seating:read"
+  | "seating:write"
+  | "vendors:read"
+  | "vendors:write"
+  | "merch:read"
+  | "merch:write"
+  | "tickets:read"
+  | "tickets:write"
+  | "media:read"
+  | "media:write"
+  | "owner:only";
 
 export interface EventCollaboratorRecord {
   id: string;
@@ -789,6 +813,7 @@ export interface EventCollaboratorInviteRecord {
   id: string;
   eventId: string;
   email: string;
+  role: EventCollaboratorRole;
   invitedByUserId: string;
   createdAt: string;
 }

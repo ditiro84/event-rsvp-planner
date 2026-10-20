@@ -19,6 +19,8 @@ import {
   Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useEvent } from "@/hooks/useEvents";
+import { hasCapability } from "@/lib/collaboratorRoles";
 import { useDeleteGuest, useGuests, useExportGuestsCsv, useExportGuestsPdf, type GuestFilters } from "@/hooks/useGuests";
 import { useBulkSendInviteEmails } from "@/hooks/useInvites";
 import { useEventDashboard } from "@/hooks/useEvents";
@@ -66,6 +68,11 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
 
   const { data: guests, isLoading, isError, refetch } = useGuests(eventId, { ...filters, search: search || undefined });
   const { data: dashboard } = useEventDashboard(eventId);
+  // Caterers, door staff and viewers get a read-only guest list (the API
+  // enforces this too, this just hides buttons that would only fail).
+  const { data: currentEvent } = useEvent(eventId);
+  const canWriteGuests = hasCapability(currentEvent?.capabilities, "guests:write");
+  const canExportGuests = hasCapability(currentEvent?.capabilities, "guests:export");
   const deleteGuest = useDeleteGuest(eventId);
   const exportCsv = useExportGuestsCsv(eventId);
   const exportPdf = useExportGuestsPdf(eventId);
@@ -199,10 +206,14 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
           <h2 className="text-lg font-bold text-slate-900">{sorted.length} Guests</h2>
         </div>
         <div className="flex flex-wrap gap-2">
+          {canWriteGuests && (
           <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
             <Upload className="h-4 w-4" />
             Import
           </Button>
+          )}
+          {canExportGuests && (
+          <>
           <Button variant="secondary" size="sm" onClick={() => exportCsv.mutate()} isLoading={exportCsv.isPending}>
             <Download className="h-4 w-4" />
             Export CSV
@@ -211,6 +222,10 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
             <FileText className="h-4 w-4" />
             Export PDF
           </Button>
+          </>
+          )}
+          {canWriteGuests && (
+          <>
           <Button variant="secondary" size="sm" onClick={handleBulkSendInvites} isLoading={bulkSendInvites.isPending}>
             <Send className="h-4 w-4" />
             Email all invites
@@ -219,6 +234,8 @@ export function GuestsTab({ eventId, eventName }: { eventId: string; eventName: 
             <Plus className="h-4 w-4" />
             Add Guest
           </Button>
+          </>
+          )}
         </div>
       </div>
 

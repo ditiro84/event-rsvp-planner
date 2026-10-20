@@ -1,0 +1,6 @@
+ALTER TYPE "EventCollaboratorRole" ADD VALUE IF NOT EXISTS 'COORDINATOR';
+ALTER TYPE "EventCollaboratorRole" ADD VALUE IF NOT EXISTS 'CATERER';
+ALTER TYPE "EventCollaboratorRole" ADD VALUE IF NOT EXISTS 'DOOR_STAFF';
+ALTER TYPE "EventCollaboratorRole" ADD VALUE IF NOT EXISTS 'VIEWER';
+
+ALTER TABLE "event_collaborator_invites" ADD COLUMN IF NOT EXISTS "role" "EventCollaboratorRole" NOT NULL DEFAULT 'STAFF';

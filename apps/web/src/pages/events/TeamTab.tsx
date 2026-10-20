@@ -9,6 +9,7 @@ import {
   useCollaborators,
   useInviteCollaborator,
   useRemoveCollaborator,
+  useUpdateCollaboratorRole,
 } from "@/hooks/useCollaborators";
 import { useCreateStaffPass, useRevokeStaffPass, useStaffPasses } from "@/hooks/useStaffPasses";
 import { Card } from "@/components/ui/Card";
@@ -16,7 +17,7 @@ import { InstallAppNotice } from "@/components/InstallAppNotice";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { Field, Input } from "@/components/ui/Input";
+import { Field, Input, Select } from "@/components/ui/Input";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
@@ -24,7 +25,8 @@ import { getApiErrorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { getTabTheme } from "@/lib/tabTheme";
-import type { EventCollaboratorInviteRecord, EventCollaboratorRecord, EventStaffPassRecord } from "@/types";
+import type { EventCollaboratorInviteRecord, EventCollaboratorRecord, EventCollaboratorRole, EventStaffPassRecord } from "@/types";
+import { INVITABLE_ROLES, roleLabel } from "@/lib/collaboratorRoles";
 
 function nameInitials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -36,6 +38,16 @@ export function TeamTab({ eventId }: { eventId: string }) {
   const { data: passes, isLoading: passesLoading, isError: passesError, refetch: refetchPasses } = useStaffPasses(eventId);
   const removeCollaborator = useRemoveCollaborator(eventId);
   const cancelInvite = useCancelCollaboratorInvite(eventId);
+  const updateRole = useUpdateCollaboratorRole(eventId);
+
+  async function handleRoleChange(collaborator: EventCollaboratorRecord, role: EventCollaboratorRole) {
+    try {
+      await updateRole.mutateAsync({ collaboratorId: collaborator.id, role });
+      toast.success(`${collaborator.user.name} is now ${roleLabel(role)}`);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  }
   const revokePass = useRevokeStaffPass(eventId);
   const [showInvite, setShowInvite] = useState(false);
   const [showCreatePass, setShowCreatePass] = useState(false);
@@ -97,16 +109,16 @@ export function TeamTab({ eventId }: { eventId: string }) {
         <div className="mb-1 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className={cn("h-4 w-4", theme.iconText)} />
-            <h2 className="text-lg font-bold text-slate-900">Staff Collaborators</h2>
+            <h2 className="text-lg font-bold text-slate-900">Team Members</h2>
           </div>
           <Button size="sm" onClick={() => setShowInvite(true)}>
             <UserPlus className="h-4 w-4" />
-            Invite Staff
+            Invite Team Member
           </Button>
         </div>
         <p className="mb-4 text-sm text-slate-500">
-          Staff can manage guests, RSVP, seating, check-in, vendors, merchandise, and tickets for this event. They
-          can't delete the event, connect payout accounts, or manage other staff.
+          Give each person a role that fits their job. Nobody you invite can delete the event, connect payout
+          accounts, or manage the team.
         </p>
 
         {isError ? (
@@ -116,12 +128,12 @@ export function TeamTab({ eventId }: { eventId: string }) {
         ) : data.collaborators.length === 0 && data.pendingInvites.length === 0 ? (
           <EmptyState
             icon={<UserPlus className="h-6 w-6" />}
-            title="No staff added yet"
+            title="No team members added yet"
             description="Invite someone by email to give them working access to this one event."
             action={
               <Button size="sm" onClick={() => setShowInvite(true)}>
                 <UserPlus className="h-4 w-4" />
-                Invite Staff
+                Invite Team Member
               </Button>
             }
           />
@@ -137,9 +149,21 @@ export function TeamTab({ eventId }: { eventId: string }) {
                     <p className="truncate text-sm font-semibold text-slate-900">{collaborator.user.name}</p>
                     <p className="truncate text-xs text-slate-500">{collaborator.user.email}</p>
                   </div>
-                  <Badge variant="brand">Staff</Badge>
                 </div>
-                <Tooltip label="Remove staff access">
+                <select
+                  value={collaborator.role === "STAFF" ? "COORDINATOR" : collaborator.role}
+                  onChange={(e) => handleRoleChange(collaborator, e.target.value as EventCollaboratorRole)}
+                  aria-label={`Role for ${collaborator.user.name}`}
+                  disabled={updateRole.isPending}
+                  className="ml-auto shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+                >
+                  {INVITABLE_ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <Tooltip label="Remove access">
                   <button
                     onClick={() => handleRemove(collaborator)}
                     aria-label={`Remove ${collaborator.user.name}`}
@@ -160,7 +184,7 @@ export function TeamTab({ eventId }: { eventId: string }) {
                     <p className="truncate text-sm font-semibold text-slate-900">{invite.email}</p>
                     <p className="text-xs text-slate-500">Invited {formatDate(invite.createdAt)}</p>
                   </div>
-                  <Badge variant="warning">Invite sent</Badge>
+                  <Badge variant="warning">Invite sent · {roleLabel(invite.role)}</Badge>
                 </div>
                 <Tooltip label="Cancel invite">
                   <button
@@ -263,6 +287,7 @@ export function TeamTab({ eventId }: { eventId: string }) {
 
 const inviteSchema = z.object({
   email: z.string().trim().email("Enter a valid email address"),
+  role: z.enum(["COORDINATOR", "CATERER", "DOOR_STAFF", "VIEWER"]),
 });
 type InviteFormValues = z.infer<typeof inviteSchema>;
 
@@ -272,14 +297,16 @@ function InviteCollaboratorModal({ open, onClose, eventId }: { open: boolean; on
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<InviteFormValues>({ resolver: zodResolver(inviteSchema), defaultValues: { email: "" } });
+  } = useForm<InviteFormValues>({ resolver: zodResolver(inviteSchema), defaultValues: { email: "", role: "COORDINATOR" } });
+  const selectedRole = watch("role");
 
   async function onSubmit(values: InviteFormValues) {
     try {
-      const result = await inviteCollaborator.mutateAsync(values.email);
+      const result = await inviteCollaborator.mutateAsync(values);
       toast.success(
-        result.collaborator ? `${values.email} now has staff access` : `Invite sent to ${values.email}`
+        result.collaborator ? `${values.email} now has access as ${roleLabel(values.role)}` : `Invite sent to ${values.email}`
       );
       reset();
       onClose();
@@ -289,7 +316,7 @@ function InviteCollaboratorModal({ open, onClose, eventId }: { open: boolean; on
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Invite staff to this event">
+    <Modal open={open} onClose={onClose} title="Invite a team member">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <p className="text-sm text-slate-500">
           If they already have a Gadaova account, they'll get access right away. Otherwise, we'll email them and
@@ -298,6 +325,18 @@ function InviteCollaboratorModal({ open, onClose, eventId }: { open: boolean; on
         <Field label="Email address" htmlFor="collab-email" error={errors.email?.message}>
           <Input id="collab-email" type="email" placeholder="staff@example.com" {...register("email")} error={!!errors.email} />
         </Field>
+        <Field label="Role" htmlFor="collab-role">
+          <Select id="collab-role" {...register("role")}>
+            {INVITABLE_ROLES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <p className="text-xs text-slate-500">
+          {INVITABLE_ROLES.find((r) => r.value === selectedRole)?.description}
+        </p>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel

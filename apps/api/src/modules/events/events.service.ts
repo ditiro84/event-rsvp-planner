@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
+import { capabilitiesForRole } from "../collaborators/permissions";
 import { CreateEventInput, UpdateEventInput } from "./events.schema";
 
 const ALLOWED_COVER_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -112,6 +113,17 @@ export async function isUserEventCollaborator(userId: string, eventId: string) {
   return !!collaborator;
 }
 
+// The collaborator role this user holds on the event, or null when they are
+// the owner, an admin, or have no access. Role-limited reads (insights etc.)
+// use it to decide how much of a response to return.
+export async function getCollaboratorRole(userId: string, eventId: string): Promise<string | null> {
+  const collaborator = await prisma.eventCollaborator.findUnique({
+    where: { eventId_userId: { eventId, userId } },
+    select: { role: true },
+  });
+  return collaborator?.role ?? null;
+}
+
 export interface EventGuestSummary {
   totalGuests: number;
   confirmed: number;
@@ -138,8 +150,10 @@ export async function listEvents(userId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const collaborations = await (prisma as any).eventCollaborator.findMany({
     where: { userId },
-    select: { eventId: true },
+    select: { eventId: true, role: true },
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const roleByEvent = new Map<string, string>(collaborations.map((c: any) => [c.eventId as string, c.role as string]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const collaboratorEventIds = collaborations.map((c: any) => c.eventId as string);
 
@@ -203,6 +217,8 @@ export async function listEvents(userId: string) {
   return events.map((event: any) => ({
     ...event,
     isCollaborator: collaboratorEventIdSet.has(event.id),
+    collaboratorRole: roleByEvent.get(event.id) ?? null,
+    capabilities: roleByEvent.has(event.id) ? capabilitiesForRole(roleByEvent.get(event.id)!) : null,
     guestSummary: summaryByEvent.get(event.id)!,
   }));
 }

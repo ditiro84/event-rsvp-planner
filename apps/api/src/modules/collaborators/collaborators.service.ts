@@ -4,6 +4,7 @@ import { env } from "../../config/env";
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors";
 import { getOwnedEvent } from "../events/events.service";
 import { formatFromHeader } from "../../utils/email";
+import { COLLABORATOR_ROLE_LABELS, CollaboratorRole } from "./permissions";
 
 // Collaborator management is deliberately owner/admin-only -- every function
 // below calls getOwnedEvent (not getOwnedEventOrCollaborator), so a staff
@@ -33,7 +34,13 @@ async function logEmailAttempt(
   });
 }
 
-async function sendCollaboratorEmail(eventId: string, eventName: string, to: string, alreadyRegistered: boolean) {
+async function sendCollaboratorEmail(
+  eventId: string,
+  eventName: string,
+  to: string,
+  alreadyRegistered: boolean,
+  role: CollaboratorRole
+) {
   const resend = getResendClient();
   const subject = `You've been added to ${eventName} on Gadaova`;
   // Email sending is optional (see RESEND_API_KEY/RESEND_FROM_EMAIL in
@@ -51,7 +58,7 @@ async function sendCollaboratorEmail(eventId: string, eventName: string, to: str
     <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
       <h1 style="font-size: 20px; color: #1e293b;">You've been added to ${eventName}</h1>
       <p style="color: #334155; font-size: 15px;">
-        You now have staff access to <strong>${eventName}</strong> on Gadaova.
+        You now have access to <strong>${eventName}</strong> on Gadaova as <strong>${COLLABORATOR_ROLE_LABELS[role]}</strong>.
         ${alreadyRegistered ? "" : "Register with this email address and it'll be there waiting for you."}
       </p>
       <p style="text-align: center; margin: 28px 0;">
@@ -90,7 +97,12 @@ export async function listCollaborators(userId: string, eventId: string) {
   return { collaborators, pendingInvites };
 }
 
-export async function inviteCollaborator(userId: string, eventId: string, email: string) {
+export async function inviteCollaborator(
+  userId: string,
+  eventId: string,
+  email: string,
+  role: CollaboratorRole = "COORDINATOR"
+) {
   const event = await getOwnedEvent(userId, eventId);
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -106,10 +118,10 @@ export async function inviteCollaborator(userId: string, eventId: string, email:
       throw new ConflictError("This person already has staff access to this event.");
     }
     const collaborator = await prisma.eventCollaborator.create({
-      data: { eventId, userId: existingUser.id, invitedByUserId: userId },
+      data: { eventId, userId: existingUser.id, invitedByUserId: userId, role },
       include: { user: { select: { id: true, name: true, email: true } } },
     });
-    await sendCollaboratorEmail(eventId, event.name, email, true);
+    await sendCollaboratorEmail(eventId, event.name, email, true, role);
     return { collaborator, pendingInvite: null };
   }
 
@@ -120,10 +132,28 @@ export async function inviteCollaborator(userId: string, eventId: string, email:
     throw new ConflictError("An invite has already been sent to this email for this event.");
   }
   const pendingInvite = await prisma.eventCollaboratorInvite.create({
-    data: { eventId, email, invitedByUserId: userId },
+    data: { eventId, email, invitedByUserId: userId, role },
   });
-  await sendCollaboratorEmail(eventId, event.name, email, false);
+  await sendCollaboratorEmail(eventId, event.name, email, false, role);
   return { collaborator: null, pendingInvite };
+}
+
+export async function updateCollaboratorRole(
+  userId: string,
+  eventId: string,
+  collaboratorId: string,
+  role: CollaboratorRole
+) {
+  await getOwnedEvent(userId, eventId);
+  const collaborator = await prisma.eventCollaborator.findUnique({ where: { id: collaboratorId } });
+  if (!collaborator || collaborator.eventId !== eventId) {
+    throw new NotFoundError("Staff member not found");
+  }
+  return prisma.eventCollaborator.update({
+    where: { id: collaboratorId },
+    data: { role },
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
 }
 
 export async function removeCollaborator(userId: string, eventId: string, collaboratorId: string) {
@@ -154,7 +184,7 @@ export async function resolvePendingCollaboratorInvites(userId: string, email: s
 
   for (const invite of invites) {
     await prisma.eventCollaborator.create({
-      data: { eventId: invite.eventId, userId, invitedByUserId: invite.invitedByUserId },
+      data: { eventId: invite.eventId, userId, invitedByUserId: invite.invitedByUserId, role: invite.role },
     });
   }
   await prisma.eventCollaboratorInvite.deleteMany({ where: { email } });

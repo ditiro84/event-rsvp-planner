@@ -30,6 +30,8 @@ import { EVENT_TYPE_LABELS, formatDateShort } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { getTabTheme } from "@/lib/tabTheme";
 import { EventFormModal } from "@/pages/events/EventFormModal";
+import { hasCapability, roleLabel } from "@/lib/collaboratorRoles";
+import type { CollaboratorCapability } from "@/types";
 
 interface EventSection {
   to: string;
@@ -37,17 +39,20 @@ interface EventSection {
   icon: typeof LayoutDashboard;
   hint: string;
   ownerOnly?: boolean;
+  // What an invited collaborator needs to see this tab (owners and admins
+  // always see every tab). Mirrors the API's collaborators/permissions.ts.
+  capability?: CollaboratorCapability;
 }
 
 const EVENT_SECTIONS: EventSection[] = [
-  { to: "overview", label: "Overview", icon: LayoutDashboard, hint: "Readiness at a glance and quick links to every section" },
-  { to: "guests", label: "Guests", icon: Users, hint: "Manage your private guest list and import from a CSV" },
-  { to: "rsvp", label: "RSVP", icon: Mail, hint: "Send invites and track confirmed, pending, and declined replies" },
-  { to: "vendors", label: "Vendors", icon: Store, hint: "Track caterers, venues, and every other vendor for this event" },
-  { to: "merchandise", label: "Merchandise", icon: ShoppingBag, hint: "Sell branded merch straight from your event page" },
-  { to: "tickets", label: "Tickets", icon: Ticket, hint: "Set up paid ticket types and publish a public event page" },
-  { to: "seating", label: "Seating", icon: Armchair, hint: "Drag guests onto tables with the visual seating planner" },
-  { to: "checkin", label: "Check-in", icon: ClipboardCheck, hint: "Scan guests and tickets in at the door" },
+  { to: "overview", label: "Overview", icon: LayoutDashboard, hint: "Readiness at a glance and quick links to every section", capability: "event:view" },
+  { to: "guests", label: "Guests", icon: Users, hint: "Manage your private guest list and import from a CSV", capability: "guests:read" },
+  { to: "rsvp", label: "RSVP", icon: Mail, hint: "Send invites and track confirmed, pending, and declined replies", capability: "rsvp:read" },
+  { to: "vendors", label: "Vendors", icon: Store, hint: "Track caterers, venues, and every other vendor for this event", capability: "vendors:read" },
+  { to: "merchandise", label: "Merchandise", icon: ShoppingBag, hint: "Sell branded merch straight from your event page", capability: "merch:read" },
+  { to: "tickets", label: "Tickets", icon: Ticket, hint: "Set up paid ticket types and publish a public event page", capability: "tickets:read" },
+  { to: "seating", label: "Seating", icon: Armchair, hint: "Drag guests onto tables with the visual seating planner", capability: "seating:read" },
+  { to: "checkin", label: "Check-in", icon: ClipboardCheck, hint: "Scan guests and tickets in at the door", capability: "checkin" },
   // Owner-only -- filtered out below for staff collaborators, since they
   // can't manage other staff or check-in passes (see TeamTab.tsx).
   { to: "team", label: "Team", icon: UserCog, hint: "Invite staff collaborators and manage door check-in passes", ownerOnly: true },
@@ -97,7 +102,12 @@ export function DashboardLayout() {
   // The Team tab (managing other staff and check-in passes) is owner-only --
   // a collaborator can't reach its endpoints (see collaborators.service.ts),
   // so don't show a nav item that would just 404.
-  const eventSections = viewingAsCollaborator ? EVENT_SECTIONS.filter((s) => !s.ownerOnly) : EVENT_SECTIONS;
+  // Collaborators only see the tabs their role allows (event.capabilities is
+  // null for the owner and admins, who see everything).
+  const eventSections = viewingAsCollaborator
+    ? EVENT_SECTIONS.filter((s) => !s.ownerOnly && (!s.capability || hasCapability(event?.capabilities, s.capability)))
+    : EVENT_SECTIONS;
+  const canEditEvent = !viewingAsCollaborator || hasCapability(event?.capabilities, "event:edit");
 
   async function handleDelete() {
     if (!event) return;
@@ -233,11 +243,12 @@ export function DashboardLayout() {
               {viewingAsCollaborator && (
                 <span className="flex items-center gap-1 rounded-full bg-coral-50 px-2.5 py-1 text-xs font-semibold text-coral-700">
                   <UserCog className="h-3.5 w-3.5" />
-                  Staff access
+                  {event?.collaboratorRole ? roleLabel(event.collaboratorRole) : "Team"} access
                 </span>
               )}
             </div>
             <div className="flex shrink-0 gap-1.5">
+              {canEditEvent && (
               <button
                 onClick={() => setShowEdit(true)}
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
@@ -245,6 +256,7 @@ export function DashboardLayout() {
                 <Pencil className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Edit</span>
               </button>
+              )}
               {/* Deleting an event is owner-only, no admin bypass and no
                   collaborator access either (see getOwnedEventStrict) --
                   hidden here rather than shown and failing with a confusing

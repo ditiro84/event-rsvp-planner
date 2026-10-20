@@ -1,10 +1,13 @@
 import { prisma } from "../../lib/prisma";
 import { NotFoundError } from "../../lib/errors";
-import { getOwnedEventOrCollaborator } from "../events/events.service";
+import { getOwnedEventOrCollaborator, isUserEventCollaborator } from "../events/events.service";
 import { shouldReleaseSeatOnStatusChange } from "../../utils/rsvpMath";
 import { CreateGuestInput, ListGuestsQuery, UpdateGuestInput } from "./guests.schema";
 
-export async function getOwnedGuest(userId: string, guestId: string) {
+// allowCollaborator is only passed by check-in/out, which sit behind the event
+// capability gate (guests routes under /events/:eventId). Edit/delete and the
+// top-level /api/guests/:guestId routes stay owner-only.
+export async function getOwnedGuest(userId: string, guestId: string, allowCollaborator = false) {
   const guest = await prisma.guest.findUnique({
     where: { id: guestId },
     include: {
@@ -13,8 +16,12 @@ export async function getOwnedGuest(userId: string, guestId: string) {
       party: { include: { seatAssignment: { include: { table: true, seat: true } } } },
     },
   });
-  if (!guest || guest.event.userId !== userId) {
+  if (!guest) {
     throw new NotFoundError("Guest not found");
+  }
+  if (guest.event.userId !== userId) {
+    const isCollaborator = allowCollaborator && (await isUserEventCollaborator(userId, guest.eventId));
+    if (!isCollaborator) throw new NotFoundError("Guest not found");
   }
   return guest;
 }
@@ -138,7 +145,7 @@ export async function deleteGuest(userId: string, guestId: string) {
 // else in the app) and keeps an audit row in CheckIn (who checked them in,
 // and when) for events that want a paper trail.
 export async function checkInGuest(userId: string, guestId: string, checkedInBy?: string) {
-  const guest = await getOwnedGuest(userId, guestId);
+  const guest = await getOwnedGuest(userId, guestId, true);
   const checkedInAt = new Date();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,11 +165,11 @@ export async function checkInGuest(userId: string, guestId: string, checkedInBy?
   // guest read -- a bare `update()` result only has scalar columns, which
   // would make the door-scan flow's card show "Unassigned" for a guest who
   // actually has a seat (see checkInGuestByToken / QrScanner usage).
-  return getOwnedGuest(userId, guestId);
+  return getOwnedGuest(userId, guestId, true);
 }
 
 export async function checkOutGuest(userId: string, guestId: string) {
-  await getOwnedGuest(userId, guestId);
+  await getOwnedGuest(userId, guestId, true);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updated = await prisma.$transaction(async (tx: any) => {

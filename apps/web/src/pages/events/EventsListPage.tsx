@@ -11,6 +11,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressStat } from "@/components/ui/ProgressBar";
 import { formatDate } from "@/lib/format";
+import { roleLabel } from "@/lib/collaboratorRoles";
 import type { EventListItem, InsightRecord } from "@/types";
 import { EventFormModal } from "./EventFormModal";
 
@@ -259,7 +260,7 @@ function EventCard({
               {event.isCollaborator && (
                 <Badge variant="coral" className="flex items-center gap-1 rounded-full uppercase">
                   <UserCog className="h-3 w-3" />
-                  Staff
+                  {event.collaboratorRole ? roleLabel(event.collaboratorRole) : "Staff"}
                 </Badge>
               )}
             </div>

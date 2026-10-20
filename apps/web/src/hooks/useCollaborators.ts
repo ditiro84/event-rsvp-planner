@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { EventCollaboratorInviteRecord, EventCollaboratorRecord } from "@/types";
+import type { EventCollaboratorInviteRecord, EventCollaboratorRecord, EventCollaboratorRole } from "@/types";
 
 // Owner/admin-only management -- see collaborators.service.ts. A staff
 // member added to an event never sees these endpoints (they don't get a
@@ -25,9 +25,22 @@ export function useCollaborators(eventId: string | undefined) {
 export function useInviteCollaborator(eventId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (email: string) => {
-      const res = await api.post(`/events/${eventId}/collaborators`, { email });
+    mutationFn: async (input: { email: string; role: EventCollaboratorRole }) => {
+      const res = await api.post(`/events/${eventId}/collaborators`, input);
       return res.data.data as { collaborator: EventCollaboratorRecord | null; pendingInvite: EventCollaboratorInviteRecord | null };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events", eventId, "collaborators"] });
+    },
+  });
+}
+
+export function useUpdateCollaboratorRole(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { collaboratorId: string; role: EventCollaboratorRole }) => {
+      const res = await api.put(`/events/${eventId}/collaborators/${input.collaboratorId}`, { role: input.role });
+      return res.data.data.collaborator as EventCollaboratorRecord;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["events", eventId, "collaborators"] });

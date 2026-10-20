@@ -203,8 +203,15 @@ model Event {
 //    also mean "rotate the token", invalidating the old link instantly via
 //    a lookup that simply no longer matches.
 
+// STAFF is the original single role. It is kept (not renamed) so existing
+// rows and the column default keep working, and is treated as COORDINATOR in
+// permissions.ts, so nobody who already has access loses any of it.
 enum EventCollaboratorRole {
   STAFF
+  COORDINATOR
+  CATERER
+  DOOR_STAFF
+  VIEWER
 }
 
 model EventCollaborator {
@@ -239,6 +246,10 @@ model EventCollaboratorInvite {
 
   email String
   token String @unique @default(cuid())
+
+  // The role the invitee gets once they register (carried onto their
+  // EventCollaborator row by resolvePendingCollaboratorInvites).
+  role EventCollaboratorRole @default(STAFF)
 
   invitedByUserId String
   invitedBy       User   @relation(fields: [invitedByUserId], references: [id], onDelete: Cascade)

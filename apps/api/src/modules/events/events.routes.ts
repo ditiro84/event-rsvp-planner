@@ -3,6 +3,7 @@ import multer from "multer";
 import { requireAuth } from "../../middleware/auth";
 import { validateBody, validateParams } from "../../middleware/validate";
 import { auditAdminEventActions } from "../../middleware/auditAdminEventActions";
+import { eventCapabilityGate } from "../../middleware/eventCapability";
 import { createEventSchema, eventIdParamsSchema, invitationMediaParamsSchema, updateEventSchema } from "./events.schema";
 import * as controller from "./events.controller";
 import guestsRouter from "../guests/guests.routes";
@@ -32,6 +33,9 @@ router.use(requireAuth);
 // auditAdminEventActions.ts. Registered before those routes so it runs
 // first for every one of them.
 router.use("/:eventId", auditAdminEventActions());
+// Narrows what an invited collaborator can reach by their role (owners and
+// admins pass through untouched) -- see collaborators/permissions.ts.
+router.use("/:eventId", eventCapabilityGate());
 
 router.get("/", controller.list);
 router.post("/", validateBody(createEventSchema), controller.create);

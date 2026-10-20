@@ -5,6 +5,7 @@ import { serveBytesWithRangeSupport } from "../../utils/serveBytes";
 import { createEventSchema, updateEventSchema } from "./events.schema";
 import * as service from "./events.service";
 import * as mediaService from "./invitationMedia.service";
+import { capabilitiesForRole } from "../collaborators/permissions";
 import { reorderInvitationMediaSchema } from "./events.schema";
 
 // Every response below carries a raw Prisma Event row -- strip the cover
@@ -35,9 +36,16 @@ export async function getOne(req: Request, res: Response) {
   // admin viewing this event via the support-mode bypass isn't the owner
   // either, but shouldn't be labeled a collaborator (see
   // isUserEventCollaborator's note in events.service.ts).
-  const isCollaborator =
-    event.userId !== req.userId ? await service.isUserEventCollaborator(req.userId!, event.id) : false;
-  return ok(res, { event: { ...sanitizeEvent(event), isCollaborator } });
+  const collaboratorRole =
+    event.userId !== req.userId ? await service.getCollaboratorRole(req.userId!, event.id) : null;
+  return ok(res, {
+    event: {
+      ...sanitizeEvent(event),
+      isCollaborator: collaboratorRole !== null,
+      collaboratorRole,
+      capabilities: collaboratorRole ? capabilitiesForRole(collaboratorRole) : null,
+    },
+  });
 }
 
 export async function update(req: Request, res: Response) {

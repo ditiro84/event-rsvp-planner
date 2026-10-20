@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Download, Mail, Package, Pencil, Plus, ShoppingCart, Store, Trash2, Truck } from "lucide-react";
-import { useDeleteProduct, useExportOrdersCsv, useOrders, useOrdersSummary, useProducts, productImagePath } from "@/hooks/useProducts";
+import { useBundles, useDeleteBundle, useDeleteProduct, useExportOrdersCsv, useOrders, useOrdersSummary, useProducts, productImagePath } from "@/hooks/useProducts";
 import { useUpdateEvent } from "@/hooks/useEvents";
 import { Card, StatCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -17,8 +17,9 @@ import { formatOrderItems, orderStatusDisplay } from "@/lib/orders";
 import { cn } from "@/lib/cn";
 import { getTabTheme } from "@/lib/tabTheme";
 import { ProductFormModal } from "./ProductFormModal";
+import { BundleFormModal } from "./BundleFormModal";
 import { PayoutsSection } from "./PayoutsSection";
-import type { EventRecord, OrderRecord, ProductRecord } from "@/types";
+import type { EventRecord, OrderRecord, ProductBundleRecord, ProductRecord } from "@/types";
 
 function stockBadge(product: ProductRecord) {
   if (product.stockQuantity === null) return <Badge variant="success">In Stock</Badge>;
@@ -69,6 +70,10 @@ function OrderDetails({ order }: { order: OrderRecord }) {
 
 export function MerchandiseTab({ event }: { event: EventRecord }) {
   const { data: products, isLoading, isError, refetch } = useProducts(event.id);
+  const { data: bundles } = useBundles(event.id);
+  const deleteBundle = useDeleteBundle(event.id);
+  const [showBundleForm, setShowBundleForm] = useState(false);
+  const [editingBundle, setEditingBundle] = useState<ProductBundleRecord | undefined>();
   const exportOrders = useExportOrdersCsv(event.id);
   const { data: summary } = useOrdersSummary(event.id);
   const { data: orders } = useOrders(event.id);
@@ -89,6 +94,16 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
     try {
       await deleteProduct.mutateAsync(product.id);
       toast.success("Product removed");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  }
+
+  async function handleDeleteBundle(bundle: ProductBundleRecord) {
+    if (!confirm(`Remove the "${bundle.name}" bundle? Past orders keep their items.`)) return;
+    try {
+      await deleteBundle.mutateAsync(bundle.id);
+      toast.success("Bundle removed");
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -315,6 +330,61 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
         )}
       </div>
 
+      {products.length > 0 && (
+        <div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Bundles</h2>
+              <p className="text-xs text-slate-500">Optional. Sell a pack of your products together at one price.</p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setEditingBundle(undefined);
+                setShowBundleForm(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Add Bundle
+            </Button>
+          </div>
+          {(bundles ?? []).length > 0 && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(bundles ?? []).map((bundle) => (
+                <Card key={bundle.id} className="flex flex-col gap-2 p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-lg font-bold text-slate-900">{formatMoney(bundle.price, bundle.currency)}</p>
+                    {!bundle.active && <Badge variant="warning">Hidden</Badge>}
+                  </div>
+                  <p className="font-semibold text-slate-900">{bundle.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {bundle.items.map((i) => `${i.quantity > 1 ? `${i.quantity} × ` : ""}${i.productName}`).join(", ")}
+                  </p>
+                  <div className="mt-auto flex gap-2 pt-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setEditingBundle(bundle);
+                        setShowBundleForm(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => handleDeleteBundle(bundle)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remove
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-slate-900">Recent Orders</h2>
@@ -397,6 +467,13 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
         )}
       </div>
 
+      <BundleFormModal
+        open={showBundleForm}
+        onClose={() => setShowBundleForm(false)}
+        eventId={event.id}
+        products={products}
+        bundle={editingBundle}
+      />
       <ProductFormModal open={showForm} onClose={() => setShowForm(false)} eventId={event.id} product={editingProduct} />
     </div>
   );

@@ -25,6 +25,8 @@ describe("requiredCapability", () => {
     expect(requiredCapability("GET", "/vendors")).toBe("vendors:read");
     expect(requiredCapability("POST", "/vendors")).toBe("vendors:write");
     expect(requiredCapability("GET", "/orders")).toBe("merch:read");
+    expect(requiredCapability("GET", "/bundles")).toBe("merch:read");
+    expect(requiredCapability("POST", "/bundles")).toBe("merch:write");
     expect(requiredCapability("POST", "/ticket-types/scan")).toBe("checkin");
     expect(requiredCapability("GET", "/ticket-types")).toBe("tickets:read");
     expect(requiredCapability("GET", "/rsvp")).toBe("rsvp:read");

@@ -122,6 +122,7 @@ export function requiredCapability(method: string, path: string): Capability {
     case "vendors":
       return read ? "vendors:read" : "vendors:write";
     case "products":
+    case "bundles":
     case "orders":
       return read ? "merch:read" : "merch:write";
     case "ticket-types":

@@ -150,6 +150,7 @@ model Event {
   ticketTypes     TicketType[]
   emailEvents     EmailEvent[]
   collaborators   EventCollaborator[]
+  productBundles  ProductBundle[]
   collaboratorInvites EventCollaboratorInvite[]
   staffPasses     EventStaffPass[]
 
@@ -790,9 +791,48 @@ model Product {
   updatedAt DateTime @updatedAt
 
   orderItems OrderItem[]
+  bundleItems ProductBundleItem[]
 
   @@index([eventId])
   @@map("products")
+}
+
+// An optional planner-defined pack of products sold together at one price
+// (for example a cap and a T-shirt). Entirely up to the planner: any products,
+// any quantities, or no bundles at all. Every product in a bundle shares the
+// bundle's currency.
+model ProductBundle {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  // Minor currency units for the whole bundle, same convention as Product.
+  priceCents  Int
+  currency    Currency @default(USD)
+  active      Boolean  @default(true)
+
+  items ProductBundleItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  @@map("product_bundles")
+}
+
+model ProductBundleItem {
+  id        String        @id @default(cuid())
+  bundleId  String
+  bundle    ProductBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int           @default(1)
+
+  @@unique([bundleId, productId])
+  @@index([productId])
+  @@map("product_bundle_items")
 }
 
 // Which processor settles a payout account. Chosen per currency because no
@@ -1118,6 +1158,9 @@ model OrderItem {
   // Cap head circumference as { headCircumference: { value, unit, cm } }, kept
   // exactly as the guest entered it plus a centimetre value for ordering.
   measurements    Json?
+  // Set when this line came from a bundle: the bundle's name, so the planner
+  // sees which lines belong together.
+  bundleName      String?
 
   @@index([orderId])
   @@map("order_items")

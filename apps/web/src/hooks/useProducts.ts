@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, apiBaseUrl } from "@/lib/api";
-import type { OrderRecord, OrdersSummary, PayoutProvider, ProductRecord, PublicShopListing } from "@/types";
+import type {
+  OrderRecord,
+  OrdersSummary,
+  PayoutProvider,
+  ProductBundleRecord,
+  ProductRecord,
+  PublicShopListing,
+} from "@/types";
 
 export function useProducts(eventId: string | undefined) {
   return useQuery({
@@ -127,6 +134,15 @@ export function useCheckout(rsvpToken: string) {
         selectedSize?: string;
         headCircumference?: { value: number; unit: "cm" | "in" };
       }[];
+      bundles?: {
+        bundleId: string;
+        quantity: number;
+        selections: {
+          productId: string;
+          selectedSize?: string;
+          headCircumference?: { value: number; unit: "cm" | "in" };
+        }[];
+      }[];
       provider?: PayoutProvider;
     }) => {
       const res = await api.post(`/shop/${rsvpToken}/checkout`, input);
@@ -207,5 +223,58 @@ export function useExportOrdersCsv(eventId: string) {
       link.remove();
       window.URL.revokeObjectURL(url);
     },
+  });
+}
+
+// --- Bundles (planner) -------------------------------------------------------
+
+export interface BundleInput {
+  name: string;
+  description?: string | null;
+  price: number;
+  active?: boolean;
+  items: { productId: string; quantity: number }[];
+}
+
+export function useBundles(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ["events", eventId, "bundles"],
+    queryFn: async () => {
+      const res = await api.get(`/events/${eventId}/bundles`);
+      return res.data.data.bundles as ProductBundleRecord[];
+    },
+    enabled: !!eventId,
+  });
+}
+
+export function useCreateBundle(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: BundleInput) => {
+      const res = await api.post(`/events/${eventId}/bundles`, input);
+      return res.data.data.bundle as ProductBundleRecord;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", eventId, "bundles"] }),
+  });
+}
+
+export function useUpdateBundle(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bundleId, input }: { bundleId: string; input: Partial<BundleInput> }) => {
+      const res = await api.put(`/events/${eventId}/bundles/${bundleId}`, input);
+      return res.data.data.bundle as ProductBundleRecord;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", eventId, "bundles"] }),
+  });
+}
+
+export function useDeleteBundle(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (bundleId: string) => {
+      await api.delete(`/events/${eventId}/bundles/${bundleId}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", eventId, "bundles"] }),
   });
 }

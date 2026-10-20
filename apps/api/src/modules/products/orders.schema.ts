@@ -16,6 +16,26 @@ export const checkoutItemSchema = z.object({
     .optional(),
 });
 
+// A planner-defined bundle in the cart. `selections` carries the size or head
+// measurement for each product in the bundle that needs one; the same entry
+// applies to every unit if the guest buys the bundle more than once.
+export const checkoutBundleSchema = z.object({
+  bundleId: z.string().min(1),
+  quantity: z.coerce.number().int().min(1).max(100),
+  selections: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        selectedSize: z.string().trim().max(50).optional(),
+        headCircumference: z
+          .object({ value: z.coerce.number().positive().max(1000), unit: z.enum(["cm", "in"]) })
+          .optional(),
+      })
+    )
+    .max(30)
+    .optional(),
+});
+
 // Address fields are only required when deliveryMethod is SHIPPING -- see
 // the superRefine below. shippingAddressLine2 stays optional either way
 // (apartment/suite number, not every address has one).
@@ -40,7 +60,8 @@ export const createCheckoutSchema = z
     // Order in schema.prisma. Only ever surfaced in the UI when there's no
     // payment processor connected, but harmless to accept regardless.
     guestMarkedPaid: z.boolean().optional(),
-    items: z.array(checkoutItemSchema).min(1, "Your cart is empty").max(50),
+    items: z.array(checkoutItemSchema).max(50).default([]),
+    bundles: z.array(checkoutBundleSchema).max(20).default([]),
     // Which connected payout provider to route this checkout through, when
     // the event has more than one connected for the cart's currency (e.g.
     // both Stripe Connect and PayPal for USD). Omitted = use the default
@@ -48,6 +69,9 @@ export const createCheckoutSchema = z
     provider: z.enum(["STRIPE_CONNECT", "PAYSTACK", "PAYPAL"]).optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.items.length === 0 && data.bundles.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items"], message: "Your cart is empty" });
+    }
     if (data.deliveryMethod !== "SHIPPING") return;
     const required: Array<[keyof typeof data, string]> = [
       ["shippingAddressLine1", "Address is required"],

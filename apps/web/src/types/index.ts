@@ -558,6 +558,8 @@ export interface OrderItemRecord {
   measurements: { headCircumference: { value: number; unit: "cm" | "in"; cm: number } } | null;
   // Ready-made one-liner, e.g. "Size M" or "Head 22 in (55.9 cm)"; empty when none.
   sizeLabel: string;
+  // Set when this line came from a bundle.
+  bundleName: string | null;
 }
 
 export interface OrderShippingAddress {
@@ -608,11 +610,36 @@ export interface PublicShopProduct {
   hasImage: boolean;
 }
 
+// A planner-defined pack of products sold together at one price.
+export interface BundleItemRecord {
+  productId: string;
+  productName: string;
+  quantity: number;
+  fitType: ProductFitType;
+  sizeOptions: string[] | null;
+  // What this product costs on its own, to show the saving.
+  unitPrice: number;
+}
+
+export interface ProductBundleRecord {
+  id: string;
+  eventId: string;
+  name: string;
+  description: string | null;
+  price: number;
+  currency: CurrencyCode;
+  active: boolean;
+  items: BundleItemRecord[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PublicShopListing {
   enabled: boolean;
   // Planner-written blurb of what's for sale; null = derive from product names.
   label: string | null;
   products: PublicShopProduct[];
+  bundles: ProductBundleRecord[];
   // Which processors are connected and ready to accept payment, per
   // currency -- e.g. { USD: ["STRIPE_CONNECT", "PAYPAL"], NGN: ["PAYSTACK"] }.
   // A currency missing here (or with an empty array) has nothing connected

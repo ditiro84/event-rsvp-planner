@@ -303,9 +303,171 @@ describe("Sizing and measurements", () => {
     const res = await request(app).get(`/api/events/${eventId}/orders/export`).set(auth);
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toMatch(/text\/csv/);
-    expect(res.text).toMatch(/Event Tee,1,L/);
-    expect(res.text).toMatch(/Event Cap,1,,56,56 cm/);
+    expect(res.text).toMatch(/Event Tee,,1,L/);
+    expect(res.text).toMatch(/Event Cap,,1,,56,56 cm/);
     // A guest name that looks like a formula is neutralised.
     expect(res.text).toMatch(/'=SUM\(1\+1\)/);
+  });
+});
+
+describe("Bundles", () => {
+  async function shopWithProducts() {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+    await request(app).put(`/api/events/${eventId}`).set(auth).send({ merchandiseEnabled: true });
+    const cap = await request(app)
+      .post(`/api/events/${eventId}/products`)
+      .set(auth)
+      .send({ name: "Cap", price: 15, fitType: "HEAD_CIRCUMFERENCE", stockQuantity: 5 });
+    const tee = await request(app)
+      .post(`/api/events/${eventId}/products`)
+      .set(auth)
+      .send({ name: "Tee", price: 25, fitType: "SIZE_CHART", sizeOptions: ["S", "M"], stockQuantity: 5 });
+    const gbp = await request(app)
+      .post(`/api/events/${eventId}/products`)
+      .set(auth)
+      .send({ name: "Pound product", price: 10, currency: "GBP" });
+    const eventRes = await request(app).get(`/api/events/${eventId}`).set(auth);
+    return {
+      auth,
+      eventId,
+      rsvpToken: eventRes.body.data.event.rsvpToken as string,
+      capId: cap.body.data.product.id as string,
+      teeId: tee.body.data.product.id as string,
+      gbpId: gbp.body.data.product.id as string,
+    };
+  }
+
+  async function createBundle(
+    ctx: { auth: Record<string, string>; eventId: string },
+    body: Record<string, unknown>
+  ) {
+    return request(app).post(`/api/events/${ctx.eventId}/bundles`).set(ctx.auth).send(body);
+  }
+
+  const guest = { guestName: "Jane Guest", guestEmail: "jane@example.com" };
+
+  it("lets the planner create, change and delete a bundle of any products", async () => {
+    const ctx = await shopWithProducts();
+    const created = await createBundle(ctx, {
+      name: "Fan pack",
+      price: 30,
+      items: [
+        { productId: ctx.capId, quantity: 1 },
+        { productId: ctx.teeId, quantity: 1 },
+      ],
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.bundle.price).toBe(30);
+    expect(created.body.data.bundle.currency).toBe("USD");
+    expect(created.body.data.bundle.items).toHaveLength(2);
+
+    const bundleId = created.body.data.bundle.id as string;
+    const updated = await request(app)
+      .put(`/api/events/${ctx.eventId}/bundles/${bundleId}`)
+      .set(ctx.auth)
+      .send({ items: [{ productId: ctx.teeId, quantity: 2 }], price: 40 });
+    expect(updated.status).toBe(200);
+    expect(updated.body.data.bundle.items).toHaveLength(1);
+    expect(updated.body.data.bundle.items[0].quantity).toBe(2);
+    expect(updated.body.data.bundle.price).toBe(40);
+
+    const list = await request(app).get(`/api/events/${ctx.eventId}/bundles`).set(ctx.auth);
+    expect(list.body.data.bundles).toHaveLength(1);
+
+    expect((await request(app).delete(`/api/events/${ctx.eventId}/bundles/${bundleId}`).set(ctx.auth)).status).toBe(204);
+    const after = await request(app).get(`/api/events/${ctx.eventId}/bundles`).set(ctx.auth);
+    expect(after.body.data.bundles).toHaveLength(0);
+  });
+
+  it("rejects bundles that mix currencies or are empty", async () => {
+    const ctx = await shopWithProducts();
+    const mixed = await createBundle(ctx, {
+      name: "Mixed",
+      price: 20,
+      items: [{ productId: ctx.capId }, { productId: ctx.gbpId }],
+    });
+    expect(mixed.status).toBe(400);
+    const empty = await createBundle(ctx, { name: "Empty", price: 20, items: [] });
+    expect(empty.status).toBe(400);
+  });
+
+  it("shows active bundles to guests and hides them when a product is inactive", async () => {
+    const ctx = await shopWithProducts();
+    const created = await createBundle(ctx, {
+      name: "Fan pack",
+      price: 30,
+      items: [{ productId: ctx.capId }, { productId: ctx.teeId }],
+    });
+    const shop = await request(app).get(`/api/shop/${ctx.rsvpToken}/products`);
+    expect(shop.body.data.bundles).toHaveLength(1);
+    expect(shop.body.data.bundles[0].name).toBe("Fan pack");
+
+    await request(app).put(`/api/events/${ctx.eventId}/products/${ctx.teeId}`).set(ctx.auth).send({ active: false });
+    const hidden = await request(app).get(`/api/shop/${ctx.rsvpToken}/products`);
+    expect(hidden.body.data.bundles).toHaveLength(0);
+    expect(created.status).toBe(201);
+  });
+
+  it("checks out a bundle at the bundle price, with sizes per product", async () => {
+    const ctx = await shopWithProducts();
+    const created = await createBundle(ctx, {
+      name: "Fan pack",
+      price: 30,
+      items: [{ productId: ctx.capId }, { productId: ctx.teeId }],
+    });
+    const bundleId = created.body.data.bundle.id as string;
+
+    const missing = await request(app)
+      .post(`/api/shop/${ctx.rsvpToken}/checkout`)
+      .send({ ...guest, bundles: [{ bundleId, quantity: 1 }] });
+    expect(missing.status).toBe(400);
+
+    const ok = await request(app)
+      .post(`/api/shop/${ctx.rsvpToken}/checkout`)
+      .send({
+        ...guest,
+        bundles: [
+          {
+            bundleId,
+            quantity: 2,
+            selections: [
+              { productId: ctx.capId, headCircumference: { value: 56, unit: "cm" } },
+              { productId: ctx.teeId, selectedSize: "M" },
+            ],
+          },
+        ],
+      });
+    expect(ok.status).toBe(200);
+    const order = ok.body.data.order;
+    expect(order.total).toBe(60);
+    expect(order.items).toHaveLength(2);
+    expect(order.items.every((i: { bundleName: string }) => i.bundleName === "Fan pack")).toBe(true);
+    const lineSum = order.items.reduce((s: number, i: { unitPrice: number; quantity: number }) => s + i.unitPrice * i.quantity, 0);
+    expect(Math.round(lineSum * 100)).toBe(6000);
+    const tee = order.items.find((i: { productName: string }) => i.productName === "Tee");
+    expect(tee.selectedSize).toBe("M");
+    expect(tee.quantity).toBe(2);
+
+    // Stock came off the shared products.
+    const products = await request(app).get(`/api/events/${ctx.eventId}/products`).set(ctx.auth);
+    const teeProduct = products.body.data.products.find((p: { id: string }) => p.id === ctx.teeId);
+    expect(teeProduct.stockQuantity).toBe(3);
+  });
+
+  it("stops a bundle plus a separate item from overselling a product", async () => {
+    const ctx = await shopWithProducts();
+    const created = await createBundle(ctx, { name: "Tee pack", price: 20, items: [{ productId: ctx.teeId, quantity: 3 }] });
+    const bundleId = created.body.data.bundle.id as string;
+    const res = await request(app)
+      .post(`/api/shop/${ctx.rsvpToken}/checkout`)
+      .send({
+        ...guest,
+        items: [{ productId: ctx.teeId, quantity: 3, selectedSize: "S" }],
+        bundles: [{ bundleId, quantity: 1, selections: [{ productId: ctx.teeId, selectedSize: "S" }] }],
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/left in stock/);
   });
 });

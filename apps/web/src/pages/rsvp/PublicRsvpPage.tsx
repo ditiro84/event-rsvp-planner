@@ -12,12 +12,13 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { formatDate, formatMoney } from "@/lib/format";
 import { apiBaseUrl, getApiErrorMessage } from "@/lib/api";
-import { DeliveryFields, PROVIDER_LABELS, ProductRow, ShopSection } from "./ShopSection";
+import { BundleRow, DeliveryFields, PROVIDER_LABELS, ProductRow, ShopSection } from "./ShopSection";
+import { useBundleCart } from "@/lib/useBundleCart";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { extractCardTheme, type CardTheme } from "@/lib/cardTheme";
 import { CardThemeContext, buildCardThemeStyles, withAlpha } from "@/lib/cardThemeContext";
 import { firstCartSizingProblem, toCheckoutItem } from "@/lib/merchSizing";
-import type { CurrencyCode, PayoutProvider, PublicShopProduct } from "@/types";
+import type { CurrencyCode, PayoutProvider, ProductBundleRecord, PublicShopProduct } from "@/types";
 
 const schema = z
   .object({
@@ -215,7 +216,9 @@ export default function PublicRsvpPage() {
     if (names.length <= 4) return names.join(", ");
     return `${names.slice(0, 4).join(", ")} and more`;
   }, [shopQuery.data, products]);
-  const shopEnabled = !shopQuery.isLoading && !!shopQuery.data?.enabled && products.length > 0;
+  const bundles = useMemo(() => shopQuery.data?.bundles ?? [], [shopQuery.data]);
+  const bundleCart = useBundleCart(bundles);
+  const shopEnabled = !shopQuery.isLoading && !!shopQuery.data?.enabled && (products.length > 0 || bundles.length > 0);
   const paymentOptionsByCurrency = shopQuery.data?.paymentOptionsByCurrency ?? {};
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
@@ -237,15 +240,16 @@ export default function PublicRsvpPage() {
 
   const cartCurrency: CurrencyCode | null = useMemo(() => {
     const [firstId] = Object.keys(cart).filter((id) => (cart[id]?.quantity ?? 0) > 0);
-    return firstId ? productById.get(firstId)?.currency ?? null : null;
-  }, [cart, productById]);
+    return (firstId ? productById.get(firstId)?.currency ?? null : null) ?? bundleCart.currency;
+  }, [cart, productById, bundleCart.currency]);
 
   const cartItems = Object.entries(cart)
     .filter(([, v]) => v.quantity > 0)
     .map(([productId, v]) => ({ product: productById.get(productId), quantity: v.quantity, size: v.size }))
     .filter((i): i is { product: PublicShopProduct; quantity: number; size: string } => !!i.product);
 
-  const cartTotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  const cartTotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0) + bundleCart.total;
+  const cartHasItems = cartItems.length > 0 || bundleCart.count > 0;
   const availableProviders = cartCurrency ? paymentOptionsByCurrency[cartCurrency] ?? [] : [];
 
   function setQty(productId: string, product: PublicShopProduct, nextQty: number) {
@@ -254,6 +258,14 @@ export default function PublicRsvpPage() {
       return;
     }
     setCart((c) => ({ ...c, [productId]: { quantity: Math.max(0, nextQty), size: c[productId]?.size ?? "" } }));
+  }
+
+  function setBundleQty(bundle: ProductBundleRecord, nextQty: number) {
+    if (nextQty > 0 && cartCurrency && bundle.currency !== cartCurrency) {
+      toast.error(`Your cart is in ${cartCurrency}. Clear it first to buy items priced in a different currency.`);
+      return;
+    }
+    bundleCart.setQuantity(bundle.id, nextQty);
   }
 
   function setItemSize(productId: string, size: string) {
@@ -268,6 +280,7 @@ export default function PublicRsvpPage() {
     setMerchError("");
     if (choice === "no") {
       setCart({});
+      bundleCart.clear();
       setDeliveryMethod("AT_EVENT");
       setAddressLine1("");
       setAddressLine2("");
@@ -302,7 +315,7 @@ export default function PublicRsvpPage() {
         return;
       }
       if (wantsMerchandise === "yes") {
-        if (cartItems.length === 0) {
+        if (!cartHasItems) {
           setMerchError('Select at least one item below, or choose "No" if you don\'t want to purchase anything.');
           return;
         }
@@ -317,7 +330,7 @@ export default function PublicRsvpPage() {
           setMerchError("Fill in your shipping address and phone number to complete your order.");
           return;
         }
-        const sizingProblem = firstCartSizingProblem(cartItems);
+        const sizingProblem = firstCartSizingProblem(cartItems) ?? bundleCart.problem;
         if (sizingProblem) {
           setMerchError(sizingProblem);
           return;
@@ -358,7 +371,7 @@ export default function PublicRsvpPage() {
       // through. See the merchCheckoutError banner on the confirmation
       // screen for how a failure here is surfaced without losing the RSVP
       // that just succeeded.
-      if (wantsMerchNow && wantsMerchandise === "yes" && cartItems.length > 0) {
+      if (wantsMerchNow && wantsMerchandise === "yes" && cartHasItems) {
         try {
           const { checkoutUrl } = await checkout.mutateAsync({
             guestName: `${values.firstName} ${values.lastName}`.trim(),
@@ -376,6 +389,7 @@ export default function PublicRsvpPage() {
                 }
               : {}),
             items: cartItems.map(toCheckoutItem),
+            ...(bundleCart.payload.length > 0 ? { bundles: bundleCart.payload } : {}),
             provider: provider || undefined,
             guestMarkedPaid: availableProviders.length === 0 ? guestMarkedPaid : undefined,
           });
@@ -800,6 +814,16 @@ export default function PublicRsvpPage() {
               {wantsMerchandise === "yes" && (
                 <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
                   <div className="divide-y divide-slate-100">
+                    {bundles.map((bundle) => (
+                      <BundleRow
+                        key={bundle.id}
+                        bundle={bundle}
+                        quantity={bundleCart.quantityOf(bundle.id)}
+                        entries={bundleCart.entriesOf(bundle.id)}
+                        onChangeQty={(next) => setBundleQty(bundle, next)}
+                        onEntryChange={(productId, value) => bundleCart.setEntry(bundle.id, productId, value)}
+                      />
+                    ))}
                     {products.map((product) => (
                       <ProductRow
                         key={product.id}
@@ -814,7 +838,7 @@ export default function PublicRsvpPage() {
                     ))}
                   </div>
 
-                  {cartItems.length > 0 && (
+                  {cartHasItems && (
                     <>
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium text-slate-600">Total</span>
@@ -883,7 +907,7 @@ export default function PublicRsvpPage() {
             style={themeStyles.primaryFill}
             isLoading={isSubmitting || checkout.isPending}
           >
-            {wantsMerchandise === "yes" && cartItems.length > 0
+            {wantsMerchandise === "yes" && cartHasItems
               ? availableProviders.length > 0
                 ? `Submit RSVP & pay ${formatMoney(cartTotal, cartCurrency ?? "USD")}`
                 : `Submit RSVP & place order – ${formatMoney(cartTotal, cartCurrency ?? "USD")}`

@@ -13,6 +13,7 @@ import { handleStripeAccountUpdated, isPayoutAccountConnected } from "../payouts
 import { releaseTickets } from "../tickets/ticketTypes.service";
 import { CreateCheckoutInput } from "./orders.schema";
 import { describeItemSizing, resolveItemSizing } from "../../utils/merchandiseSizing";
+import { allocateBundlePrice } from "../../utils/bundlePricing";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function serializeOrder(order: any) {
@@ -50,6 +51,7 @@ export function serializeOrder(order: any) {
       selectedSize: i.selectedSize ?? null,
       measurements: i.measurements ?? null,
       sizeLabel: describeItemSizing(i),
+      bundleName: i.bundleName ?? null,
     })),
   };
 }
@@ -91,6 +93,7 @@ export async function exportOrdersCsv(userId: string, eventId: string) {
       "Guest email",
       "Status",
       "Item",
+      "Bundle",
       "Quantity",
       "Size",
       "Head circumference (cm)",
@@ -123,6 +126,7 @@ export async function exportOrdersCsv(userId: string, eventId: string) {
         safeCell(order.guestEmail),
         order.status,
         safeCell(item.productName),
+        safeCell(item.bundleName),
         item.quantity,
         item.selectedSize ?? "",
         head ? head.cm : "",
@@ -199,7 +203,7 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
   if (!event) throw new NotFoundError("This RSVP link is invalid");
   if (event.archivedAt) throw new BadRequestError("This event's shop isn't open");
   if (!event.merchandiseEnabled) throw new BadRequestError("This event's shop isn't open");
-  if (input.items.length === 0) throw new BadRequestError("Your cart is empty");
+  if (input.items.length === 0 && input.bundles.length === 0) throw new BadRequestError("Your cart is empty");
 
   const productIds = input.items.map((i) => i.productId);
   const products = await prisma.product.findMany({ where: { id: { in: productIds }, eventId: event.id, active: true } });
@@ -212,7 +216,7 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
   // measurements is `any` for the same reason as productById above: a JSON column
   // value, which the stubbed sandbox client can't type.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const orderItemsData: { productId: string; productName: string; unitPriceCents: number; quantity: number; selectedSize: string | null; measurements?: any }[] = [];
+  const orderItemsData: { productId: string; productName: string; unitPriceCents: number; quantity: number; selectedSize: string | null; measurements?: any; bundleName?: string }[] = [];
   let totalCents = 0;
   // Typed `any` (not `string`) so it flows freely into the `Currency` enum
   // fields below regardless of whether the Prisma client in this build is
@@ -255,7 +259,77 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
     });
   }
 
+  // Bundles: each becomes one order line per product it contains, priced so the
+  // lines add up to the bundle price (see allocateBundlePrice), with the order
+  // total taking the bundle price itself.
+  if (input.bundles.length > 0) {
+    const bundles = await prisma.productBundle.findMany({
+      where: { id: { in: input.bundles.map((b) => b.bundleId) }, eventId: event.id, active: true },
+      include: { items: { include: { product: true } } },
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bundleById = new Map<string, any>(bundles.map((b: any) => [b.id, b]));
+
+    for (const line of input.bundles) {
+      const bundle = bundleById.get(line.bundleId);
+      if (!bundle || bundle.items.length === 0) {
+        throw new BadRequestError("One of the bundles in your cart is no longer available");
+      }
+      if (currency && bundle.currency !== currency) {
+        throw new BadRequestError("Your cart mixes items priced in different currencies – please check out one currency at a time.");
+      }
+      currency = bundle.currency;
+
+      const allocation = allocateBundlePrice(
+        bundle.priceCents,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        bundle.items.map((i: any) => ({ productId: i.productId, priceCents: i.product.priceCents, quantity: i.quantity }))
+      );
+
+      for (const member of bundle.items) {
+        if (!member.product.active) {
+          throw new BadRequestError(`"${bundle.name}" is no longer available`);
+        }
+        const selection = line.selections?.find((s) => s.productId === member.productId);
+        let sizing;
+        try {
+          sizing = resolveItemSizing(member.product, selection ?? {});
+        } catch (err) {
+          throw new BadRequestError(`${bundle.name}: ${(err as Error).message}`);
+        }
+        const unitsOrdered = member.quantity * line.quantity;
+        orderItemsData.push({
+          productId: member.productId,
+          productName: member.product.name,
+          unitPriceCents: Math.round((allocation.get(member.productId) ?? 0) / member.quantity),
+          quantity: unitsOrdered,
+          selectedSize: sizing.selectedSize,
+          measurements: sizing.measurements ?? undefined,
+          bundleName: bundle.name,
+        });
+      }
+      totalCents += bundle.priceCents * line.quantity;
+    }
+  }
+
   if (!currency) throw new BadRequestError("Your cart is empty");
+
+  // Stock is checked across everything in the cart, so a product bought on its
+  // own and again inside a bundle can't oversell.
+  if (input.bundles.length > 0) {
+    const unitsByProduct = new Map<string, number>();
+    for (const item of orderItemsData) {
+      unitsByProduct.set(item.productId, (unitsByProduct.get(item.productId) ?? 0) + item.quantity);
+    }
+    const stocked = await prisma.product.findMany({ where: { id: { in: Array.from(unitsByProduct.keys()) } } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of stocked as any[]) {
+      const needed = unitsByProduct.get(p.id) ?? 0;
+      if (p.stockQuantity !== null && p.stockQuantity < needed) {
+        throw new BadRequestError(`Only ${p.stockQuantity} of "${p.name}" left in stock`);
+      }
+    }
+  }
 
   // Fields shared between the MANUAL path below and the processor-checkout
   // path further down -- kept in one place so the two never drift apart.

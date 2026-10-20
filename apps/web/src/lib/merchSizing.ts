@@ -1,4 +1,4 @@
-import type { PublicShopProduct } from "@/types";
+import type { ProductFitType, PublicShopProduct } from "@/types";
 
 // Guest-side sizing helpers shared by the RSVP-page cart and the standalone
 // shop. A cart line keeps one string for whatever the product asks for:
@@ -26,7 +26,7 @@ export function headInCm(value: number, unit: LengthUnit): number {
 
 // What to tell the guest when their entry for this cart line isn't usable
 // yet, or null when it is.
-export function sizingProblem(product: PublicShopProduct, entry: string): string | null {
+export function sizingProblem(product: { name: string; fitType: ProductFitType }, entry: string): string | null {
   if (product.fitType === "SIZE_CHART") {
     return entry.trim() ? null : `Choose a size for ${product.name}`;
   }

@@ -5,6 +5,7 @@ import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { getConnectedProvidersByCurrency } from "../payouts/payouts.service";
 import { CreateProductInput, UpdateProductInput } from "./products.schema";
 import { resolveSizeOptions } from "../../utils/merchandiseSizing";
+import { listPublicBundles } from "./bundles.service";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -176,14 +177,15 @@ export async function listPublicProducts(rsvpToken: string) {
     select: { id: true, merchandiseEnabled: true, merchandiseLabel: true },
   });
   if (!event) throw new NotFoundError("This RSVP link is invalid");
-  if (!event.merchandiseEnabled) return { enabled: false, label: null, products: [], paymentOptionsByCurrency: {} };
+  if (!event.merchandiseEnabled) return { enabled: false, label: null, products: [], bundles: [], paymentOptionsByCurrency: {} };
 
-  const [products, paymentOptionsByCurrency] = await Promise.all([
+  const [products, paymentOptionsByCurrency, bundles] = await Promise.all([
     prisma.product.findMany({
       where: { eventId: event.id, active: true },
       orderBy: { createdAt: "asc" },
     }),
     getConnectedProvidersByCurrency(event.id),
+    listPublicBundles(event.id),
   ]);
 
   return {
@@ -195,6 +197,7 @@ export async function listPublicProducts(rsvpToken: string) {
     // checkout (see orders.service.ts createCheckoutSession for the
     // authoritative, re-validated version of this check).
     paymentOptionsByCurrency,
+    bundles,
     products: products
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((p: any) => p.stockQuantity === null || p.stockQuantity > 0)

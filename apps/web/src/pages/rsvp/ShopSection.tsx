@@ -27,7 +27,8 @@ import {
   toCheckoutItem,
   type LengthUnit,
 } from "@/lib/merchSizing";
-import type { CurrencyCode, OrderRecord, PayoutProvider, PublicShopProduct } from "@/types";
+import { useBundleCart } from "@/lib/useBundleCart";
+import type { CurrencyCode, OrderRecord, PayoutProvider, ProductBundleRecord, PublicShopProduct } from "@/types";
 
 export const PROVIDER_LABELS: Record<PayoutProvider, string> = {
   STRIPE_CONNECT: "Card (Stripe)",
@@ -195,6 +196,110 @@ export function ProductRow({
       {quantity > 0 && product.fitType === "HEAD_CIRCUMFERENCE" && (
         <HeadCircumferenceInput productName={product.name} value={size} onChange={onSizeChange} />
       )}
+    </div>
+  );
+}
+
+// A planner-defined bundle. Each product inside that needs a size or head
+// measurement gets its own picker, so the guest sizes every piece of the pack.
+export function BundleRow({
+  bundle,
+  quantity,
+  entries,
+  onChangeQty,
+  onEntryChange,
+}: {
+  bundle: ProductBundleRecord;
+  quantity: number;
+  entries: Record<string, string>;
+  onChangeQty: (next: number) => void;
+  onEntryChange: (productId: string, value: string) => void;
+}) {
+  const themeStyles = useCardThemeStyles();
+  const separate = bundle.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+  const saving = separate - bundle.price;
+  return (
+    <div className="py-3">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-slate-900">
+            {bundle.name} <span className="font-normal text-slate-400">· Bundle</span>
+          </p>
+          {bundle.description && (
+            <p className="mt-0.5 whitespace-pre-line text-xs text-slate-500">{bundle.description}</p>
+          )}
+          <p className="mt-0.5 text-xs text-slate-500">
+            Includes {bundle.items.map((i) => `${i.quantity > 1 ? `${i.quantity} × ` : ""}${i.productName}`).join(", ")}
+          </p>
+          <p className="mt-0.5 text-sm font-medium text-brand-700">
+            {formatMoney(bundle.price, bundle.currency)}
+            {saving > 0 && (
+              <span className="ml-2 text-xs font-normal text-success-700">
+                Save {formatMoney(saving, bundle.currency)}
+              </span>
+            )}
+          </p>
+        </div>
+        {quantity > 0 ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onChangeQty(quantity - 1)}
+              aria-label={`Remove one ${bundle.name}`}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <span className="w-4 text-center text-sm font-semibold text-slate-900">{quantity}</span>
+            <button
+              type="button"
+              onClick={() => onChangeQty(quantity + 1)}
+              aria-label={`Add one more ${bundle.name}`}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onChangeQty(1)}
+            className="shrink-0 rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+            style={themeStyles.outline("primary")}
+          >
+            Add
+          </button>
+        )}
+      </div>
+      {quantity > 0 &&
+        bundle.items
+          .filter((item) => item.fitType !== "NONE")
+          .map((item) => (
+            <div key={item.productId} className="mt-2">
+              <p className="text-xs font-medium text-slate-600">{item.productName}</p>
+              {item.fitType === "SIZE_CHART" ? (
+                <Select
+                  value={entries[item.productId] ?? ""}
+                  onChange={(e) => onEntryChange(item.productId, e.target.value)}
+                  aria-label={`Size for ${item.productName} in ${bundle.name}`}
+                  className="mt-1 h-8 max-w-[220px] text-xs"
+                >
+                  <option value="">Choose a size</option>
+                  {(item.sizeOptions ?? []).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <HeadCircumferenceInput
+                  productName={`${item.productName} in ${bundle.name}`}
+                  value={entries[item.productId] ?? ""}
+                  onChange={(v) => onEntryChange(item.productId, v)}
+                />
+              )}
+            </div>
+          ))}
     </div>
   );
 }
@@ -576,18 +681,21 @@ export function ShopSection({
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
+  const bundles = useMemo(() => data?.bundles ?? [], [data]);
+  const bundleCart = useBundleCart(bundles);
+
   const cartCurrency: CurrencyCode | null = useMemo(() => {
     const [firstId] = Object.keys(cart).filter((id) => (cart[id]?.quantity ?? 0) > 0);
-    return firstId ? productById.get(firstId)?.currency ?? null : null;
-  }, [cart, productById]);
+    return (firstId ? productById.get(firstId)?.currency ?? null : null) ?? bundleCart.currency;
+  }, [cart, productById, bundleCart.currency]);
 
   const cartItems = Object.entries(cart)
     .filter(([, v]) => v.quantity > 0)
     .map(([productId, v]) => ({ product: productById.get(productId), quantity: v.quantity, size: v.size }))
     .filter((i): i is { product: PublicShopProduct; quantity: number; size: string } => !!i.product);
 
-  const cartTotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-  const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+  const cartTotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0) + bundleCart.total;
+  const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0) + bundleCart.count;
   const availableProviders = cartCurrency ? paymentOptionsByCurrency[cartCurrency] ?? [] : [];
 
   function setQty(productId: string, product: PublicShopProduct, nextQty: number) {
@@ -598,12 +706,21 @@ export function ShopSection({
     setCart((c) => ({ ...c, [productId]: { quantity: Math.max(0, nextQty), size: c[productId]?.size ?? "" } }));
   }
 
+  function setBundleQty(bundle: ProductBundleRecord, nextQty: number) {
+    if (nextQty > 0 && cartCurrency && bundle.currency !== cartCurrency) {
+      toast.error(`Your cart is in ${cartCurrency}. Clear it first to buy items priced in a different currency.`);
+      return;
+    }
+    bundleCart.setQuantity(bundle.id, nextQty);
+  }
+
   function setItemSize(productId: string, size: string) {
     setCart((c) => ({ ...c, [productId]: { quantity: c[productId]?.quantity ?? 0, size } }));
   }
 
   function clearCart() {
     setCart({});
+    bundleCart.clear();
     setOrderPlaced(false);
     setDeliveryMethod("AT_EVENT");
     setAddressLine1("");
@@ -629,7 +746,7 @@ export function ShopSection({
       toast.error("Fill in your shipping address and phone number to check out");
       return;
     }
-    const sizingProblem = firstCartSizingProblem(cartItems);
+    const sizingProblem = firstCartSizingProblem(cartItems) ?? bundleCart.problem;
     if (sizingProblem) {
       toast.error(sizingProblem);
       return;
@@ -651,6 +768,7 @@ export function ShopSection({
             }
           : {}),
         items: cartItems.map(toCheckoutItem),
+        ...(bundleCart.payload.length > 0 ? { bundles: bundleCart.payload } : {}),
         provider: provider || undefined,
         guestMarkedPaid: availableProviders.length === 0 ? guestMarkedPaid : undefined,
       });
@@ -697,7 +815,7 @@ export function ShopSection({
     );
   }
 
-  if (!data?.enabled || products.length === 0) return null;
+  if (!data?.enabled || (products.length === 0 && bundles.length === 0)) return null;
 
   return (
     <div className="mt-6 rounded-xl2 border border-slate-200 bg-white p-5 shadow-card">
@@ -729,6 +847,16 @@ export function ShopSection({
       <ExistingOrders rsvpToken={rsvpToken} guestId={guestId} />
 
       <div className="mt-3 divide-y divide-slate-100">
+        {bundles.map((bundle) => (
+          <BundleRow
+            key={bundle.id}
+            bundle={bundle}
+            quantity={bundleCart.quantityOf(bundle.id)}
+            entries={bundleCart.entriesOf(bundle.id)}
+            onChangeQty={(next) => setBundleQty(bundle, next)}
+            onEntryChange={(productId, value) => bundleCart.setEntry(bundle.id, productId, value)}
+          />
+        ))}
         {products.map((product) => (
           <ProductRow
             key={product.id}
@@ -743,7 +871,7 @@ export function ShopSection({
         ))}
       </div>
 
-      {cartItems.length > 0 && (
+      {cartCount > 0 && (
         <div className="mt-4 border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium text-slate-600">Total</span>

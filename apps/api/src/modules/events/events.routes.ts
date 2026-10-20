@@ -11,6 +11,7 @@ import seatingRouter from "../seating/seating.routes";
 import vendorsRouter from "../vendors/vendors.routes";
 import productsRouter from "../products/products.routes";
 import ordersRouter from "../products/orders.routes";
+import bundlesRouter from "../products/bundles.routes";
 import payoutsRouter from "../payouts/payouts.routes";
 import ticketTypesRouter from "../tickets/ticketTypes.routes";
 import collaboratorsRouter from "../collaborators/collaborators.routes";
@@ -90,6 +91,7 @@ router.use("/:eventId/vendors", validateParams(eventIdParamsSchema), vendorsRout
 // Nested merchandise routes: /api/events/:eventId/products, /api/events/:eventId/orders
 router.use("/:eventId/products", validateParams(eventIdParamsSchema), productsRouter);
 router.use("/:eventId/orders", validateParams(eventIdParamsSchema), ordersRouter);
+router.use("/:eventId/bundles", validateParams(eventIdParamsSchema), bundlesRouter);
 
 // Nested payout account routes: /api/events/:eventId/payouts
 router.use("/:eventId/payouts", validateParams(eventIdParamsSchema), payoutsRouter);

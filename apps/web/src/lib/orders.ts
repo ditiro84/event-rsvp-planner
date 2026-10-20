@@ -17,7 +17,7 @@ export function formatShippingAddress(address: OrderShippingAddress): string {
 // guest-selected size or head measurement per line item when one was given.
 export function formatOrderItems(items: OrderItemRecord[]): string {
   return items
-    .map((i) => `${i.productName}${i.sizeLabel ? ` (${i.sizeLabel})` : ""} × ${i.quantity}`)
+    .map((i) => `${i.productName}${i.bundleName ? ` [${i.bundleName}]` : ""}${i.sizeLabel ? ` (${i.sizeLabel})` : ""} × ${i.quantity}`)
     .join(", ");
 }
 

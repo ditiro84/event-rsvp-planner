@@ -5,6 +5,7 @@ import * as controller from "./orders.controller";
 const router = Router({ mergeParams: true });
 
 router.get("/", controller.list);
+router.get("/export", controller.exportCsv);
 router.get("/summary", controller.summary);
 router.get("/payment-events", controller.paymentEvents);
 

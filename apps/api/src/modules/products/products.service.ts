@@ -1,8 +1,10 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { BadRequestError, NotFoundError } from "../../lib/errors";
 import { getOwnedEventOrCollaborator } from "../events/events.service";
 import { getConnectedProvidersByCurrency } from "../payouts/payouts.service";
 import { CreateProductInput, UpdateProductInput } from "./products.schema";
+import { resolveSizeOptions } from "../../utils/merchandiseSizing";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -23,6 +25,20 @@ function toCents(amount: number | null | undefined): number | null | undefined {
   return Math.round(amount * 100);
 }
 
+// Trims and drops repeated sizes (case-insensitive) while keeping the planner's order.
+function uniqueSizes(sizes: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of sizes) {
+    const size = raw.trim();
+    const key = size.toLowerCase();
+    if (!size || seen.has(key)) continue;
+    seen.add(key);
+    out.push(size);
+  }
+  return out;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeProduct(product: any, soldByProductId?: Map<string, number>) {
   return {
@@ -31,6 +47,8 @@ function serializeProduct(product: any, soldByProductId?: Map<string, number>) {
     name: product.name,
     description: product.description,
     size: product.size,
+    fitType: product.fitType ?? "NONE",
+    sizeOptions: product.fitType === "SIZE_CHART" ? resolveSizeOptions(product.sizeOptions) : null,
     price: product.priceCents / 100,
     currency: product.currency,
     stockQuantity: product.stockQuantity,
@@ -86,6 +104,8 @@ export async function createProduct(userId: string, eventId: string, input: Crea
       name: input.name,
       description: input.description || null,
       size: input.size || null,
+      fitType: input.fitType ?? "NONE",
+      sizeOptions: input.sizeOptions ? uniqueSizes(input.sizeOptions) : undefined,
       priceCents: toCents(input.price)!,
       currency: input.currency ?? "USD",
       stockQuantity: input.stockQuantity ?? null,
@@ -102,6 +122,12 @@ export async function updateProduct(userId: string, eventId: string, productId: 
   const data: any = { ...input };
   delete data.price;
   if ("price" in input) data.priceCents = toCents(input.price);
+  // A JSON column can't be set to a bare null: DbNull clears it (back to the default list).
+  if ("sizeOptions" in input) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clear = (Prisma as any).DbNull;
+    data.sizeOptions = input.sizeOptions ? uniqueSizes(input.sizeOptions) : clear;
+  }
 
   const product = await prisma.product.update({ where: { id: productId }, data });
   return serializeProduct(product);
@@ -178,6 +204,8 @@ export async function listPublicProducts(rsvpToken: string) {
         name: p.name,
         description: p.description,
         size: p.size,
+        fitType: p.fitType ?? "NONE",
+        sizeOptions: p.fitType === "SIZE_CHART" ? resolveSizeOptions(p.sizeOptions) : null,
         price: p.priceCents / 100,
         currency: p.currency,
         stockQuantity: p.stockQuantity,

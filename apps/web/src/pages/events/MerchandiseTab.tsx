@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Mail, Package, Pencil, Plus, ShoppingCart, Store, Trash2, Truck } from "lucide-react";
-import { useDeleteProduct, useOrders, useOrdersSummary, useProducts, productImagePath } from "@/hooks/useProducts";
+import { ChevronDown, ChevronRight, Download, Mail, Package, Pencil, Plus, ShoppingCart, Store, Trash2, Truck } from "lucide-react";
+import { useDeleteProduct, useExportOrdersCsv, useOrders, useOrdersSummary, useProducts, productImagePath } from "@/hooks/useProducts";
 import { useUpdateEvent } from "@/hooks/useEvents";
 import { Card, StatCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -69,6 +69,7 @@ function OrderDetails({ order }: { order: OrderRecord }) {
 
 export function MerchandiseTab({ event }: { event: EventRecord }) {
   const { data: products, isLoading, isError, refetch } = useProducts(event.id);
+  const exportOrders = useExportOrdersCsv(event.id);
   const { data: summary } = useOrdersSummary(event.id);
   const { data: orders } = useOrders(event.id);
   const deleteProduct = useDeleteProduct(event.id);
@@ -259,6 +260,12 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
                       {product.name}
                       {product.size && <span className="ml-1.5 font-normal text-slate-400">· Size {product.size}</span>}
                     </p>
+                    {product.fitType === "SIZE_CHART" && (
+                      <span className="text-xs text-slate-500">Sizes: {(product.sizeOptions ?? []).join(", ")}</span>
+                    )}
+                    {product.fitType === "HEAD_CIRCUMFERENCE" && (
+                      <span className="text-xs text-slate-500">Guests enter head circumference</span>
+                    )}
                     {!product.active && <span className="text-xs text-slate-400">Hidden from shop</span>}
                   </div>
                   <div className="h-px w-full bg-slate-100" />
@@ -309,7 +316,15 @@ export function MerchandiseTab({ event }: { event: EventRecord }) {
       </div>
 
       <div>
-        <h2 className="mb-4 text-lg font-bold text-slate-900">Recent Orders</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-slate-900">Recent Orders</h2>
+          {orders && orders.length > 0 && (
+            <Button variant="secondary" size="sm" onClick={() => exportOrders.mutate()} isLoading={exportOrders.isPending}>
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          )}
+        </div>
         {!orders || orders.length === 0 ? (
           <EmptyState title="No orders yet" description="Paid orders will show up here once guests start buying." />
         ) : (

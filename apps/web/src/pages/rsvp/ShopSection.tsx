@@ -19,6 +19,14 @@ import { getApiErrorMessage } from "@/lib/api";
 import { COUNTRIES } from "@/lib/countries";
 import { formatOrderItems, formatShippingAddress } from "@/lib/orders";
 import { useCardThemeStyles } from "@/lib/cardThemeContext";
+import {
+  encodeHead,
+  firstCartSizingProblem,
+  headInCm,
+  parseHead,
+  toCheckoutItem,
+  type LengthUnit,
+} from "@/lib/merchSizing";
 import type { CurrencyCode, OrderRecord, PayoutProvider, PublicShopProduct } from "@/types";
 
 export const PROVIDER_LABELS: Record<PayoutProvider, string> = {
@@ -26,6 +34,62 @@ export const PROVIDER_LABELS: Record<PayoutProvider, string> = {
   PAYSTACK: "Card / Bank Transfer (Paystack)",
   PAYPAL: "PayPal",
 };
+
+// Cap sizing: the guest measures around their head and enters it in cm or
+// inches. Kept in the cart as one string like "56 cm" (see lib/merchSizing.ts).
+function HeadCircumferenceInput({
+  productName,
+  value,
+  onChange,
+}: {
+  productName: string;
+  value: string;
+  onChange: (encoded: string) => void;
+}) {
+  const parsed = parseHead(value);
+  const [unit, setUnit] = useState<LengthUnit>(parsed?.unit ?? "cm");
+  const [amount, setAmount] = useState(parsed ? String(parsed.value) : "");
+
+  function update(nextAmount: string, nextUnit: LengthUnit) {
+    setAmount(nextAmount);
+    setUnit(nextUnit);
+    onChange(encodeHead(nextAmount, nextUnit));
+  }
+
+  const entered = parseHead(encodeHead(amount, unit));
+  const approx = entered ? headInCm(entered.value, entered.unit) : null;
+
+  return (
+    <div className="ml-[68px] mt-2">
+      <div className="flex max-w-[280px] items-center gap-2">
+        <Input
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          min="0"
+          value={amount}
+          onChange={(e) => update(e.target.value, unit)}
+          placeholder="Head circumference"
+          aria-label={`Head circumference for ${productName}`}
+          className="h-8 text-xs"
+        />
+        <Select
+          value={unit}
+          onChange={(e) => update(amount, e.target.value as LengthUnit)}
+          aria-label={`Unit for ${productName}`}
+          className="h-8 w-20 text-xs"
+        >
+          <option value="cm">cm</option>
+          <option value="in">in</option>
+        </Select>
+      </div>
+      <p className="mt-1 text-[11px] text-slate-400">
+        Measure around the head, just above the ears and eyebrows.
+        {approx !== null && unit === "in" ? ` That is about ${approx} cm.` : ""}
+      </p>
+    </div>
+  );
+}
 
 export function ProductRow({
   product,
@@ -108,20 +172,28 @@ export function ProductRow({
           </button>
         )}
       </div>
-      {/* Guest-specified size for this line item -- most items here are one
-          listing covering a range of sizes (see the Size field's own
-          comment on the planner side), so the guest picks theirs once
-          they've added it to their cart. */}
-      {quantity > 0 && (
+      {/* Only T-shirts (size chart) and caps (head circumference) ask the
+          guest for anything; fabric, gele and other items add straight to
+          the cart. */}
+      {quantity > 0 && product.fitType === "SIZE_CHART" && (
         <div className="ml-[68px] mt-2">
-          <Input
+          <Select
             value={size}
             onChange={(e) => onSizeChange(e.target.value)}
-            placeholder="Size (optional, e.g. M or 42)"
             aria-label={`Size for ${product.name}`}
             className="h-8 max-w-[220px] text-xs"
-          />
+          >
+            <option value="">Choose a size</option>
+            {(product.sizeOptions ?? []).map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </Select>
         </div>
+      )}
+      {quantity > 0 && product.fitType === "HEAD_CIRCUMFERENCE" && (
+        <HeadCircumferenceInput productName={product.name} value={size} onChange={onSizeChange} />
       )}
     </div>
   );
@@ -557,6 +629,11 @@ export function ShopSection({
       toast.error("Fill in your shipping address and phone number to check out");
       return;
     }
+    const sizingProblem = firstCartSizingProblem(cartItems);
+    if (sizingProblem) {
+      toast.error(sizingProblem);
+      return;
+    }
     try {
       const { checkoutUrl } = await checkout.mutateAsync({
         guestName,
@@ -573,7 +650,7 @@ export function ShopSection({
               shippingPhone: `${dialCode} ${phoneNumber}`.trim(),
             }
           : {}),
-        items: cartItems.map((i) => ({ productId: i.product.id, quantity: i.quantity, selectedSize: i.size.trim() || undefined })),
+        items: cartItems.map(toCheckoutItem),
         provider: provider || undefined,
         guestMarkedPaid: availableProviders.length === 0 ? guestMarkedPaid : undefined,
       });

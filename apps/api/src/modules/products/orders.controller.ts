@@ -9,6 +9,13 @@ export async function list(req: Request, res: Response) {
   return ok(res, { orders });
 }
 
+export async function exportCsv(req: Request, res: Response) {
+  const csv = await ordersService.exportOrdersCsv(req.userId!, req.params.eventId);
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="merchandise-orders-${req.params.eventId}.csv"`);
+  res.send(csv);
+}
+
 export async function summary(req: Request, res: Response) {
   const result = await ordersService.getOrdersSummary(req.userId!, req.params.eventId);
   return ok(res, result);

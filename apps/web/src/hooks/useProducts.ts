@@ -121,7 +121,12 @@ export function useCheckout(rsvpToken: string) {
       shippingCountry?: string;
       shippingPhone?: string;
       guestMarkedPaid?: boolean;
-      items: { productId: string; quantity: number; selectedSize?: string }[];
+      items: {
+        productId: string;
+        quantity: number;
+        selectedSize?: string;
+        headCircumference?: { value: number; unit: "cm" | "in" };
+      }[];
       provider?: PayoutProvider;
     }) => {
       const res = await api.post(`/shop/${rsvpToken}/checkout`, input);
@@ -184,5 +189,23 @@ export function useUpdateOrderDelivery(rsvpToken: string) {
       return res.data.data.order as OrderRecord;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["shop", rsvpToken, "orders"] }),
+  });
+}
+
+// Downloads the event's merchandise orders (one row per item, with sizes and
+// cap head measurements) as a CSV for the planner to send to a supplier.
+export function useExportOrdersCsv(eventId: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.get(`/events/${eventId}/orders/export`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `merchandise-orders-${eventId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    },
   });
 }

@@ -518,6 +518,8 @@ export interface AnalyticsOverview {
 // Merchandise (event shop)
 // ---------------------------------------------------------------------------
 
+export type ProductFitType = "NONE" | "SIZE_CHART" | "HEAD_CIRCUMFERENCE";
+
 export interface ProductRecord {
   id: string;
   eventId: string;
@@ -526,6 +528,10 @@ export interface ProductRecord {
   // Free-text size label (e.g. "M", "42", "One Size") -- optional, not every
   // product is sized apparel.
   size: string | null;
+  // How guests are sized: nothing, a size chart (T-shirts) or head circumference (caps).
+  fitType: ProductFitType;
+  // The size list for SIZE_CHART products (the default XS to XXL when the planner set none).
+  sizeOptions: string[] | null;
   price: number;
   currency: CurrencyCode;
   stockQuantity: number | null;
@@ -548,6 +554,10 @@ export interface OrderItemRecord {
   // Guest-entered size for this line item, e.g. "M" -- distinct from the
   // product's own planner-set size label.
   selectedSize: string | null;
+  // Cap head circumference as entered, plus centimetres.
+  measurements: { headCircumference: { value: number; unit: "cm" | "in"; cm: number } } | null;
+  // Ready-made one-liner, e.g. "Size M" or "Head 22 in (55.9 cm)"; empty when none.
+  sizeLabel: string;
 }
 
 export interface OrderShippingAddress {
@@ -590,6 +600,8 @@ export interface PublicShopProduct {
   name: string;
   description: string | null;
   size: string | null;
+  fitType: ProductFitType;
+  sizeOptions: string[] | null;
   price: number;
   currency: CurrencyCode;
   stockQuantity: number | null;

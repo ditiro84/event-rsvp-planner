@@ -16,6 +16,7 @@ import { DeliveryFields, PROVIDER_LABELS, ProductRow, ShopSection } from "./Shop
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { extractCardTheme, type CardTheme } from "@/lib/cardTheme";
 import { CardThemeContext, buildCardThemeStyles, withAlpha } from "@/lib/cardThemeContext";
+import { firstCartSizingProblem, toCheckoutItem } from "@/lib/merchSizing";
 import type { CurrencyCode, PayoutProvider, PublicShopProduct } from "@/types";
 
 const schema = z
@@ -316,6 +317,11 @@ export default function PublicRsvpPage() {
           setMerchError("Fill in your shipping address and phone number to complete your order.");
           return;
         }
+        const sizingProblem = firstCartSizingProblem(cartItems);
+        if (sizingProblem) {
+          setMerchError(sizingProblem);
+          return;
+        }
       }
     }
     setMerchError("");
@@ -369,7 +375,7 @@ export default function PublicRsvpPage() {
                   shippingPhone: `${dialCode} ${phoneNumber}`.trim(),
                 }
               : {}),
-            items: cartItems.map((i) => ({ productId: i.product.id, quantity: i.quantity, selectedSize: i.size.trim() || undefined })),
+            items: cartItems.map(toCheckoutItem),
             provider: provider || undefined,
             guestMarkedPaid: availableProviders.length === 0 ? guestMarkedPaid : undefined,
           });

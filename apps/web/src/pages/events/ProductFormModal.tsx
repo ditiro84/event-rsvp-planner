@@ -17,6 +17,9 @@ const schema = z.object({
   name: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
   size: z.string().optional(),
+  fitType: z.enum(["NONE", "SIZE_CHART", "HEAD_CIRCUMFERENCE"]),
+  // One size per line or comma-separated; blank = the default XS to XXL list.
+  sizeOptionsText: z.string().optional(),
   price: z.coerce.number().min(0, "Price must be 0 or more"),
   currency: z.enum(["USD", "GBP", "NGN", "CAD", "EUR"]),
   stockQuantity: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
@@ -62,6 +65,7 @@ export function ProductFormModal({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -70,16 +74,31 @@ export function ProductFormModal({
           name: product.name,
           description: product.description ?? "",
           size: product.size ?? "",
+          fitType: product.fitType,
+          sizeOptionsText: product.fitType === "SIZE_CHART" && product.sizeOptions ? product.sizeOptions.join(", ") : "",
           price: product.price,
           currency: product.currency,
           stockQuantity: product.stockQuantity ?? "",
           active: product.active,
         }
-      : { name: "", description: "", size: "", price: 0, currency: "USD", stockQuantity: "", active: true },
+      : { name: "", description: "", size: "", fitType: "NONE" as const, sizeOptionsText: "", price: 0, currency: "USD", stockQuantity: "", active: true },
   });
 
+  const fitType = watch("fitType");
+
   async function onSubmit(values: FormValues) {
-    const payload = { ...values, stockQuantity: values.stockQuantity === "" ? null : values.stockQuantity };
+    // Sizes typed by the planner, split on commas/new lines. Empty = use the defaults (null).
+    const typedSizes = (values.sizeOptionsText ?? "")
+      .split(/[,\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const { sizeOptionsText: _ignored, ...rest } = values;
+    void _ignored;
+    const payload = {
+      ...rest,
+      sizeOptions: values.fitType === "SIZE_CHART" && typedSizes.length > 0 ? typedSizes : null,
+      stockQuantity: values.stockQuantity === "" ? null : values.stockQuantity,
+    };
     try {
       let productId = product?.id;
       if (isEdit && product) {
@@ -151,10 +170,37 @@ export function ProductFormModal({
             </Select>
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Size (optional)" htmlFor="p-size" hint='e.g. "M" or "42"'>
-            <Input id="p-size" {...register("size")} />
+        <Field
+          label="What do guests need to tell you?"
+          htmlFor="p-fit"
+          hint="Fabric, gele and favours need nothing. You arrange any tailoring with guests yourself."
+        >
+          <Select id="p-fit" {...register("fitType")}>
+            <option value="NONE">Nothing (no size or measurement)</option>
+            <option value="SIZE_CHART">A size (T-shirts and similar)</option>
+            <option value="HEAD_CIRCUMFERENCE">Head circumference (caps)</option>
+          </Select>
+        </Field>
+        {fitType === "SIZE_CHART" && (
+          <Field
+            label="Sizes to offer"
+            htmlFor="p-sizes"
+            hint="Separate with commas or new lines. Leave blank for XS, S, M, L, XL, XXL."
+          >
+            <Textarea id="p-sizes" rows={2} placeholder="XS, S, M, L, XL, XXL" {...register("sizeOptionsText")} />
           </Field>
+        )}
+        {fitType === "HEAD_CIRCUMFERENCE" && (
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Guests enter their head circumference in cm or inches when they order. Anything between 40 and 70 cm is accepted.
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          {fitType === "NONE" && (
+            <Field label="Label (optional)" htmlFor="p-size" hint='Shown next to the name, e.g. "One Size"'>
+              <Input id="p-size" {...register("size")} />
+            </Field>
+          )}
           <Field label="Stock (blank = unlimited)" htmlFor="p-stock" error={errors.stockQuantity?.message as string | undefined}>
             <Input id="p-stock" type="number" min="0" {...register("stockQuantity")} />
           </Field>

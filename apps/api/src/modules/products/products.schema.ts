@@ -5,6 +5,16 @@ export const createProductSchema = z.object({
   description: z.string().trim().max(2000).optional().nullable(),
   // Free-text (e.g. "M", "42", "One Size") -- not every product is sized.
   size: z.string().trim().max(50).optional().nullable(),
+  // How guests are sized for this product: not at all, from a size chart
+  // (T-shirts), or by head circumference (caps).
+  fitType: z.enum(["NONE", "SIZE_CHART", "HEAD_CIRCUMFERENCE"]).optional(),
+  // Planner-edited size list for SIZE_CHART products; null/omitted = default XS to XXL.
+  sizeOptions: z
+    .array(z.string().trim().min(1).max(20))
+    .min(1)
+    .max(30)
+    .optional()
+    .nullable(),
   // Whole-currency amount from the client (e.g. dollars); stored as cents.
   price: z.coerce.number().min(0).max(1_000_000),
   currency: z.enum(["USD", "GBP", "NGN", "CAD", "EUR"]).optional(),

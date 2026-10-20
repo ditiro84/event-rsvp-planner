@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { stringify } from "csv-stringify/sync";
 import Stripe from "stripe";
 import { prisma } from "../../lib/prisma";
 import { env } from "../../config/env";
@@ -11,6 +12,7 @@ import { notifyOrderPaid } from "../notifications/notifications.service";
 import { handleStripeAccountUpdated, isPayoutAccountConnected } from "../payouts/payouts.service";
 import { releaseTickets } from "../tickets/ticketTypes.service";
 import { CreateCheckoutInput } from "./orders.schema";
+import { describeItemSizing, resolveItemSizing } from "../../utils/merchandiseSizing";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function serializeOrder(order: any) {
@@ -46,6 +48,8 @@ export function serializeOrder(order: any) {
       unitPrice: i.unitPriceCents / 100,
       quantity: i.quantity,
       selectedSize: i.selectedSize ?? null,
+      measurements: i.measurements ?? null,
+      sizeLabel: describeItemSizing(i),
     })),
   };
 }
@@ -60,6 +64,77 @@ export async function listOrders(userId: string, eventId: string) {
     orderBy: { createdAt: "desc" },
   });
   return orders.map(serializeOrder);
+}
+
+// One row per ordered item, so the planner can hand the file to a supplier:
+// who ordered what, in which size (or head circumference), and where it goes.
+// Pending (unpaid, abandoned) checkouts are left out, same as listOrders.
+// Guest-typed text can start with = + - or @, which spreadsheets run as a formula.
+function safeCell(value: string | null | undefined): string {
+  const text = value ?? "";
+  return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+}
+
+export async function exportOrdersCsv(userId: string, eventId: string) {
+  await getOwnedEventOrCollaborator(userId, eventId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const orders: any[] = await prisma.order.findMany({
+    where: { eventId, status: { not: "PENDING" } },
+    include: { items: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const rows: (string | number)[][] = [
+    [
+      "Order date",
+      "Guest name",
+      "Guest email",
+      "Status",
+      "Item",
+      "Quantity",
+      "Size",
+      "Head circumference (cm)",
+      "Head circumference (as entered)",
+      "Unit price",
+      "Currency",
+      "Delivery",
+      "Delivery address",
+    ],
+  ];
+  for (const order of orders) {
+    const address =
+      order.deliveryMethod === "SHIPPING"
+        ? [
+            order.shippingAddressLine1,
+            order.shippingAddressLine2,
+            order.shippingCity,
+            order.shippingPostcode,
+            order.shippingCountry,
+            order.shippingPhone,
+          ]
+            .filter(Boolean)
+            .join(", ")
+        : "";
+    for (const item of order.items ?? []) {
+      const head = item.measurements?.headCircumference;
+      rows.push([
+        new Date(order.createdAt).toISOString().slice(0, 10),
+        safeCell(order.guestName),
+        safeCell(order.guestEmail),
+        order.status,
+        safeCell(item.productName),
+        item.quantity,
+        item.selectedSize ?? "",
+        head ? head.cm : "",
+        head ? `${head.value} ${head.unit}` : "",
+        item.unitPriceCents / 100,
+        order.currency,
+        order.deliveryMethod === "SHIPPING" ? "Shipping" : "At the event",
+        safeCell(address),
+      ]);
+    }
+  }
+  return stringify(rows);
 }
 
 // Every payment attempt logged for this event -- successes AND
@@ -134,7 +209,10 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productById = new Map<string, any>(products.map((p: any) => [p.id, p]));
 
-  const orderItemsData: { productId: string; productName: string; unitPriceCents: number; quantity: number; selectedSize: string | null }[] = [];
+  // measurements is `any` for the same reason as productById above: a JSON column
+  // value, which the stubbed sandbox client can't type.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const orderItemsData: { productId: string; productName: string; unitPriceCents: number; quantity: number; selectedSize: string | null; measurements?: any }[] = [];
   let totalCents = 0;
   // Typed `any` (not `string`) so it flows freely into the `Currency` enum
   // fields below regardless of whether the Prisma client in this build is
@@ -157,13 +235,23 @@ export async function createCheckoutSession(rsvpToken: string, input: CreateChec
     }
     currency = product.currency;
 
+    // What the guest must tell us depends on the product (size chart, head
+    // circumference, or nothing) -- see utils/merchandiseSizing.ts.
+    let sizing;
+    try {
+      sizing = resolveItemSizing(product, item);
+    } catch (err) {
+      throw new BadRequestError((err as Error).message);
+    }
+
     totalCents += product.priceCents * item.quantity;
     orderItemsData.push({
       productId: product.id,
       productName: product.name,
       unitPriceCents: product.priceCents,
       quantity: item.quantity,
-      selectedSize: item.selectedSize?.trim() || null,
+      selectedSize: sizing.selectedSize,
+      measurements: sizing.measurements ?? undefined,
     });
   }
 

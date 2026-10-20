@@ -7,6 +7,13 @@ export const checkoutItemSchema = z.object({
   // OrderItem.selectedSize in schema.prisma for why this is per-item rather
   // than per-product.
   selectedSize: z.string().trim().max(50).optional(),
+  // Cap head circumference, in the unit the guest chose.
+  headCircumference: z
+    .object({
+      value: z.coerce.number().positive().max(1000),
+      unit: z.enum(["cm", "in"]),
+    })
+    .optional(),
 });
 
 // Address fields are only required when deliveryMethod is SHIPPING -- see

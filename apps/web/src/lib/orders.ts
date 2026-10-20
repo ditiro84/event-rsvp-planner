@@ -14,10 +14,10 @@ export function formatShippingAddress(address: OrderShippingAddress): string {
 }
 
 // "Aso-Ebi for females (Size M) × 2, Fila for men × 1" -- includes the
-// guest-selected size per line item when one was given.
+// guest-selected size or head measurement per line item when one was given.
 export function formatOrderItems(items: OrderItemRecord[]): string {
   return items
-    .map((i) => `${i.productName}${i.selectedSize ? ` (Size ${i.selectedSize})` : ""} × ${i.quantity}`)
+    .map((i) => `${i.productName}${i.sizeLabel ? ` (${i.sizeLabel})` : ""} × ${i.quantity}`)
     .join(", ");
 }
 

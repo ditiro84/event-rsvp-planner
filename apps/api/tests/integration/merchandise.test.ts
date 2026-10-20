@@ -126,7 +126,7 @@ describe("Public shop", () => {
     expect(shop.body.data.products[0].name).toBe("In stock");
   });
 
-  it("returns a clear error from checkout when no payout account is connected for the cart's currency", async () => {
+  it("records a manual order when no payout account is connected for the cart's currency", async () => {
     const { token } = await registerAndLogin(app);
     const eventId = await createEventWithToken(token);
     const auth = { Authorization: `Bearer ${token}` };
@@ -141,15 +141,15 @@ describe("Public shop", () => {
     const eventRes = await request(app).get(`/api/events/${eventId}`).set(auth);
     const rsvpToken = eventRes.body.data.event.rsvpToken;
 
-    // No EventPayoutAccount has been connected for this event/currency yet
-    // (that's the multi-processor payments flow -- see payouts.test.ts), so
-    // checkout should fail clearly before ever reaching a specific processor.
+    // No EventPayoutAccount is connected (see payouts.test.ts), so the order
+    // is captured as MANUAL for the planner to collect payment themselves.
     const checkout = await request(app)
       .post(`/api/shop/${rsvpToken}/checkout`)
       .send({ guestName: "Jane Guest", guestEmail: "jane@example.com", items: [{ productId, quantity: 1 }] });
 
-    expect(checkout.status).toBe(400);
-    expect(checkout.body.error.message).toMatch(/hasn't connected a way to accept/);
+    expect(checkout.status).toBe(200);
+    expect(checkout.body.data.checkoutUrl).toBeNull();
+    expect(checkout.body.data.order.status).toBe("MANUAL");
   });
 
   it("rejects checkout with an empty cart", async () => {
@@ -182,5 +182,130 @@ describe("Orders", () => {
     const summary = await request(app).get(`/api/events/${eventId}/orders/summary`).set(auth);
     expect(summary.status).toBe(200);
     expect(summary.body.data).toEqual({ totalSales: 0, orderCount: 0, itemsSold: 0 });
+  });
+});
+
+describe("Sizing and measurements", () => {
+  async function shopWithProducts() {
+    const { token } = await registerAndLogin(app);
+    const eventId = await createEventWithToken(token);
+    const auth = { Authorization: `Bearer ${token}` };
+    await request(app).put(`/api/events/${eventId}`).set(auth).send({ merchandiseEnabled: true });
+    const tee = await request(app)
+      .post(`/api/events/${eventId}/products`)
+      .set(auth)
+      .send({ name: "Event Tee", price: 20, fitType: "SIZE_CHART", sizeOptions: ["S", "M", "L"] });
+    const cap = await request(app)
+      .post(`/api/events/${eventId}/products`)
+      .set(auth)
+      .send({ name: "Event Cap", price: 15, fitType: "HEAD_CIRCUMFERENCE" });
+    const fabric = await request(app)
+      .post(`/api/events/${eventId}/products`)
+      .set(auth)
+      .send({ name: "Aso Ebi Fabric", price: 50 });
+    const eventRes = await request(app).get(`/api/events/${eventId}`).set(auth);
+    return {
+      auth,
+      eventId,
+      rsvpToken: eventRes.body.data.event.rsvpToken as string,
+      teeId: tee.body.data.product.id as string,
+      capId: cap.body.data.product.id as string,
+      fabricId: fabric.body.data.product.id as string,
+    };
+  }
+
+  const guest = { guestName: "Jane Guest", guestEmail: "jane@example.com" };
+
+  it("offers the default sizes when a T-shirt has no custom list, and the planner's list when set", async () => {
+    const { auth, eventId, rsvpToken, teeId } = await shopWithProducts();
+    const shop = await request(app).get(`/api/shop/${rsvpToken}/products`);
+    const tee = shop.body.data.products.find((p: { id: string }) => p.id === teeId);
+    expect(tee.fitType).toBe("SIZE_CHART");
+    expect(tee.sizeOptions).toEqual(["S", "M", "L"]);
+
+    await request(app).put(`/api/events/${eventId}/products/${teeId}`).set(auth).send({ sizeOptions: null });
+    const after = await request(app).get(`/api/shop/${rsvpToken}/products`);
+    expect(after.body.data.products.find((p: { id: string }) => p.id === teeId).sizeOptions).toEqual([
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL",
+    ]);
+  });
+
+  it("requires a valid size for T-shirts", async () => {
+    const { rsvpToken, teeId } = await shopWithProducts();
+    const missing = await request(app)
+      .post(`/api/shop/${rsvpToken}/checkout`)
+      .send({ ...guest, items: [{ productId: teeId, quantity: 1 }] });
+    expect(missing.status).toBe(400);
+    expect(missing.body.error.message).toMatch(/Choose a size/);
+
+    const invalid = await request(app)
+      .post(`/api/shop/${rsvpToken}/checkout`)
+      .send({ ...guest, items: [{ productId: teeId, quantity: 1, selectedSize: "XXL" }] });
+    expect(invalid.status).toBe(400);
+
+    const ok = await request(app)
+      .post(`/api/shop/${rsvpToken}/checkout`)
+      .send({ ...guest, items: [{ productId: teeId, quantity: 2, selectedSize: "m" }] });
+    expect(ok.status).toBe(200);
+    expect(ok.body.data.order.items[0].selectedSize).toBe("M");
+  });
+
+  it("records cap head circumference in both units and rejects implausible values", async () => {
+    const { rsvpToken, capId } = await shopWithProducts();
+
+    const tooSmall = await request(app)
+      .post(`/api/shop/${rsvpToken}/checkout`)
+      .send({ ...guest, items: [{ productId: capId, quantity: 1, headCircumference: { value: 20, unit: "cm" } }] });
+    expect(tooSmall.status).toBe(400);
+
+    const missing = await request(app)
+      .post(`/api/shop/${rsvpToken}/checkout`)
+      .send({ ...guest, items: [{ productId: capId, quantity: 1 }] });
+    expect(missing.status).toBe(400);
+
+    const ok = await request(app)
+      .post(`/api/shop/${rsvpToken}/checkout`)
+      .send({ ...guest, items: [{ productId: capId, quantity: 1, headCircumference: { value: 22, unit: "in" } }] });
+    expect(ok.status).toBe(200);
+    const item = ok.body.data.order.items[0];
+    expect(item.measurements.headCircumference).toEqual({ value: 22, unit: "in", cm: 55.9 });
+    expect(item.sizeLabel).toBe("Head 22 in (55.9 cm)");
+  });
+
+  it("asks nothing for fabric and other unsized products", async () => {
+    const { rsvpToken, fabricId } = await shopWithProducts();
+    const res = await request(app)
+      .post(`/api/shop/${rsvpToken}/checkout`)
+      .send({ ...guest, items: [{ productId: fabricId, quantity: 1 }] });
+    expect(res.status).toBe(200);
+    expect(res.body.data.order.items[0].selectedSize).toBeNull();
+    expect(res.body.data.order.items[0].measurements).toBeNull();
+  });
+
+  it("exports orders as a CSV with sizes and head measurements", async () => {
+    const { auth, eventId, rsvpToken, teeId, capId } = await shopWithProducts();
+    await request(app)
+      .post(`/api/shop/${rsvpToken}/checkout`)
+      .send({
+        ...guest,
+        guestName: "=SUM(1+1)",
+        items: [
+          { productId: teeId, quantity: 1, selectedSize: "L" },
+          { productId: capId, quantity: 1, headCircumference: { value: 56, unit: "cm" } },
+        ],
+      });
+
+    const res = await request(app).get(`/api/events/${eventId}/orders/export`).set(auth);
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/text\/csv/);
+    expect(res.text).toMatch(/Event Tee,1,L/);
+    expect(res.text).toMatch(/Event Cap,1,,56,56 cm/);
+    // A guest name that looks like a formula is neutralised.
+    expect(res.text).toMatch(/'=SUM\(1\+1\)/);
   });
 });

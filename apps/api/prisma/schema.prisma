@@ -749,6 +749,14 @@ enum Currency {
 // One optional image, stored the same way as EventInvitationCard (bytes in
 // Postgres) rather than an external bucket -- consistent with the rest of
 // this app and avoids needing separate storage credentials.
+// How a product is sized. T-shirts use a size chart, caps use head
+// circumference, and everything else (fabric, gele, favours) asks nothing.
+enum ProductFitType {
+  NONE
+  SIZE_CHART
+  HEAD_CIRCUMFERENCE
+}
+
 model Product {
   id      String @id @default(cuid())
   eventId String
@@ -760,6 +768,10 @@ model Product {
   // every product is sized apparel. Shown to guests alongside the product
   // on the RSVP shop.
   size        String?
+  fitType     ProductFitType @default(NONE)
+  // The sizes offered when fitType is SIZE_CHART, as a JSON array of strings
+  // (e.g. ["S","M","L"]). Null means the default XS to XXL list.
+  sizeOptions Json?
   // Minor currency units (cents), not a float, to avoid rounding drift --
   // same convention as Vendor.costCents.
   priceCents  Int
@@ -1103,6 +1115,9 @@ model OrderItem {
   // apparel here is sold in one listing covering many sizes, so the guest
   // specifies which one they want per line item. Free text, optional.
   selectedSize    String?
+  // Cap head circumference as { headCircumference: { value, unit, cm } }, kept
+  // exactly as the guest entered it plus a centimetre value for ordering.
+  measurements    Json?
 
   @@index([orderId])
   @@map("order_items")
